@@ -56,19 +56,6 @@ Before importing, ensure you have:
 | 👤 | **Resume Parser & Scoring** | Parse resume PDFs, score candidates, and log to Google Sheets with Slack alerts | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/resume-parser.json) · [View](n8n-workflows/resume-parser.json) |
 | 🚚 | **Bill of Lading Tracker** | Track and process bill of lading documents for logistics management | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bill-of-lading-tracker.json) · [View](n8n-workflows/bill-of-lading-tracker.json) |
 
-### Categories
-
-| Icon | Category | Workflows |
-|:---:|---|---|
-| 📄 | PDF Extraction | Invoice Data Extraction |
-| 💰 | Finance & Invoicing | Invoice Processing, Gmail Invoice Processor, Tax Document Organizer |
-| 🏥 | Healthcare Documents | Insurance Pre-Authorization, Medical Records Intake |
-| ⚖️ | Legal Documents | NDA Compliance Checker |
-| 🏠 | Real Estate Documents | Mortgage Application Validator |
-| 🎓 | Education Documents | Education Transcript Processor |
-| 👤 | HR Documents | Resume Parser & Scoring |
-| 🚚 | Logistics Documents | Bill of Lading Tracker |
-
 ### How to Import
 
 #### Option 1: Direct Download
