@@ -33,7 +33,7 @@ Before importing, ensure you have:
 
 ### Quick Start
 
-1. Click the **Download** link for the workflow you want
+1. **Right-click** the **Download** link → **"Save Link As..."** to save the workflow JSON file
 2. Open your n8n instance
 3. Go to **Workflows** → **Import from File**
 4. Select the downloaded JSON file
@@ -59,16 +59,21 @@ Before importing, ensure you have:
 ### How to Import
 
 #### Option 1: Direct Download
-1. Click the **Download** link next to any workflow
-2. Save the `.json` file to your computer
-3. In n8n, click **Workflows** in the sidebar
-4. Click **Add Workflow** → **Import from File**
-5. Select your downloaded file
+1. **Right-click** the **Download** link next to any workflow
+2. Select **"Save Link As..."** (Chrome/Edge) or **"Download Linked File"** (Safari)
+3. Save the `.json` file to your computer
+4. In n8n, click **Workflows** in the sidebar
+5. Click **Add Workflow** → **Import from File**
+6. Select your downloaded file
 
-#### Option 2: Import from URL
-1. Copy the **Download** link URL
+> **Tip**: If you left-click the Download link, it will open the raw JSON in your browser. You can still save it using `Ctrl+S` (Windows/Linux) or `Cmd+S` (Mac).
+
+#### Option 2: Import from URL (Recommended)
+1. **Right-click** the **Download** link and select **"Copy Link Address"**
 2. In n8n, click **Add Workflow** → **Import from URL**
 3. Paste the URL and click **Import**
+
+> This method imports directly without downloading a file!
 
 ---
 
