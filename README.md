@@ -33,7 +33,7 @@ Before importing, ensure you have:
 
 ### Quick Start
 
-1. **Right-click** the **Download** link → **"Save Link As..."** to save the workflow JSON file
+1. **Right-click** the **Download** link → **"Save Link As..."** to save the workflow JSON file. Or click **Download** link and copy JSON content to your clipboard.
 2. Open your n8n instance
 3. Go to **Workflows** → **Import from File**
 4. Select the downloaded JSON file
@@ -42,19 +42,19 @@ Before importing, ensure you have:
 
 ### Available Workflows
 
-| | Workflow | Description | Actions |
+| | Workflow | Description | |
 |:---:|---|---|:---:|
-| 📄 | **Invoice Data Extraction** | Extract structured data from invoice PDFs using AI and save to Google Sheets | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-data-extraction.json) · [View](n8n-workflows/invoice-data-extraction.json) |
-| 💰 | **Invoice Processing & Approval** | Process invoices with approval routing, budget validation, and Slack notifications | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-approval.json) · [View](n8n-workflows/invoice-processing-approval.json) |
-| 📧 | **Gmail Invoice Processor** | Monitor Gmail for invoice PDFs and create formatted Google Docs automatically | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/gmail-invoice-processor.json) · [View](n8n-workflows/gmail-invoice-processor.json) |
-| 💰 | **Tax Document Organizer** | Categorize and organize tax PDFs from email attachments automatically | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/tax-document-organizer.json) · [View](n8n-workflows/tax-document-organizer.json) |
-| 🏥 | **Insurance Pre-Authorization** | Process insurance authorization PDFs with automated document extraction | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/insurance-pre-authorization.json) · [View](n8n-workflows/insurance-pre-authorization.json) |
-| 🏥 | **Medical Records Intake** | Automate patient medical records PDF intake and organization | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/medical-records-intake.json) · [View](n8n-workflows/medical-records-intake.json) |
-| ⚖️ | **NDA Compliance Checker** | Validate NDA documents for compliance using AI-powered PDF analysis | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/nda-compliance-checker.json) · [View](n8n-workflows/nda-compliance-checker.json) |
-| 🏠 | **Mortgage Application Validator** | Validate mortgage application PDFs and extract key information | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/mortgage-application-validator.json) · [View](n8n-workflows/mortgage-application-validator.json) |
-| 🎓 | **Education Transcript Processor** | Extract and process academic transcript PDFs for verification | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/education-transcript-processor.json) · [View](n8n-workflows/education-transcript-processor.json) |
-| 👤 | **Resume Parser & Scoring** | Parse resume PDFs, score candidates, and log to Google Sheets with Slack alerts | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/resume-parser.json) · [View](n8n-workflows/resume-parser.json) |
-| 🚚 | **Bill of Lading Tracker** | Track and process bill of lading documents for logistics management | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bill-of-lading-tracker.json) · [View](n8n-workflows/bill-of-lading-tracker.json) |
+| 📄 | **Invoice Data Extraction** | Extract structured data from invoice PDFs using AI and save to Google Sheets | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-data-extraction.json) |
+| 💰 | **Invoice Processing & Approval** | Process invoices with approval routing, budget validation, and Slack notifications | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-approval.json) |
+| 📧 | **Gmail Invoice Processor** | Monitor Gmail for invoice PDFs and create formatted Google Docs automatically | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/gmail-invoice-processor.json) |
+| 💰 | **Tax Document Organizer** | Categorize and organize tax PDFs from email attachments automatically | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/tax-document-organizer.json) |
+| 🏥 | **Insurance Pre-Authorization** | Process insurance authorization PDFs with automated document extraction | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/insurance-pre-authorization.json) |
+| 🏥 | **Medical Records Intake** | Automate patient medical records PDF intake and organization | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/medical-records-intake.json) |
+| ⚖️ | **NDA Compliance Checker** | Validate NDA documents for compliance using AI-powered PDF analysis | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/nda-compliance-checker.json) |
+| 🏠 | **Mortgage Application Validator** | Validate mortgage application PDFs and extract key information | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/mortgage-application-validator.json) |
+| 🎓 | **Education Transcript Processor** | Extract and process academic transcript PDFs for verification | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/education-transcript-processor.json) |
+| 👤 | **Resume Parser & Scoring** | Parse resume PDFs, score candidates, and log to Google Sheets with Slack alerts | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/resume-parser.json) |
+| 🚚 | **Bill of Lading Tracker** | Track and process bill of lading documents for logistics management | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bill-of-lading-tracker.json) |
 
 ### How to Import
 
