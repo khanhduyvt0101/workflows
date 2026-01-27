@@ -1,0 +1,125 @@
+{
+  "name": "07 - Bill of Lading Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [{"mode": "everyMinute"}]
+        },
+        "filters": {},
+        "format": "resolved"
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-download",
+      "name": "Get a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split multiple attachments into separate items\nconst message = $input.first();\nconst attachments = [];\n\n// Find all binary attachments\nfor (const key in message.binary) {\n  if (key.startsWith('attachment_') || key.startsWith('data')) {\n    attachments.push({\n      json: {\n        attachmentFileName: message.binary[key].fileName,\n        messageId: message.json.id,\n        messageSubject: message.json.subject || 'No subject'\n      },\n      binary: {\n        data: message.binary[key]\n      }\n    });\n  }\n}\n\n// Return all attachments as separate items\nreturn attachments.length > 0 ? attachments : [{\n  json: { error: 'No attachments found' }\n}];"
+      },
+      "id": "code-split-attachments",
+      "name": "Split Attachments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "notes": "Handle multiple BOL attachments in one email"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract Bill of Lading information including tracking number, carrier name, shipper details, consignee details, origin and destination addresses, shipment items with descriptions and weights, total weight, shipping date, and expected delivery date",
+        "schema": "{\"type\":\"object\",\"properties\":{\"trackingNumber\":{\"type\":\"string\"},\"carrier\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"contactPhone\":{\"type\":\"string\"}}},\"shipper\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"}}},\"consignee\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"}}},\"origin\":{\"type\":\"string\"},\"destination\":{\"type\":\"string\"},\"items\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"weight\":{\"type\":\"number\"}}}},\"totalWeight\":{\"type\":\"number\"},\"shipDate\":{\"type\":\"string\"},\"expectedDelivery\":{\"type\":\"string\"}},\"required\":[\"trackingNumber\",\"carrier\",\"shipper\",\"consignee\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract BOL",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Tracking Number": "={{ $json.data.trackingNumber }}",
+            "Carrier": "={{ $json.data.carrier.name }}",
+            "Shipper": "={{ $json.data.shipper.name }}",
+            "Consignee": "={{ $json.data.consignee.name }}",
+            "Origin": "={{ $json.data.origin }}",
+            "Destination": "={{ $json.data.destination }}",
+            "Total Weight": "={{ $json.data.totalWeight }}",
+            "Ship Date": "={{ $json.data.shipDate }}",
+            "Expected Delivery": "={{ $json.data.expectedDelivery }}",
+            "Status": "In Transit"
+          }
+        }
+      },
+      "id": "sheets-log",
+      "name": "Log to Shipment Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL@gmail.com",
+        "subject": "New Shipment Logged - {{ $('PDF Vector - Extract BOL').item.json.data.trackingNumber }}",
+        "emailType": "html",
+        "message": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; padding: 20px;\">\n\n<h2 style=\"color: #4CAF50;\">📦 New Shipment Logged</h2>\n\n<p>A new Bill of Lading has been processed and added to your tracking system.</p>\n\n<div style=\"background-color: #f0f8ff; border-left: 4px solid #2196F3; padding: 15px; margin: 20px 0;\">\n  <h3 style=\"margin-top: 0; color: #2196F3;\">Tracking Number</h3>\n  <p style=\"font-size: 24px; font-weight: bold; color: #333; margin: 5px 0;\">\n    {{ $('PDF Vector - Extract BOL').item.json.data.trackingNumber }}\n  </p>\n</div>\n\n<table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n  <tr>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: bold; width: 40%;\">Shipper</td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0;\">{{ $('PDF Vector - Extract BOL').item.json.data.shipper.name }}</td>\n  </tr>\n  <tr>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: bold;\">Consignee</td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0;\">{{ $('PDF Vector - Extract BOL').item.json.data.consignee.name }}</td>\n  </tr>\n  <tr>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: bold;\">Origin</td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0;\">{{ $('PDF Vector - Extract BOL').item.json.data.origin }}</td>\n  </tr>\n  <tr>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: bold;\">Destination</td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0;\">{{ $('PDF Vector - Extract BOL').item.json.data.destination }}</td>\n  </tr>\n  <tr>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: bold;\">Total Weight</td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0;\">{{ $('PDF Vector - Extract BOL').item.json.data.totalWeight }} kg</td>\n  </tr>\n  <tr>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: bold;\">Ship Date</td>\n    <td style=\"padding: 12px; border-bottom: 1px solid #e0e0e0;\">{{ $('PDF Vector - Extract BOL').item.json.data.shipDate }}</td>\n  </tr>\n  <tr>\n    <td style=\"padding: 12px; font-weight: bold;\">Expected Delivery</td>\n    <td style=\"padding: 12px; font-weight: bold; color: #4CAF50;\">{{ $('PDF Vector - Extract BOL').item.json.data.expectedDelivery }}</td>\n  </tr>\n</table>\n\n<div style=\"background-color: #e8f5e9; border-left: 4px solid #4CAF50; padding: 15px; margin: 20px 0;\">\n  <p style=\"margin: 0; color: #2e7d32;\">✅ Shipment has been logged to your tracking spreadsheet</p>\n</div>\n\n<hr style=\"border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;\">\n<p style=\"color: #666; font-size: 12px; text-align: center;\">Automated notification from Bill of Lading Tracker</p>\n\n</div>"
+      },
+      "id": "gmail-send",
+      "name": "Send Tracking to Customer",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [[{"node": "Get a message", "type": "main", "index": 0}]]
+    },
+    "Get a message": {
+      "main": [[{"node": "Split Attachments", "type": "main", "index": 0}]]
+    },
+    "Split Attachments": {
+      "main": [[{"node": "PDF Vector - Extract BOL", "type": "main", "index": 0}]]
+    },
+    "PDF Vector - Extract BOL": {
+      "main": [[{"node": "Log to Shipment Tracker", "type": "main", "index": 0}]]
+    },
+    "Log to Shipment Tracker": {
+      "main": [[{"node": "Send Tracking to Customer", "type": "main", "index": 0}]]
+    }
+  }
+}

@@ -1,0 +1,241 @@
+{
+  "name": "10 - Medical Records Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {},
+        "format": "resolved"
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-download",
+      "name": "Get a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  if (item.binary.data0) {\n    item.binary.data = item.binary.data0;\n    item.json.attachmentFileName = item.binary.data0.fileName;\n    delete item.binary.data0;\n  }\n  if (item.binary.attachment_0) {\n    item.binary.data = item.binary.attachment_0;\n    item.json.attachmentFileName = item.binary.attachment_0.fileName;\n    delete item.binary.attachment_0;\n  }\n  return item;\n});"
+      },
+      "id": "code-rename",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract patient intake information including patient full name, date of birth, address, phone number, email, insurance provider, policy number, emergency contact with name, phone and relationship, current medications list, known allergies, and medical history summary",
+        "schema": "{\"type\":\"object\",\"properties\":{\"patientName\":{\"type\":\"string\"},\"dateOfBirth\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"insuranceProvider\":{\"type\":\"string\"},\"policyNumber\":{\"type\":\"string\"},\"emergencyContact\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"relationship\":{\"type\":\"string\"}}},\"medications\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"allergies\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"medicalHistory\":{\"type\":\"string\"}},\"required\":[\"patientName\",\"dateOfBirth\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Patient Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Patient Name": "={{ $json.data.patientName }}",
+            "Date of Birth": "={{ $json.data.dateOfBirth }}",
+            "Phone": "={{ $json.data.phone }}",
+            "Email": "={{ $json.data.email }}",
+            "Insurance Provider": "={{ $json.data.insuranceProvider }}",
+            "Policy Number": "={{ $json.data.policyNumber }}",
+            "Emergency Contact": "={{ $json.data.emergencyContact ? $json.data.emergencyContact.name + ' (' + $json.data.emergencyContact.relationship + ')' : '' }}",
+            "Emergency Phone": "={{ $json.data.emergencyContact ? $json.data.emergencyContact.phone : '' }}",
+            "Medications": "={{ $json.data.medications ? $json.data.medications.join(', ') : 'None' }}",
+            "Allergies": "={{ $json.data.allergies ? $json.data.allergies.join(', ') : 'None' }}",
+            "Intake Date": "={{ new Date().toISOString().split('T')[0] }}"
+          }
+        }
+      },
+      "id": "sheets-add",
+      "name": "Add to Patient Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($('PDF Vector - Extract Patient Data').item.json.data.patientName) && Boolean($('PDF Vector - Extract Patient Data').item.json.data.dateOfBirth) && Boolean($('PDF Vector - Extract Patient Data').item.json.data.insuranceProvider) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-complete",
+      "name": "Is Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('PDF Vector - Extract Patient Data').item.json.data.email || 'patient@example.com' }}",
+        "subject": "Welcome to Our Practice - {{ $('PDF Vector - Extract Patient Data').item.json.data.patientName }}",
+        "emailType": "text",
+        "message": "=Dear {{ $('PDF Vector - Extract Patient Data').item.json.data.patientName }},\n\nThank you for choosing our practice. We have received your intake form and your information has been added to our system.\n\nPatient Information:\n- Name: {{ $('PDF Vector - Extract Patient Data').item.json.data.patientName }}\n- Date of Birth: {{ $('PDF Vector - Extract Patient Data').item.json.data.dateOfBirth }}\n- Insurance: {{ $('PDF Vector - Extract Patient Data').item.json.data.insuranceProvider }}\n\nPlease contact us if you need to update any information.\n\nBest regards,\nYour Healthcare Team"
+      },
+      "id": "gmail-send",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1450,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Get a message').item.json.from.text }}",
+        "subject": "=Incomplete Patient Intake - {{ $('PDF Vector - Extract Patient Data').item.json.data.patientName || 'Unknown Patient' }}",
+        "emailType": "text",
+        "message": "=The patient intake form is missing required information:\n\n{{ !$('PDF Vector - Extract Patient Data').item.json.data.patientName ? '- Patient Name\\n' : '' }}{{ !$('PDF Vector - Extract Patient Data').item.json.data.dateOfBirth ? '- Date of Birth\\n' : '' }}{{ !$('PDF Vector - Extract Patient Data').item.json.data.insuranceProvider ? '- Insurance Provider\\n' : '' }}\nPlease request the patient to provide complete information."
+      },
+      "id": "gmail-incomplete",
+      "name": "Request Complete Info",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1450,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Patient Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Patient Data": {
+      "main": [
+        [
+          {
+            "node": "Add to Patient Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Patient Database": {
+      "main": [
+        [
+          {
+            "node": "Is Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Complete?": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Request Complete Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,389 @@
+{
+  "name": "15. NDA Compliance Checker",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "root",
+          "mode": "list",
+          "cachedResultName": "NDAs"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "name": "Watch NDA Folder",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1",
+          "name": "Google Drive"
+        }
+      },
+      "notes": "Monitors shared Drive folder for new NDAs"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "name": "Download NDA",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [460, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rename binary data to 'data' for PDF Vector\nconst items = $input.all();\n\nfor (const item of items) {\n  if (item.binary) {\n    const binaryKey = Object.keys(item.binary)[0];\n    if (binaryKey && binaryKey !== 'data') {\n      item.binary.data = item.binary[binaryKey];\n      delete item.binary[binaryKey];\n    }\n  }\n  \n  // Extract filename for tracking\n  item.json.originalFilename = item.json.name || 'nda.pdf';\n  item.json.processedAt = new Date().toISOString();\n}\n\nreturn items;"
+      },
+      "name": "Prepare Binary Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract NDA terms including parties involved, effective date, expiration date, term length, scope of confidential information, permitted disclosures, exclusions from confidentiality, obligations, remedies, governing law, and any special provisions",
+        "schema": "{\"type\":\"object\",\"properties\":{\"agreementTitle\":{\"type\":\"string\"},\"agreementType\":{\"type\":\"string\"},\"effectiveDate\":{\"type\":\"string\"},\"expirationDate\":{\"type\":\"string\"},\"termLength\":{\"type\":\"string\"},\"parties\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"role\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"representative\":{\"type\":\"string\"}}}},\"confidentialityScope\":{\"type\":\"string\"},\"permittedDisclosures\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"exclusionsFromConfidentiality\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"obligations\":{\"type\":\"object\",\"properties\":{\"returnOfMaterials\":{\"type\":\"boolean\"},\"destructionOfCopies\":{\"type\":\"boolean\"},\"nonSolicitation\":{\"type\":\"boolean\"},\"nonCompete\":{\"type\":\"boolean\"}}},\"remedies\":{\"type\":\"object\",\"properties\":{\"monetaryDamages\":{\"type\":\"boolean\"},\"injunctiveRelief\":{\"type\":\"boolean\"},\"liquidatedDamages\":{\"type\":\"boolean\"},\"attorneyFees\":{\"type\":\"boolean\"}}},\"governingLaw\":{\"type\":\"string\"},\"jurisdiction\":{\"type\":\"string\"},\"arbitrationClause\":{\"type\":\"boolean\"},\"mutualAgreement\":{\"type\":\"boolean\"},\"survivingTerms\":{\"type\":\"string\"},\"noticeRequirements\":{\"type\":\"string\"},\"assignability\":{\"type\":\"string\"},\"severability\":{\"type\":\"boolean\"},\"entireAgreement\":{\"type\":\"boolean\"}},\"required\":[\"parties\",\"effectiveDate\",\"confidentialityScope\"],\"additionalProperties\":false}",
+        "useLLM": "smart"
+      },
+      "name": "PDF Vector Extract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json.data || item.json;\n\n// Required clauses checklist\nconst requiredClauses = {\n  'Definition of Confidential Information': !!data.confidentialityScope,\n  'Permitted Disclosures': data.permittedDisclosures && data.permittedDisclosures.length > 0,\n  'Exclusions from Confidentiality': data.exclusionsFromConfidentiality && data.exclusionsFromConfidentiality.length > 0,\n  'Return of Materials': data.obligations?.returnOfMaterials,\n  'Remedies for Breach': data.remedies?.injunctiveRelief || data.remedies?.monetaryDamages,\n  'Governing Law': !!data.governingLaw,\n  'Term/Duration': !!data.termLength || !!data.expirationDate\n};\n\n// Count missing required clauses\nconst missingClauses = Object.entries(requiredClauses)\n  .filter(([_, present]) => !present)\n  .map(([clause, _]) => clause);\n\nconst complianceScore = Math.round(\n  (Object.values(requiredClauses).filter(v => v).length / Object.keys(requiredClauses).length) * 100\n);\n\n// Check for additional protective clauses\nconst protectiveClauses = {\n  'Injunctive Relief': data.remedies?.injunctiveRelief,\n  'Attorney Fees Recovery': data.remedies?.attorneyFees,\n  'Non-Solicitation': data.obligations?.nonSolicitation,\n  'Arbitration': data.arbitrationClause,\n  'Severability': data.severability,\n  'Entire Agreement': data.entireAgreement\n};\n\nconst protectiveClausesPresent = Object.values(protectiveClauses).filter(v => v).length;\n\n// Calculate dates and status\nconst today = new Date();\nconst effectiveDate = new Date(data.effectiveDate);\nconst expirationDate = data.expirationDate ? new Date(data.expirationDate) : null;\n\nconst daysActive = Math.floor((today - effectiveDate) / (1000 * 60 * 60 * 24));\nconst daysUntilExpiry = expirationDate ? \n  Math.ceil((expirationDate - today) / (1000 * 60 * 60 * 24)) : null;\n\n// Determine NDA status\nlet ndaStatus = 'Active';\nif (today < effectiveDate) {\n  ndaStatus = 'Not Yet Effective';\n} else if (expirationDate && today > expirationDate) {\n  ndaStatus = 'Expired';\n} else if (daysUntilExpiry && daysUntilExpiry <= 60) {\n  ndaStatus = 'Expiring Soon';\n}\n\n// Compliance assessment\nlet complianceStatus = 'Compliant';\nif (missingClauses.length >= 3) {\n  complianceStatus = 'Non-Compliant';\n} else if (missingClauses.length > 0) {\n  complianceStatus = 'Needs Review';\n}\n\n// Format parties\nconst parties = data.parties || [];\nconst partiesDisplay = parties.map(p => \n  `${p.name} (${p.role})`\n).join(', ');\n\n// Risk assessment\nconst riskFactors = [];\n\nif (missingClauses.includes('Remedies for Breach')) {\n  riskFactors.push('No breach remedies specified');\n}\nif (!data.remedies?.injunctiveRelief) {\n  riskFactors.push('No injunctive relief clause');\n}\nif (missingClauses.includes('Exclusions from Confidentiality')) {\n  riskFactors.push('No exclusions defined - may be unenforceable');\n}\nif (!data.mutualAgreement && parties.length > 1) {\n  riskFactors.push('One-way NDA - limited protection');\n}\nif (!data.governingLaw) {\n  riskFactors.push('No governing law specified');\n}\n\nlet riskLevel = 'Low';\nif (riskFactors.length >= 3 || complianceStatus === 'Non-Compliant') {\n  riskLevel = 'High';\n} else if (riskFactors.length > 0 || complianceStatus === 'Needs Review') {\n  riskLevel = 'Medium';\n}\n\n// Determine if legal review required\nconst requiresLegalReview = \n  complianceStatus !== 'Compliant' || \n  riskLevel !== 'Low' || \n  (daysUntilExpiry && daysUntilExpiry <= 30);\n\nreturn {\n  json: {\n    // Agreement Info\n    agreementTitle: data.agreementTitle || 'Untitled NDA',\n    agreementType: data.agreementType || 'Standard NDA',\n    isMutual: data.mutualAgreement ? 'Yes' : 'No',\n    \n    // Dates & Status\n    effectiveDate: data.effectiveDate,\n    expirationDate: data.expirationDate || 'Perpetual',\n    termLength: data.termLength || 'Not specified',\n    daysActive: daysActive,\n    daysUntilExpiry: daysUntilExpiry || 'N/A',\n    ndaStatus: ndaStatus,\n    \n    // Parties\n    partyCount: parties.length,\n    partiesInvolved: partiesDisplay || 'Unknown',\n    \n    // Scope & Terms\n    confidentialityScope: data.confidentialityScope || 'Not defined',\n    permittedDisclosuresCount: (data.permittedDisclosures || []).length,\n    permittedDisclosures: (data.permittedDisclosures || []).join('; ') || 'None specified',\n    exclusionsCount: (data.exclusionsFromConfidentiality || []).length,\n    exclusions: (data.exclusionsFromConfidentiality || []).join('; ') || 'None specified',\n    \n    // Obligations\n    returnMaterials: data.obligations?.returnOfMaterials ? 'Yes' : 'No',\n    destroyCopies: data.obligations?.destructionOfCopies ? 'Yes' : 'No',\n    nonSolicitation: data.obligations?.nonSolicitation ? 'Yes' : 'No',\n    nonCompete: data.obligations?.nonCompete ? 'Yes' : 'No',\n    \n    // Remedies\n    monetaryDamages: data.remedies?.monetaryDamages ? 'Yes' : 'No',\n    injunctiveRelief: data.remedies?.injunctiveRelief ? 'Yes' : 'No',\n    liquidatedDamages: data.remedies?.liquidatedDamages ? 'Yes' : 'No',\n    attorneyFees: data.remedies?.attorneyFees ? 'Yes' : 'No',\n    \n    // Legal Framework\n    governingLaw: data.governingLaw || 'Not specified',\n    jurisdiction: data.jurisdiction || 'Not specified',\n    hasArbitration: data.arbitrationClause ? 'Yes' : 'No',\n    assignable: data.assignability || 'Not specified',\n    hasSeverability: data.severability ? 'Yes' : 'No',\n    isEntireAgreement: data.entireAgreement ? 'Yes' : 'No',\n    \n    // Compliance Assessment\n    complianceStatus: complianceStatus,\n    complianceScore: complianceScore,\n    missingClausesCount: missingClauses.length,\n    missingClauses: missingClauses.join('; ') || 'None',\n    protectiveClausesCount: protectiveClausesPresent,\n    \n    // Risk Assessment\n    riskLevel: riskLevel,\n    riskFactorsCount: riskFactors.length,\n    riskFactors: riskFactors.join('; ') || 'None',\n    requiresLegalReview: requiresLegalReview,\n    \n    // Additional Info\n    survivingTerms: data.survivingTerms || 'Not specified',\n    noticeRequirements: data.noticeRequirements || 'Not specified',\n    \n    // Tracking\n    reviewDate: new Date().toISOString().split('T')[0],\n    documentName: item.json.originalFilename,\n    \n    // Alert details\n    alertReason: requiresLegalReview ? \n      (missingClauses.length > 0 ? `Missing ${missingClauses.length} required clauses` : \n       riskFactors.length > 0 ? riskFactors[0] : \n       'Expiring soon') : 'None'\n  }\n};"
+      },
+      "name": "Check NDA Compliance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "your-sheet-id",
+          "mode": "list",
+          "cachedResultName": "NDA Register"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "agreementTitle": "={{ $json.agreementTitle }}",
+            "agreementType": "={{ $json.agreementType }}",
+            "isMutual": "={{ $json.isMutual }}",
+            "effectiveDate": "={{ $json.effectiveDate }}",
+            "expirationDate": "={{ $json.expirationDate }}",
+            "ndaStatus": "={{ $json.ndaStatus }}",
+            "partiesInvolved": "={{ $json.partiesInvolved }}",
+            "governingLaw": "={{ $json.governingLaw }}",
+            "complianceStatus": "={{ $json.complianceStatus }}",
+            "complianceScore": "={{ $json.complianceScore }}",
+            "riskLevel": "={{ $json.riskLevel }}",
+            "missingClauses": "={{ $json.missingClauses }}",
+            "riskFactors": "={{ $json.riskFactors }}",
+            "reviewDate": "={{ $json.reviewDate }}"
+          },
+          "matchingColumns": ["agreementTitle", "effectiveDate"]
+        },
+        "options": {}
+      },
+      "name": "Log to NDA Register",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1340, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "3",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.riskLevel }}",
+                    "rightValue": "High",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "high_risk"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.riskLevel }}",
+                    "rightValue": "Medium",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "medium_risk"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.riskLevel }}",
+                    "rightValue": "Low",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "low_risk"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Route by Risk Level",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1560, 300],
+      "notes": "Routes to different channels based on risk: High/Medium/Low"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#legal-urgent"
+        },
+        "text": "=🚨 *HIGH RISK NDA - IMMEDIATE ATTENTION REQUIRED*\n\n*Agreement:* {{ $json.agreementTitle }}\n*Type:* {{ $json.agreementType }} ({{ $json.isMutual === 'Yes' ? 'Mutual' : 'One-Way' }})\n*Compliance Status:* {{ $json.complianceStatus }}\n*Compliance Score:* {{ $json.complianceScore }}%\n*Risk Level:* 🔴 HIGH\n\n*Parties:* {{ $json.partiesInvolved }}\n*Effective Date:* {{ $json.effectiveDate }}\n\n*⚠️ Critical Issues:*\n{{ $json.missingClauses !== 'None' ? '• Missing Clauses: ' + $json.missingClauses : '' }}\n{{ $json.riskFactors !== 'None' ? '• Risk Factors: ' + $json.riskFactors : '' }}\n\n*Governing Law:* {{ $json.governingLaw }}\n*Injunctive Relief:* {{ $json.injunctiveRelief }}\n\n*ACTION:* DO NOT EXECUTE - Legal review required before signing",
+        "otherOptions": {}
+      },
+      "name": "Alert - High Risk",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1780, 150],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#legal"
+        },
+        "text": "=⚠️ *MEDIUM RISK NDA - Review Recommended*\n\n*Agreement:* {{ $json.agreementTitle }}\n*Type:* {{ $json.agreementType }} ({{ $json.isMutual === 'Yes' ? 'Mutual' : 'One-Way' }})\n*Compliance Score:* {{ $json.complianceScore }}%\n*Risk Level:* 🟡 MEDIUM\n\n*Parties:* {{ $json.partiesInvolved }}\n*Effective:* {{ $json.effectiveDate }}\n*Expires:* {{ $json.expirationDate }}\n\n{{ $json.missingClauses !== 'None' ? '*Missing Clauses:* ' + $json.missingClauses + '\\n\\n' : '' }}\n{{ $json.riskFactors !== 'None' ? '*Risk Factors:* ' + $json.riskFactors + '\\n\\n' : '' }}\n\n*Recommendation:* Legal review advised before execution",
+        "otherOptions": {}
+      },
+      "name": "Alert - Medium Risk",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1780, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#general"
+        },
+        "text": "=✅ *NDA Logged - Low Risk*\n\n*Agreement:* {{ $json.agreementTitle }}\n*Type:* {{ $json.agreementType }}\n*Compliance Score:* {{ $json.complianceScore }}%\n*Risk Level:* 🟢 LOW\n\n*Parties:* {{ $json.partiesInvolved }}\n*Status:* {{ $json.ndaStatus }}\n\nNDA meets compliance standards. Logged successfully.",
+        "otherOptions": {}
+      },
+      "name": "Notify - Low Risk",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1780, 450],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Watch NDA Folder": {
+      "main": [
+        [
+          {
+            "node": "Download NDA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download NDA": {
+      "main": [
+        [
+          {
+            "node": "Prepare Binary Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Binary Data": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Extract": {
+      "main": [
+        [
+          {
+            "node": "Check NDA Compliance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check NDA Compliance": {
+      "main": [
+        [
+          {
+            "node": "Log to NDA Register",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to NDA Register": {
+      "main": [
+        [
+          {
+            "node": "Route by Risk Level",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Risk Level": {
+      "main": [
+        [
+          {
+            "node": "Alert - High Risk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert - Medium Risk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify - Low Risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-12-22T00:00:00.000Z",
+  "versionId": "1"
+}

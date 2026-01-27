@@ -1,0 +1,169 @@
+{
+  "name": "Invoice Data Extraction Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "invoices",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "notes": "Watch 'Invoices' folder for new files"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}"
+      },
+      "id": "gdrive-download",
+      "name": "Download Invoice",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [450, 300],
+      "notes": "Download invoice file from Google Drive"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract all invoice details from this document or image including invoice number, date, vendor information, line items with descriptions and amounts, subtotal, tax, and total amount. Handle both digital PDFs and scanned/photographed invoices.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"invoiceNumber\":{\"type\":\"string\"},\"invoiceDate\":{\"type\":\"string\"},\"dueDate\":{\"type\":\"string\"},\"vendor\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"taxId\":{\"type\":\"string\"}}},\"customer\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"}}},\"lineItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unitPrice\":{\"type\":\"number\"},\"amount\":{\"type\":\"number\"}}}},\"subtotal\":{\"type\":\"number\"},\"tax\":{\"type\":\"number\"},\"total\":{\"type\":\"number\"},\"currency\":{\"type\":\"string\"}},\"required\":[\"invoiceNumber\",\"total\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Invoice",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "notes": "Extract structured invoice data with AI"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate invoice data\nconst invoice = $input.first().json.data;\nlet errors = [];\nlet warnings = [];\n\n// Check if line items total matches subtotal\nif (invoice.lineItems && invoice.lineItems.length > 0) {\n  const calculatedSubtotal = invoice.lineItems.reduce((sum, item) => sum + (item.amount || 0), 0);\n  if (Math.abs(calculatedSubtotal - (invoice.subtotal || 0)) > 0.01) {\n    warnings.push(`Line items total ($${calculatedSubtotal.toFixed(2)}) doesn't match subtotal ($${(invoice.subtotal || 0).toFixed(2)})`);\n  }\n}\n\n// Validate total calculation\nconst calculatedTotal = (invoice.subtotal || 0) + (invoice.tax || 0);\nif (Math.abs(calculatedTotal - invoice.total) > 0.01) {\n  warnings.push(`Calculated total ($${calculatedTotal.toFixed(2)}) doesn't match invoice total ($${invoice.total.toFixed(2)})`);\n}\n\n// Check required fields\nif (!invoice.invoiceNumber) errors.push('Missing invoice number');\nif (!invoice.vendor?.name) errors.push('Missing vendor name');\nif (!invoice.total) errors.push('Missing total amount');\n\n// Format line items for Google Sheets\nconst itemsSummary = invoice.lineItems && invoice.lineItems.length > 0\n  ? invoice.lineItems.map(item => `${item.description}: ${item.quantity || 1} x $${item.unitPrice || item.amount}`).join('; ')\n  : 'No items listed';\n\n// Status is TRUE if valid (no errors), FALSE if invalid (has errors)\nconst isValid = errors.length === 0;\n\nreturn [{\n  json: {\n    invoice: invoice,\n    Status: isValid,\n    errors: errors,\n    warnings: warnings,\n    itemsSummary: itemsSummary,\n    processedAt: new Date().toISOString(),\n    fileName: $('Google Drive Trigger').item.json.name\n  }\n}];"
+      },
+      "id": "validate-data",
+      "name": "Validate Invoice Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300],
+      "notes": "Validate calculations and required fields"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice Number": "={{ $json.invoice.invoiceNumber }}",
+            "Invoice Date": "={{ $json.invoice.invoiceDate }}",
+            "Due Date": "={{ $json.invoice.dueDate || 'N/A' }}",
+            "Vendor": "={{ $json.invoice.vendor.name }}",
+            "Customer": "={{ $json.invoice.customer ? $json.invoice.customer.name : 'N/A' }}",
+            "Subtotal": "={{ $json.invoice.subtotal || 0 }}",
+            "Tax": "={{ $json.invoice.tax || 0 }}",
+            "Total": "={{ $json.invoice.total }}",
+            "Currency": "={{ $json.invoice.currency || 'USD' }}",
+            "Items": "={{ $json.itemsSummary }}",
+            "Status": "={{ $json.Status ? 'Valid' : 'Invalid' }}",
+            "Warnings": "={{ $json.warnings.length > 0 ? $json.warnings.join('; ') : 'None' }}",
+            "File Name": "={{ $json.fileName }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          }
+        }
+      },
+      "id": "sheets-log",
+      "name": "Log to Invoice Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1050, 300],
+      "notes": "Save invoice to Google Sheets"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $('Validate Invoice Data').item.json.Status }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-valid",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 300],
+      "notes": "Check if Status equals true"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "YOUR_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=✅ *Invoice Processed Successfully*\n\n*Invoice:* {{ $('Validate Invoice Data').item.json.invoice.invoiceNumber }}\n*Vendor:* {{ $('Validate Invoice Data').item.json.invoice.vendor.name }}\n*Total:* ${{ $('Validate Invoice Data').item.json.invoice.total }}\n*Date:* {{ $('Validate Invoice Data').item.json.invoice.invoiceDate }}\n\n{{ $('Validate Invoice Data').item.json.warnings.length > 0 ? '⚠️ *Warnings:*\\n' + $('Validate Invoice Data').item.json.warnings.join('\\n') : 'No issues detected' }}"
+      },
+      "id": "slack-success",
+      "name": "Notify Success",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "YOUR_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=🚨 *Invoice Processing Failed*\n\n*File:* {{ $('Validate Invoice Data').item.json.fileName }}\n\n*Errors:*\n{{ $('Validate Invoice Data').item.json.errors.join('\\n') }}\n\nPlease review the invoice manually."
+      },
+      "id": "slack-error",
+      "name": "Notify Errors",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1450, 400]
+    }
+  ],
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [[{"node": "Download Invoice", "type": "main", "index": 0}]]
+    },
+    "Download Invoice": {
+      "main": [[{"node": "PDF Vector - Extract Invoice", "type": "main", "index": 0}]]
+    },
+    "PDF Vector - Extract Invoice": {
+      "main": [[{"node": "Validate Invoice Data", "type": "main", "index": 0}]]
+    },
+    "Validate Invoice Data": {
+      "main": [[{"node": "Log to Invoice Database", "type": "main", "index": 0}]]
+    },
+    "Log to Invoice Database": {
+      "main": [[{"node": "Is Valid?", "type": "main", "index": 0}]]
+    },
+    "Is Valid?": {
+      "main": [
+        [{"node": "Notify Success", "type": "main", "index": 0}],
+        [{"node": "Notify Errors", "type": "main", "index": 0}]
+      ]
+    }
+  }
+}

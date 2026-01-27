@@ -1,0 +1,317 @@
+{
+  "name": "13. Insurance Pre-Authorization",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "subject": "Prior Authorization"
+        }
+      },
+      "name": "Watch for Auth Requests",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "name": "Get Auth Request Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [460, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfor (const item of items) {\n  if (item.binary) {\n    const binaryKey = Object.keys(item.binary)[0];\n    if (binaryKey && binaryKey !== 'data') {\n      item.binary.data = item.binary[binaryKey];\n      delete item.binary[binaryKey];\n    }\n  }\n  \n  item.json.originalFilename = 'prior-auth-request.pdf';\n  item.json.receivedAt = new Date().toISOString();\n}\n\nreturn items;"
+      },
+      "name": "Prepare Binary Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract prior authorization request details including patient information, insurance details, provider information, requested procedure or treatment codes, diagnosis codes, clinical justification, and urgency level",
+        "schema": "{\"type\":\"object\",\"properties\":{\"authorizationId\":{\"type\":\"string\"},\"requestDate\":{\"type\":\"string\"},\"patient\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"memberId\":{\"type\":\"string\"},\"dateOfBirth\":{\"type\":\"string\"},\"groupNumber\":{\"type\":\"string\"}}},\"insurance\":{\"type\":\"object\",\"properties\":{\"provider\":{\"type\":\"string\"},\"policyNumber\":{\"type\":\"string\"},\"planType\":{\"type\":\"string\"},\"effectiveDate\":{\"type\":\"string\"},\"terminationDate\":{\"type\":\"string\"}}},\"requestingProvider\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"npi\":{\"type\":\"string\"},\"taxId\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"fax\":{\"type\":\"string\"}}},\"requestedServices\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"procedureCode\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"estimatedCost\":{\"type\":\"number\"}}}},\"diagnosisCodes\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"primaryDiagnosis\":{\"type\":\"string\"},\"clinicalJustification\":{\"type\":\"string\"},\"urgencyLevel\":{\"type\":\"string\"},\"requestedStartDate\":{\"type\":\"string\"},\"lengthOfNeed\":{\"type\":\"string\"},\"previousTreatments\":{\"type\":\"string\"},\"supportingDocumentation\":{\"type\":\"string\"},\"isEmergency\":{\"type\":\"boolean\"},\"isPeerReviewRequired\":{\"type\":\"boolean\"}},\"required\":[\"patient\",\"insurance\",\"requestingProvider\",\"requestedServices\",\"diagnosisCodes\"],\"additionalProperties\":false}",
+        "useLLM": "smart"
+      },
+      "name": "PDF Vector Extract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "emergency-check",
+              "leftValue": "={{ $json.data.isEmergency }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Emergency Triage",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json.data || item.json;\n\n// Fast-track emergency processing\nconst services = data.requestedServices || [];\nconst totalEstimatedCost = services.reduce((sum, s) => sum + (s.estimatedCost || 0), 0);\n\nconst servicesSummary = services.map(s => \n  `${s.procedureCode}: ${s.description} (${s.quantity || 1}x @ $${s.estimatedCost || 0})`\n).join('; ');\n\nconst diagnosisDisplay = (data.diagnosisCodes || []).join(', ');\n\nreturn {\n  json: {\n    authorizationId: data.authorizationId || 'EMERG-' + Date.now(),\n    requestDate: data.requestDate || new Date().toISOString().split('T')[0],\n    requestedStartDate: data.requestedStartDate || 'ASAP',\n    patientName: data.patient?.name || 'Unknown',\n    memberId: data.patient?.memberId || 'Missing',\n    insuranceProvider: data.insurance?.provider || 'Unknown',\n    planType: data.insurance?.planType || 'Unknown',\n    providerName: data.requestingProvider?.name || 'Unknown',\n    providerNPI: data.requestingProvider?.npi || 'Missing',\n    providerPhone: data.requestingProvider?.phone || '',\n    serviceCount: services.length,\n    servicesSummary: servicesSummary || 'None',\n    totalEstimatedCost: totalEstimatedCost.toFixed(2),\n    primaryDiagnosis: data.primaryDiagnosis || 'Not specified',\n    diagnosisCodes: diagnosisDisplay,\n    clinicalJustification: data.clinicalJustification || 'Emergency - immediate care needed',\n    authDecision: 'Emergency - Auto-Approved',\n    requiresReview: false,\n    priority: 'Emergency',\n    urgencyLevel: 'Emergency',\n    isEmergency: 'Yes',\n    validationIssues: 'None',\n    processedDate: new Date().toISOString().split('T')[0],\n    documentName: item.json.originalFilename\n  }\n};"
+      },
+      "name": "Fast-Track Emergency",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json.data || item.json;\n\n// Full validation for non-emergency requests\nconst services = data.requestedServices || [];\nconst totalEstimatedCost = services.reduce((sum, s) => sum + (s.estimatedCost || 0), 0);\n\nconst highCostThreshold = 5000;\nconst requiresAuthByCost = totalEstimatedCost > highCostThreshold;\n\nconst authRequiredProcedures = [\n  'MRI', 'CT', 'PET', '99', '90', '96', 'DME', 'surgery', 'surgical'\n];\n\nconst requiresAuthByProcedure = services.some(s => {\n  const desc = (s.description || '').toLowerCase();\n  const code = s.procedureCode || '';\n  return authRequiredProcedures.some(term => \n    desc.includes(term.toLowerCase()) || code.startsWith(term)\n  );\n});\n\nconst today = new Date();\nconst effectiveDate = new Date(data.insurance?.effectiveDate || today);\nconst terminationDate = new Date(data.insurance?.terminationDate || '2099-12-31');\nconst isCoverageActive = today >= effectiveDate && today <= terminationDate;\n\nconst validationIssues = [];\n\nif (!isCoverageActive) validationIssues.push('Insurance coverage not active');\nif (!data.patient?.memberId) validationIssues.push('Missing member ID');\nif (!data.requestingProvider?.npi) validationIssues.push('Missing provider NPI');\nif (services.length === 0) validationIssues.push('No services requested');\nif (!data.diagnosisCodes || data.diagnosisCodes.length === 0) validationIssues.push('Missing diagnosis codes');\nif (!data.clinicalJustification) validationIssues.push('Missing clinical justification');\n\nconst hasMinimalDocumentation = data.clinicalJustification && data.diagnosisCodes?.length > 0 && services.length > 0;\n\nif (!hasMinimalDocumentation) {\n  validationIssues.push('Insufficient documentation');\n}\n\nlet authDecision = 'Approved';\nlet requiresReview = false;\n\nif (validationIssues.length > 0) {\n  authDecision = 'Pending - Missing Information';\n  requiresReview = true;\n} else if (!requiresAuthByCost && !requiresAuthByProcedure) {\n  authDecision = 'Not Required';\n} else if (data.isPeerReviewRequired || totalEstimatedCost > 50000) {\n  authDecision = 'Pending - Peer Review Required';\n  requiresReview = true;\n} else {\n  authDecision = 'Approved';\n}\n\nlet priority = 'Standard';\nif (data.urgencyLevel?.toLowerCase().includes('urgent')) {\n  priority = 'Urgent';\n} else if (totalEstimatedCost > 25000) {\n  priority = 'High';\n}\n\nconst startDate = new Date(data.requestedStartDate || today);\nconst daysUntilStart = Math.ceil((startDate - today) / (1000 * 60 * 60 * 24));\n\nconst servicesSummary = services.map(s => \n  `${s.procedureCode}: ${s.description} (${s.quantity || 1}x @ $${s.estimatedCost || 0})`\n).join('; ');\n\nconst diagnosisDisplay = (data.diagnosisCodes || []).join(', ');\n\nreturn {\n  json: {\n    authorizationId: data.authorizationId || 'AUTO-' + Date.now(),\n    requestDate: data.requestDate || new Date().toISOString().split('T')[0],\n    requestedStartDate: data.requestedStartDate || '',\n    daysUntilStart: daysUntilStart,\n    lengthOfNeed: data.lengthOfNeed || 'Not specified',\n    patientName: data.patient?.name || 'Unknown',\n    memberId: data.patient?.memberId || 'Missing',\n    patientDOB: data.patient?.dateOfBirth || '',\n    groupNumber: data.patient?.groupNumber || '',\n    insuranceProvider: data.insurance?.provider || 'Unknown',\n    policyNumber: data.insurance?.policyNumber || '',\n    planType: data.insurance?.planType || 'Unknown',\n    coverageActive: isCoverageActive ? 'Yes' : 'No',\n    effectiveDate: data.insurance?.effectiveDate || '',\n    terminationDate: data.insurance?.terminationDate || '',\n    providerName: data.requestingProvider?.name || 'Unknown',\n    providerNPI: data.requestingProvider?.npi || 'Missing',\n    providerTaxId: data.requestingProvider?.taxId || '',\n    providerPhone: data.requestingProvider?.phone || '',\n    providerFax: data.requestingProvider?.fax || '',\n    serviceCount: services.length,\n    servicesSummary: servicesSummary || 'None',\n    totalEstimatedCost: totalEstimatedCost.toFixed(2),\n    primaryDiagnosis: data.primaryDiagnosis || 'Not specified',\n    diagnosisCodes: diagnosisDisplay,\n    diagnosisCount: (data.diagnosisCodes || []).length,\n    clinicalJustification: data.clinicalJustification || 'Not provided',\n    previousTreatments: data.previousTreatments || 'None documented',\n    authDecision: authDecision,\n    requiresReview: requiresReview,\n    priority: priority,\n    urgencyLevel: data.urgencyLevel || 'Standard',\n    isEmergency: 'No',\n    peerReviewRequired: data.isPeerReviewRequired ? 'Yes' : 'No',\n    validationIssues: validationIssues.join('; ') || 'None',\n    issueCount: validationIssues.length,\n    hasDocumentation: hasMinimalDocumentation ? 'Yes' : 'No',\n    supportingDocumentation: data.supportingDocumentation || 'Not provided',\n    processedDate: new Date().toISOString().split('T')[0],\n    documentName: item.json.originalFilename,\n    receivedAt: item.json.receivedAt,\n    alertReason: requiresReview ? (validationIssues.length > 0 ? validationIssues[0] : 'Requires peer review') : 'None'\n  }\n};"
+      },
+      "name": "Full Validation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 420]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "your-sheet-id",
+          "mode": "list",
+          "cachedResultName": "Authorization Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "authorizationId": "={{ $json.authorizationId }}",
+            "requestDate": "={{ $json.requestDate }}",
+            "requestedStartDate": "={{ $json.requestedStartDate }}",
+            "patientName": "={{ $json.patientName }}",
+            "memberId": "={{ $json.memberId }}",
+            "insuranceProvider": "={{ $json.insuranceProvider }}",
+            "planType": "={{ $json.planType }}",
+            "providerName": "={{ $json.providerName }}",
+            "providerNPI": "={{ $json.providerNPI }}",
+            "serviceCount": "={{ $json.serviceCount }}",
+            "servicesSummary": "={{ $json.servicesSummary }}",
+            "totalEstimatedCost": "={{ $json.totalEstimatedCost }}",
+            "primaryDiagnosis": "={{ $json.primaryDiagnosis }}",
+            "diagnosisCodes": "={{ $json.diagnosisCodes }}",
+            "clinicalJustification": "={{ $json.clinicalJustification }}",
+            "authDecision": "={{ $json.authDecision }}",
+            "priority": "={{ $json.priority }}",
+            "urgencyLevel": "={{ $json.urgencyLevel }}",
+            "isEmergency": "={{ $json.isEmergency }}",
+            "validationIssues": "={{ $json.validationIssues }}",
+            "processedDate": "={{ $json.processedDate }}"
+          },
+          "matchingColumns": ["authorizationId"]
+        },
+        "options": {}
+      },
+      "name": "Log Authorization",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1560, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "3",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-review",
+              "leftValue": "={{ $('Full Validation').item.json.requiresReview || false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Requires Review?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1780, 420]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#utilization-review"
+        },
+        "text": "=🚨 *EMERGENCY Prior Authorization - Auto-Approved*\n\n*Auth ID:* {{ $json.authorizationId }}\n*Priority:* {{ $json.priority }}\n\n*Patient:* {{ $json.patientName }} ({{ $json.memberId }})\n*Insurance:* {{ $json.insuranceProvider }}\n\n*Provider:* {{ $json.providerName }}\n• NPI: {{ $json.providerNPI }}\n• Phone: {{ $('PDF Vector Extract').item.json.data.requestingProvider.phone }}\n\n*Requested Services ({{ $json.serviceCount }}):*\n{{ $json.servicesSummary }}\n*Total Cost:* ${{ $json.totalEstimatedCost }}\n\n*Diagnosis:* {{ $json.primaryDiagnosis }}\n*ICD Codes:* {{ $json.diagnosisCodes }}\n\n*Justification:* {{ $json.clinicalJustification }}\n\n✅ *APPROVED IMMEDIATELY - Emergency Request*\n\nProvider notified automatically.",
+        "otherOptions": {}
+      },
+      "name": "Emergency Approved Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1780, 180],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#utilization-review"
+        },
+        "text": "=⚠️ *Prior Authorization Requires Review*\n\n*Auth ID:* {{ $('Full Validation').item.json.authorizationId }}\n*Decision:* {{ $('Full Validation').item.json.authDecision }}\n*Priority:* {{ $('Full Validation').item.json.priority }}\n\n*Patient:* {{ $('Full Validation').item.json.patientName }} ({{ $('Full Validation').item.json.memberId }})\n*Insurance:* {{ $('Full Validation').item.json.insuranceProvider }} - {{ $('Full Validation').item.json.planType }}\n\n*Requesting Provider:*\n{{ $('Full Validation').item.json.providerName }}\n• NPI: {{ $('Full Validation').item.json.providerNPI }}\n• Phone: {{ $('Full Validation').item.json.providerPhone }}\n\n*Requested Services ({{ $('Full Validation').item.json.serviceCount }}):*\n{{ $('Full Validation').item.json.servicesSummary }}\n*Total Cost:* ${{ $('Full Validation').item.json.totalEstimatedCost }}\n\n*Clinical Information:*\n• Primary Diagnosis: {{ $('Full Validation').item.json.primaryDiagnosis }}\n• ICD Codes: {{ $('Full Validation').item.json.diagnosisCodes }}\n• Justification: {{ $('Full Validation').item.json.clinicalJustification }}\n\n{{ $('Full Validation').item.json.issueCount > 0 ? '*⚠️ Validation Issues (' + $('Full Validation').item.json.issueCount + '):*\\n' + $('Full Validation').item.json.validationIssues : '' }}\n\n{{ $('Full Validation').item.json.peerReviewRequired === 'Yes' ? '*Action:* Peer review required' : '*Action:* Review and approve/deny' }}",
+        "otherOptions": {}
+      },
+      "name": "Request Review",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [2000, 340],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#utilization-review"
+        },
+        "text": "=✅ *Prior Authorization {{ $('Full Validation').item.json.authDecision === 'Not Required' ? 'Not Required' : 'Auto-Approved' }}*\n\n*Auth ID:* {{ $('Full Validation').item.json.authorizationId }}\n*Patient:* {{ $('Full Validation').item.json.patientName }}\n*Provider:* {{ $('Full Validation').item.json.providerName }}\n\n*Services:* {{ $('Full Validation').item.json.servicesSummary }}\n*Cost:* ${{ $('Full Validation').item.json.totalEstimatedCost }}\n\n{{ $('Full Validation').item.json.authDecision === 'Not Required' ? '*Services do not require prior authorization*' : 'Authorization automatically approved' }}",
+        "otherOptions": {}
+      },
+      "name": "Auto-Approved Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [2000, 500],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Watch for Auth Requests": {
+      "main": [[{"node": "Get Auth Request Email", "type": "main", "index": 0}]]
+    },
+    "Get Auth Request Email": {
+      "main": [[{"node": "Prepare Binary Data", "type": "main", "index": 0}]]
+    },
+    "Prepare Binary Data": {
+      "main": [[{"node": "PDF Vector Extract", "type": "main", "index": 0}]]
+    },
+    "PDF Vector Extract": {
+      "main": [[{"node": "Emergency Triage", "type": "main", "index": 0}]]
+    },
+    "Emergency Triage": {
+      "main": [
+        [{"node": "Fast-Track Emergency", "type": "main", "index": 0}],
+        [{"node": "Full Validation", "type": "main", "index": 0}]
+      ]
+    },
+    "Fast-Track Emergency": {
+      "main": [[{"node": "Log Authorization", "type": "main", "index": 0}]]
+    },
+    "Full Validation": {
+      "main": [[{"node": "Log Authorization", "type": "main", "index": 0}]]
+    },
+    "Log Authorization": {
+      "main": [[
+        {"node": "Emergency Approved Alert", "type": "main", "index": 0},
+        {"node": "Requires Review?", "type": "main", "index": 0}
+      ]]
+    },
+    "Requires Review?": {
+      "main": [
+        [{"node": "Request Review", "type": "main", "index": 0}],
+        [{"node": "Auto-Approved Notification", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T00:00:00.000Z",
+  "versionId": "1"
+}

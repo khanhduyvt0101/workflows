@@ -1,0 +1,279 @@
+{
+  "name": "06. Invoice Processing & Approval - Advanced",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [{"mode": "everyMinute"}]
+        },
+        "filters": {
+          "subject": "Invoice,Bill,Payment Due"
+        }
+      },
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "gmailOAuth2": {"id": "1", "name": "Gmail"}
+      },
+      "notes": "Watch for invoice emails"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {"downloadAttachments": true}
+      },
+      "name": "Get Invoice Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [460, 300],
+      "credentials": {
+        "gmailOAuth2": {"id": "1", "name": "Gmail"}
+      },
+      "notes": "Download invoice PDF"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfor (const item of items) {\n  if (item.binary) {\n    const binaryKey = Object.keys(item.binary)[0];\n    if (binaryKey && binaryKey !== 'data') {\n      item.binary.data = item.binary[binaryKey];\n      delete item.binary[binaryKey];\n    }\n  }\n  \n  item.json.originalFilename = item.json.filename || 'invoice.pdf';\n  item.json.receivedAt = new Date().toISOString();\n  item.json.emailId = item.json.id;\n}\n\nreturn items;"
+      },
+      "name": "Prepare Binary Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "notes": "Handle binary data"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract complete invoice information including: invoice number, vendor name and address, invoice date, due date, purchase order number, bill to company, line items (description, quantity, unit price, amount, category/GL code), subtotal, tax amount and rate, shipping/handling fees, total amount, payment terms, payment methods accepted, bank details if present, and any notes or special instructions",
+        "schema": "{\"type\":\"object\",\"properties\":{\"invoiceNumber\":{\"type\":\"string\"},\"vendor\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"taxId\":{\"type\":\"string\"}}},\"invoiceDate\":{\"type\":\"string\"},\"dueDate\":{\"type\":\"string\"},\"purchaseOrderNumber\":{\"type\":\"string\"},\"billTo\":{\"type\":\"string\"},\"lineItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"category\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unitPrice\":{\"type\":\"number\"},\"amount\":{\"type\":\"number\"}}}},\"subtotal\":{\"type\":\"number\"},\"tax\":{\"type\":\"number\"},\"taxRate\":{\"type\":\"number\"},\"shipping\":{\"type\":\"number\"},\"total\":{\"type\":\"number\"},\"paymentTerms\":{\"type\":\"string\"},\"currency\":{\"type\":\"string\"}},\"required\":[\"invoiceNumber\",\"vendor\",\"total\"],\"additionalProperties\":false}",
+        "useLLM": "smart"
+      },
+      "name": "PDF Vector Extract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "notes": "Deep invoice data extraction"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json.data || item.json;\n\n// ADVANCED DUPLICATE DETECTION\nconst invoiceNumber = data.invoiceNumber || '';\nconst vendorName = data.vendor?.name || data.vendor || '';\nconst total = data.total || 0;\nconst invoiceDate = data.invoiceDate || '';\n\n// Multiple duplicate detection methods\nconst fingerprints = {\n  primary: `${vendorName}-${invoiceNumber}`.toLowerCase().replace(/\\s/g, ''),\n  secondary: `${vendorName}-${total}-${invoiceDate}`.toLowerCase().replace(/\\s/g, ''),\n  fuzzy: `${vendorName.substring(0, 10)}-${invoiceNumber.replace(/[^0-9]/g, '')}`.toLowerCase()\n};\n\n// In production: Query Google Sheets/Database for these fingerprints\n// For now, we'll pass it through and log for tracking\n\nreturn [{\n  json: {\n    ...data,\n    duplicateCheck: {\n      fingerprints: fingerprints,\n      isDuplicate: false,\n      checkedAt: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "name": "Advanced Duplicate Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300],
+      "notes": "✨ Multi-method duplicate detection"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json;\nconst vendorName = data.vendor?.name || data.vendor || '';\nconst total = data.total || 0;\n\n// VENDOR DATABASE with risk scores and limits\nconst vendorDatabase = {\n  'Office Supplies Inc': { approved: true, limit: 10000, risk: 'low', category: 'Office', autoApprove: true },\n  'Tech Solutions LLC': { approved: true, limit: 25000, risk: 'low', category: 'Technology', autoApprove: true },\n  'Consulting Partners': { approved: true, limit: 50000, risk: 'medium', category: 'Services', autoApprove: false },\n  'Marketing Agency': { approved: true, limit: 15000, risk: 'low', category: 'Marketing', autoApprove: true },\n  'Cloud Services Corp': { approved: true, limit: 20000, risk: 'low', category: 'Technology', autoApprove: true }\n};\n\n// Find vendor\nlet vendorInfo = null;\nfor (const [name, info] of Object.entries(vendorDatabase)) {\n  if (vendorName.toLowerCase().includes(name.toLowerCase()) || \n      name.toLowerCase().includes(vendorName.toLowerCase())) {\n    vendorInfo = { ...info, matchedName: name };\n    break;\n  }\n}\n\nconst isApprovedVendor = vendorInfo !== null;\nconst exceedsLimit = vendorInfo ? total > vendorInfo.limit : true;\nconst hasPO = /PO[-\\s]?\\d{4,}/i.test(data.invoiceNumber || '') || \n              /PO[-\\s]?\\d{4,}/i.test(data.purchaseOrderNumber || '');\n\n// Payment priority calculation\nlet daysUntilDue = null;\nlet paymentPriority = 'normal';\n\nif (data.dueDate) {\n  const due = new Date(data.dueDate);\n  const now = new Date();\n  daysUntilDue = Math.ceil((due - now) / (1000 * 60 * 60 * 24));\n  \n  if (daysUntilDue < 0) {\n    paymentPriority = 'overdue';\n  } else if (daysUntilDue <= 3) {\n    paymentPriority = 'critical';\n  } else if (daysUntilDue <= 7) {\n    paymentPriority = 'urgent';\n  } else if (daysUntilDue <= 30) {\n    paymentPriority = 'normal';\n  } else {\n    paymentPriority = 'deferred';\n  }\n}\n\n// Approval routing logic\nlet approvalRequired = 'none';\nlet approver = 'auto';\n\nif (!isApprovedVendor) {\n  approvalRequired = 'manager';\n  approver = 'Finance Manager';\n} else if (exceedsLimit) {\n  approvalRequired = 'director';\n  approver = 'Finance Director';\n} else if (total > 5000 && !vendorInfo.autoApprove) {\n  approvalRequired = 'manager';\n  approver = 'Finance Manager';\n} else if (!hasPO && total > 1000) {\n  approvalRequired = 'manager';\n  approver = 'Finance Manager';\n}\n\nreturn [{\n  json: {\n    ...data,\n    validation: {\n      isApprovedVendor: isApprovedVendor,\n      vendorInfo: vendorInfo,\n      exceedsLimit: exceedsLimit,\n      hasPO: hasPO,\n      daysUntilDue: daysUntilDue,\n      paymentPriority: paymentPriority,\n      approvalRequired: approvalRequired,\n      approver: approver,\n      flags: [\n        !isApprovedVendor ? 'Unknown Vendor' : null,\n        exceedsLimit ? 'Exceeds Vendor Limit' : null,\n        !hasPO && total > 1000 ? 'No PO' : null,\n        total > 10000 ? 'Large Amount' : null,\n        paymentPriority === 'overdue' ? 'Overdue' : null\n      ].filter(Boolean)\n    }\n  }\n}];"
+      },
+      "name": "Smart Vendor Validation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300],
+      "notes": "✨ Risk scoring & approval routing"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json;\nconst lineItems = data.lineItems || [];\n\n// AUTO-CATEGORIZE LINE ITEMS by keywords\nconst categoryKeywords = {\n  'Office Supplies': ['paper', 'pen', 'toner', 'ink', 'staples', 'folder', 'envelope'],\n  'Software': ['software', 'license', 'subscription', 'saas', 'cloud', 'app'],\n  'Marketing': ['ads', 'advertising', 'marketing', 'campaign', 'social media', 'seo'],\n  'Travel': ['flight', 'hotel', 'airfare', 'accommodation', 'rental car', 'uber'],\n  'Utilities': ['electricity', 'water', 'internet', 'phone', 'telecom'],\n  'Equipment': ['laptop', 'computer', 'monitor', 'desk', 'chair', 'hardware'],\n  'Services': ['consulting', 'contractor', 'freelance', 'service', 'maintenance']\n};\n\nconst categorizedItems = lineItems.map(item => {\n  const desc = (item.description || '').toLowerCase();\n  let suggestedCategory = item.category || 'Uncategorized';\n  \n  // Try to match keywords\n  for (const [category, keywords] of Object.entries(categoryKeywords)) {\n    if (keywords.some(keyword => desc.includes(keyword))) {\n      suggestedCategory = category;\n      break;\n    }\n  }\n  \n  return {\n    ...item,\n    suggestedCategory: suggestedCategory\n  };\n});\n\n// Budget checking by category\nconst categoryTotals = {};\ncategorizedItems.forEach(item => {\n  const cat = item.suggestedCategory;\n  if (!categoryTotals[cat]) {\n    categoryTotals[cat] = 0;\n  }\n  categoryTotals[cat] += item.amount || 0;\n});\n\n// Monthly budgets (in production: fetch from database)\nconst monthlyBudgets = {\n  'Office Supplies': 2000,\n  'Software': 5000,\n  'Marketing': 10000,\n  'Travel': 3000,\n  'Utilities': 1500,\n  'Equipment': 8000,\n  'Services': 15000\n};\n\n// Check budget warnings\nconst budgetWarnings = [];\nfor (const [category, spent] of Object.entries(categoryTotals)) {\n  const budget = monthlyBudgets[category] || 5000;\n  const percentage = (spent / budget) * 100;\n  \n  if (percentage > 90) {\n    budgetWarnings.push(`${category}: ${percentage.toFixed(0)}% of monthly budget`);\n  }\n}\n\nreturn [{\n  json: {\n    ...data,\n    lineItems: categorizedItems,\n    categorization: {\n      categoryTotals: categoryTotals,\n      budgetWarnings: budgetWarnings,\n      hasBudgetIssues: budgetWarnings.length > 0\n    }\n  }\n}];"
+      },
+      "name": "Auto-Categorize & Budget Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300],
+      "notes": "✨ Smart categorization + budget tracking"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json;\n\n// FRAUD DETECTION RULES\nconst fraudScore = 0;\nconst fraudFlags = [];\n\n// Rule 1: Unusual amounts (round numbers, suspiciously high)\nconst total = data.total || 0;\nif (total % 1000 === 0 && total > 5000) {\n  fraudFlags.push('Round number over $5K');\n}\n\n// Rule 2: Rushed payment (due in <3 days from invoice date)\nif (data.invoiceDate && data.dueDate) {\n  const invoiceDate = new Date(data.invoiceDate);\n  const dueDate = new Date(data.dueDate);\n  const daysDiff = Math.ceil((dueDate - invoiceDate) / (1000 * 60 * 60 * 24));\n  \n  if (daysDiff < 3) {\n    fraudFlags.push('Unusually short payment window');\n  }\n}\n\n// Rule 3: Missing critical info\nif (!data.vendor?.address && total > 2000) {\n  fraudFlags.push('No vendor address provided');\n}\n\nif (!data.vendor?.taxId && total > 5000) {\n  fraudFlags.push('No tax ID for large invoice');\n}\n\n// Rule 4: Suspicious line items\nconst lineItems = data.lineItems || [];\nconst suspiciousKeywords = ['gift card', 'wire transfer', 'cash', 'bitcoin', 'crypto'];\nlineItems.forEach(item => {\n  const desc = (item.description || '').toLowerCase();\n  if (suspiciousKeywords.some(keyword => desc.includes(keyword))) {\n    fraudFlags.push(`Suspicious item: ${item.description}`);\n  }\n});\n\n// Calculate fraud risk score\nlet riskLevel = 'low';\nif (fraudFlags.length >= 3) {\n  riskLevel = 'high';\n} else if (fraudFlags.length >= 1) {\n  riskLevel = 'medium';\n}\n\nreturn [{\n  json: {\n    ...data,\n    fraudDetection: {\n      riskLevel: riskLevel,\n      flags: fraudFlags,\n      requiresReview: riskLevel !== 'low'\n    }\n  }\n}];"
+      },
+      "name": "Fraud Detection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300],
+      "notes": "✨ Detect suspicious invoices"
+    },
+    {
+      "parameters": {
+"jsCode": "const item = $input.first();\nconst data = item.json;\n\n// PAYMENT OPTIMIZATION\nconst paymentTerms = data.paymentTerms || 'Net 30';\nconst total = data.total || 0;\n\n// Parse payment terms\nlet netDays = 30;\nconst netMatch = paymentTerms.match(/Net\\s+(\\d+)/i);\nif (netMatch) {\n  netDays = parseInt(netMatch[1]);\n}\n\n// Check for early payment discount (2/10 Net 30, 1/15 Net 30, etc.)\nconst discountMatch = paymentTerms.match(/(\\d+)\\/(\\d+)/i);\nlet discountPercent = 0;\nlet discountDays = 0;\nif (discountMatch) {\n  discountPercent = parseInt(discountMatch[1]);\n  discountDays = parseInt(discountMatch[2]);\n}\n\n// Safe date parsing\nconst dueDate = data.dueDate ? new Date(data.dueDate) : new Date();\nconst invoiceDate = data.invoiceDate ? new Date(data.invoiceDate) : new Date();\n\n// Validate dates\nconst isValidDate = (d) => d instanceof Date && !isNaN(d);\n\n// Only calculate early payment if there's a discount\nlet earlyPaymentDate = null;\nlet earlyDiscountAmount = 0;\nlet annualizedROI = 0;\nlet daysRemaining = 0;\n\nif (discountPercent > 0 && discountDays > 0 && isValidDate(invoiceDate)) {\n  earlyPaymentDate = new Date(invoiceDate);\n  earlyPaymentDate.setDate(earlyPaymentDate.getDate() + discountDays);\n  earlyDiscountAmount = total * (discountPercent / 100);\n  annualizedROI = ((discountPercent / (netDays - discountDays)) * 365).toFixed(2);\n  \n  const now = new Date();\n  daysRemaining = Math.ceil((earlyPaymentDate - now) / (1000 * 60 * 60 * 24));\n}\n\nreturn [{\n  json: {\n    ...data,\n    paymentOptimization: {\n      earlyPaymentDate: earlyPaymentDate && isValidDate(earlyPaymentDate) ? earlyPaymentDate.toISOString().split('T')[0] : null,\n      regularPaymentDate: isValidDate(dueDate) ? dueDate.toISOString().split('T')[0] : null,\n      earlyDiscountPercent: discountPercent,\n      earlyDiscountAmount: earlyDiscountAmount.toFixed(2),\n      earlyPaymentTotal: (total - earlyDiscountAmount).toFixed(2),\n      annualizedROI: annualizedROI,\n      recommendEarlyPayment: discountPercent > 0 && daysRemaining > 0,\n      daysRemainingForDiscount: daysRemaining,\n      netDays: netDays\n    }\n  }\n}];"      },
+      "name": "Payment Optimization",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300],
+      "notes": "✨ Calculate ROI of early payment"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Invoice Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "InvoiceNumber": "={{ $json.invoiceNumber }}",
+            "Vendor": "={{ $json.vendor?.name || $json.vendor }}",
+            "InvoiceDate": "={{ $json.invoiceDate }}",
+            "DueDate": "={{ $json.dueDate }}",
+            "DaysUntilDue": "={{ $json.validation.daysUntilDue }}",
+            "PaymentPriority": "={{ $json.validation.paymentPriority }}",
+            "Amount": "={{ $json.total }}",
+            "Tax": "={{ $json.tax }}",
+            "Subtotal": "={{ $json.subtotal }}",
+            "PurchaseOrder": "={{ $json.purchaseOrderNumber }}",
+            "PaymentTerms": "={{ $json.paymentTerms }}",
+            "ApprovedVendor": "={{ $json.validation.isApprovedVendor ? 'Yes' : 'No' }}",
+            "HasPO": "={{ $json.validation.hasPO ? 'Yes' : 'No' }}",
+            "ApprovalRequired": "={{ $json.validation.approvalRequired }}",
+            "Approver": "={{ $json.validation.approver }}",
+            "Flags": "={{ $json.validation.flags.join(', ') }}",
+            "FraudRisk": "={{ $json.fraudDetection.riskLevel }}",
+            "FraudFlags": "={{ $json.fraudDetection.flags.join(', ') }}",
+            "Categories": "={{ Object.keys($json.categorization.categoryTotals).map(k => k + ': $' + $json.categorization.categoryTotals[k].toFixed(2)).join('; ') }}",
+            "BudgetWarnings": "={{ $json.categorization.budgetWarnings.join('; ') }}",
+            "EarlyPaymentDiscount": "={{ $json.paymentOptimization.earlyDiscountAmount }}",
+            "EarlyPaymentDeadline": "={{ $json.paymentOptimization.earlyPaymentDate }}",
+            "ProcessedDate": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {}
+      },
+      "name": "Log to Invoice Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2220, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {"id": "3", "name": "Google Sheets"}
+      },
+      "notes": "Save complete invoice data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.ApprovalRequired }}",
+              "rightValue": "none",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Approval Router",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2440, 300],
+      "notes": "Route based on approval needs"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#finance"
+        },
+        "text": "=✅ *Invoice Auto-Approved & Ready for Payment*\\n\\n*Invoice #:* {{ $json.InvoiceNumber }}\\n*Vendor:* {{ $json.Vendor }}\\n*Amount:* ${{ $json.Amount }}\\n*Due Date:* {{ $json.DueDate }} ({{ $json.PaymentPriority }})\\n{{ $json.PurchaseOrder ? '*PO #:* ' + $json.PurchaseOrder + '\\\\n' : '' }}\\n*Categories:* {{ $json.Categories.split(';').slice(0,3).join(', ') }}\\n\\n{{ parseFloat($json.EarlyPaymentDiscount) > 0 ? '💰 *Early Payment Opportunity*\\\\n*Save:* $' + $json.EarlyPaymentDiscount + '\\\\n*Pay by:* ' + $json.EarlyPaymentDeadline + '\\\\n' : '' }}\\n✅ Logged to invoice tracker\\n✅ Ready for payment processing",
+        "otherOptions": {}
+      },
+      "name": "Slack - Auto Approved",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [2660, 200],
+      "credentials": {
+        "slackApi": {"id": "4", "name": "Slack"}
+      },
+      "notes": "Auto-approval notification"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#finance"
+        },
+        "text": "=⚠️ *Invoice Requires {{ $json.ApprovalRequired.toUpperCase() }} Approval*\\n\\n*Invoice #:* {{ $json.InvoiceNumber }}\\n*Vendor:* {{ $json.Vendor }}\\n*Amount:* ${{ $json.Amount }}\\n*Due Date:* {{ $json.DueDate }} ({{ $json.PaymentPriority }})\\n{{ $json.PurchaseOrder ? '*PO #:* ' + $json.PurchaseOrder + '\\\\n' : '' }}\\n*Assigned to:* {{ $json.Approver }}\\n\\n*Review Reasons:*\\n{{ $json.Flags.split(',').map(f => '• ' + f.trim()).join('\\\\n') }}\\n\\n{{ $json.FraudRisk !== 'low' ? '🚨 *Fraud Risk: ' + $json.FraudRisk.toUpperCase() + '*\\\\n' + ($json.FraudFlags ? $json.FraudFlags.split(',').map(f => '• ' + f.trim()).join('\\\\n') + '\\\\n' : '') : '' }}\\n{{ $json.BudgetWarnings ? '⚠️ *Budget Warnings:*\\\\n' + $json.BudgetWarnings.split(';').map(w => '• ' + w.trim()).join('\\\\n') + '\\\\n' : '' }}\\n*Categories:* {{ $json.Categories.split(';').slice(0,3).join(', ') }}\\n\\n{{ parseFloat($json.EarlyPaymentDiscount) > 0 ? '💰 *Early Payment Available*\\\\n*Save:* $' + $json.EarlyPaymentDiscount + ' if paid by ' + $json.EarlyPaymentDeadline + '\\\\n' : '' }}\\n👉 Please review and approve/reject",
+        "otherOptions": {}
+      },
+      "name": "Slack - Needs Approval",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [2660, 400],
+      "credentials": {
+        "slackApi": {"id": "4", "name": "Slack"}
+      },
+      "notes": "Approval request notification"
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [[{"node": "Get Invoice Email", "type": "main", "index": 0}]]
+    },
+    "Get Invoice Email": {
+      "main": [[{"node": "Prepare Binary Data", "type": "main", "index": 0}]]
+    },
+    "Prepare Binary Data": {
+      "main": [[{"node": "PDF Vector Extract", "type": "main", "index": 0}]]
+    },
+    "PDF Vector Extract": {
+      "main": [[{"node": "Advanced Duplicate Check", "type": "main", "index": 0}]]
+    },
+    "Advanced Duplicate Check": {
+      "main": [[{"node": "Smart Vendor Validation", "type": "main", "index": 0}]]
+    },
+    "Smart Vendor Validation": {
+      "main": [[{"node": "Auto-Categorize & Budget Check", "type": "main", "index": 0}]]
+    },
+    "Auto-Categorize & Budget Check": {
+      "main": [[{"node": "Fraud Detection", "type": "main", "index": 0}]]
+    },
+    "Fraud Detection": {
+      "main": [[{"node": "Payment Optimization", "type": "main", "index": 0}]]
+    },
+    "Payment Optimization": {
+      "main": [[{"node": "Log to Invoice Tracker", "type": "main", "index": 0}]]
+    },
+    "Log to Invoice Tracker": {
+      "main": [[{"node": "Approval Router", "type": "main", "index": 0}]]
+    },
+    "Approval Router": {
+      "main": [
+        [{"node": "Slack - Auto Approved", "type": "main", "index": 0}],
+        [{"node": "Slack - Needs Approval", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

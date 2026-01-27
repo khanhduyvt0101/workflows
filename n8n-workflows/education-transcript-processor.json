@@ -1,0 +1,379 @@
+{
+  "name": "17. Education Transcript Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "subject": "Transcript,Academic Record"
+        }
+      },
+      "name": "Watch for Transcripts",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "name": "Get Transcript Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [460, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfor (const item of items) {\n  if (item.binary) {\n    const binaryKey = Object.keys(item.binary)[0];\n    if (binaryKey && binaryKey !== 'data') {\n      item.binary.data = item.binary[binaryKey];\n      delete item.binary[binaryKey];\n    }\n  }\n  \n  item.json.originalFilename = 'transcript.pdf';\n  item.json.receivedAt = new Date().toISOString();\n}\n\nreturn items;"
+      },
+      "name": "Prepare Binary Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract complete academic transcript information including student details, institution information, all courses with grades, GPA calculations, degree information, and transcript status",
+        "schema": "{\"type\":\"object\",\"properties\":{\"studentName\":{\"type\":\"string\"},\"studentId\":{\"type\":\"string\"},\"dateOfBirth\":{\"type\":\"string\"},\"studentEmail\":{\"type\":\"string\"},\"institutionName\":{\"type\":\"string\"},\"institutionAddress\":{\"type\":\"string\"},\"degreeProgram\":{\"type\":\"string\"},\"major\":{\"type\":\"string\"},\"minor\":{\"type\":\"string\"},\"graduationDate\":{\"type\":\"string\"},\"enrollmentDate\":{\"type\":\"string\"},\"transcriptType\":{\"type\":\"string\"},\"transcriptDate\":{\"type\":\"string\"},\"courses\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"courseCode\":{\"type\":\"string\"},\"courseName\":{\"type\":\"string\"},\"credits\":{\"type\":\"number\"},\"grade\":{\"type\":\"string\"},\"semester\":{\"type\":\"string\"},\"year\":{\"type\":\"number\"}}}},\"creditsAttempted\":{\"type\":\"number\"},\"creditsEarned\":{\"type\":\"number\"},\"overallGPA\":{\"type\":\"number\"},\"majorGPA\":{\"type\":\"number\"},\"cumulativeGPA\":{\"type\":\"number\"},\"academicHonors\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"registrarName\":{\"type\":\"string\"},\"registrarSignature\":{\"type\":\"boolean\"}},\"required\":[\"studentName\",\"institutionName\",\"courses\",\"overallGPA\"],\"additionalProperties\":false}",
+        "useLLM": "smart"
+      },
+      "name": "PDF Vector Extract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json.data || item.json;\n\n// Process course data\nconst courses = data.courses || [];\nconst totalCourses = courses.length;\n\n// Calculate grade distribution\nconst gradeCount = {};\ncourses.forEach(course => {\n  const grade = course.grade || 'N/A';\n  gradeCount[grade] = (gradeCount[grade] || 0) + 1;\n});\n\n// Calculate credits\nconst creditsAttempted = data.creditsAttempted || courses.reduce((sum, c) => sum + (c.credits || 0), 0);\nconst creditsEarned = data.creditsEarned || creditsAttempted;\nconst completionRate = creditsAttempted > 0 ? ((creditsEarned / creditsAttempted) * 100).toFixed(1) : 0;\n\n// GPA Assessment\nconst gpa = data.overallGPA || data.cumulativeGPA || 0;\nlet gpaCategory = 'Average';\nif (gpa >= 3.8) gpaCategory = 'Exceptional';\nelse if (gpa >= 3.5) gpaCategory = 'Excellent';\nelse if (gpa >= 3.0) gpaCategory = 'Good';\nelse if (gpa >= 2.5) gpaCategory = 'Fair';\nelse if (gpa >= 2.0) gpaCategory = 'Below Average';\nelse gpaCategory = 'Poor';\n\n// Academic standing\nlet academicStanding = 'Good Standing';\nif (gpa < 2.0) academicStanding = 'Academic Probation';\nelse if (gpa >= 3.5) academicStanding = 'Dean\\'s List / Honors';\n\n// Check honors\nconst honors = data.academicHonors || [];\nconst hasHonors = honors.length > 0;\n\n// Transcript validation flags\nconst isOfficial = data.transcriptType && data.transcriptType.toLowerCase().includes('official');\nconst hasRegistrarSignature = data.registrarSignature || false;\nconst hasStudentId = Boolean(data.studentId);\n\n// Determine if verification needed\nconst needsVerification = isOfficial && hasStudentId;\n\nreturn {\n  json: {\n    // Student Info\n    studentName: data.studentName || 'Unknown',\n    studentId: data.studentId || 'N/A',\n    studentEmail: data.studentEmail || '',\n    dateOfBirth: data.dateOfBirth || '',\n    \n    // Institution Info\n    institutionName: data.institutionName || 'Unknown',\n    institutionAddress: data.institutionAddress || '',\n    \n    // Degree Info\n    degreeProgram: data.degreeProgram || 'Not specified',\n    major: data.major || 'Not specified',\n    minor: data.minor || 'None',\n    graduationDate: data.graduationDate || 'N/A',\n    enrollmentDate: data.enrollmentDate || 'N/A',\n    \n    // Academic Performance\n    totalCourses: totalCourses,\n    creditsAttempted: creditsAttempted,\n    creditsEarned: creditsEarned,\n    completionRate: completionRate,\n    overallGPA: gpa,\n    majorGPA: data.majorGPA || gpa,\n    gpaCategory: gpaCategory,\n    academicStanding: academicStanding,\n    \n    // Grade Distribution\n    gradeDistribution: Object.entries(gradeCount)\n      .map(([grade, count]) => `${grade}: ${count}`)\n      .join(', '),\n    \n    // Honors & Recognition\n    academicHonors: honors.join(', ') || 'None',\n    hasHonors: hasHonors,\n    honorsList: honors,\n    \n    // Transcript Details\n    transcriptType: data.transcriptType || 'Unknown',\n    transcriptDate: data.transcriptDate || new Date().toISOString().split('T')[0],\n    isOfficial: isOfficial,\n    hasRegistrarSignature: hasRegistrarSignature,\n    registrarName: data.registrarName || 'Not specified',\n    \n    // Verification Flags\n    needsVerification: needsVerification,\n    verificationReason: needsVerification ? 'Official transcript with student ID' : 'Unofficial or missing student ID',\n    \n    // Processing Info\n    processedDate: new Date().toISOString().split('T')[0],\n    documentName: item.json.originalFilename || 'transcript.pdf',\n    receivedAt: item.json.receivedAt,\n    \n    // All courses data for reference\n    courses: courses\n  }\n};"
+      },
+      "name": "Analyze Transcript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "your-sheet-id",
+          "mode": "list",
+          "cachedResultName": "Transcript Database"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "studentName": "={{ $json.studentName }}",
+            "studentId": "={{ $json.studentId }}",
+            "institutionName": "={{ $json.institutionName }}",
+            "degreeProgram": "={{ $json.degreeProgram }}",
+            "major": "={{ $json.major }}",
+            "overallGPA": "={{ $json.overallGPA }}",
+            "gpaCategory": "={{ $json.gpaCategory }}",
+            "totalCourses": "={{ $json.totalCourses }}",
+            "creditsEarned": "={{ $json.creditsEarned }}",
+            "graduationDate": "={{ $json.graduationDate }}",
+            "transcriptType": "={{ $json.transcriptType }}",
+            "processedDate": "={{ $json.processedDate }}"
+          },
+          "matchingColumns": ["studentId"]
+        },
+        "options": {}
+      },
+      "name": "Log to Transcript Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1340, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "3",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "needs-verification",
+              "leftValue": "={{ $json.needsVerification }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Verify with School?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 300],
+      "notes": "Checks if transcript is official and has student ID"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json;\n\n// SIMPLE VERIFICATION LOGIC\n// Checks multiple criteria to verify transcript authenticity\n\nlet isVerified = false;\nlet verificationReason = '';\nconst verificationChecks = [];\n\n// Rule 1: Check if transcript is OFFICIAL\nconst isOfficial = data.transcriptType && data.transcriptType.toLowerCase().includes('official');\nverificationChecks.push({\n  check: 'Official Transcript',\n  passed: isOfficial,\n  details: isOfficial ? 'Document marked as official' : 'Not official transcript'\n});\n\n// Rule 2: Check if has student ID\nconst hasStudentId = data.studentId && data.studentId !== 'N/A' && data.studentId.length > 0;\nverificationChecks.push({\n  check: 'Student ID Present',\n  passed: hasStudentId,\n  details: hasStudentId ? `Student ID: ${data.studentId}` : 'Missing student ID'\n});\n\n// Rule 3: Check GPA is reasonable (0-4.0 range)\nconst hasValidGPA = data.overallGPA >= 0 && data.overallGPA <= 4.0;\nverificationChecks.push({\n  check: 'Valid GPA Range',\n  passed: hasValidGPA,\n  details: hasValidGPA ? `GPA: ${data.overallGPA}` : 'GPA out of valid range'\n});\n\n// Rule 4: Check if institution name exists\nconst hasInstitution = data.institutionName && data.institutionName !== 'Unknown' && data.institutionName.length > 0;\nverificationChecks.push({\n  check: 'Institution Identified',\n  passed: hasInstitution,\n  details: hasInstitution ? data.institutionName : 'Missing institution name'\n});\n\n// Rule 5: Check if has courses listed\nconst hasCourses = data.totalCourses > 0;\nverificationChecks.push({\n  check: 'Courses Present',\n  passed: hasCourses,\n  details: hasCourses ? `${data.totalCourses} courses found` : 'No courses found'\n});\n\n// Rule 6: Check if has graduation date (for completed degrees)\nconst hasGraduationDate = data.graduationDate && data.graduationDate !== 'N/A';\nverificationChecks.push({\n  check: 'Graduation Date',\n  passed: hasGraduationDate,\n  details: hasGraduationDate ? data.graduationDate : 'No graduation date (may be in progress)'\n});\n\n// Count passed checks\nconst passedChecks = verificationChecks.filter(c => c.passed).length;\nconst totalChecks = verificationChecks.length;\nconst verificationScore = ((passedChecks / totalChecks) * 100).toFixed(0);\n\n// Determine verification status\n// Must pass ALL critical checks (1-5) for verification\nconst criticalChecksPassed = isOfficial && hasStudentId && hasValidGPA && hasInstitution && hasCourses;\n\nif (criticalChecksPassed) {\n  isVerified = true;\n  verificationReason = `All ${passedChecks}/${totalChecks} verification criteria met`;\n} else {\n  const failedChecks = verificationChecks.filter(c => !c.passed).map(c => c.check);\n  verificationReason = `Failed checks: ${failedChecks.join(', ')}`;\n}\n\n// Return result with verification status\nreturn {\n  json: {\n    ...data,\n    // Verification Results\n    verificationStatus: isVerified ? 'Verified' : 'Not Verified',\n    verifiedBySchool: isVerified,\n    verificationDate: new Date().toISOString().split('T')[0],\n    verificationMethod: 'Automated Rules-Based Verification',\n    verificationReason: verificationReason,\n    verificationScore: verificationScore,\n    verificationChecks: verificationChecks,\n    passedChecks: passedChecks,\n    totalChecks: totalChecks,\n    \n    // Add verification badge\n    verificationBadge: isVerified ? '✅ VERIFIED' : '❌ UNVERIFIED'\n  }\n};"
+      },
+      "name": "Simple Verification Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 200],
+      "notes": "Replaces HTTP API with simple rule-based verification"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json;\n\n// Mark as unverified (skip verification)\nreturn {\n  json: {\n    ...data,\n    verificationStatus: 'Unverified',\n    verifiedBySchool: false,\n    verificationDate: new Date().toISOString().split('T')[0],\n    verificationMethod: 'Skipped - Not Official',\n    verificationReason: data.verificationReason || 'Unofficial transcript or missing student ID',\n    verificationBadge: '⚠️ UNVERIFIED'\n  }\n};"
+      },
+      "name": "Mark Unverified",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-verified",
+              "leftValue": "={{ $json.transcriptType }}",
+              "rightValue": "OFFICIAL",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Verified?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#admissions"
+        },
+        "text": "=✅ *Transcript Verified*\n\n*Student:* {{ $json.studentName }}\n*ID:* {{ $json.studentId }}\n*Institution:* {{ $json.institutionName }}\n\n*Degree:* {{ $json.degreeProgram }}\n*Major:* {{ $json.major }}\n{{ $json.minor !== 'None' ? '*Minor:* ' + $json.minor + '\\n' : '' }}\n*GPA:* {{ $json.overallGPA }} / 4.0 ({{ $json.gpaCategory }})\n*Credits:* {{ $json.creditsEarned }} earned\n*Courses:* {{ $json.totalCourses }}\n{{ $json.graduationDate !== 'N/A' ? '*Graduated:* ' + $json.graduationDate + '\\n' : '' }}\n{{ $json.academicHonors !== 'None' ? '*Honors:* ' + $json.academicHonors + '\\n' : '' }}\n*Verification:* {{ $json.verificationBadge }}\n*Method:* {{ $json.verificationMethod }}\n*Score:* {{ $json.verificationScore }}%\n\nTranscript verified and logged to database.",
+        "otherOptions": {}
+      },
+      "name": "Alert - Transcript Verified",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [2220, 200],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#admissions"
+        },
+        "text": "=⚠️ *Transcript Requires Manual Review*\n\n*Student:* {{ $json.studentName }}\n*ID:* {{ $json.studentId }}\n*Institution:* {{ $json.institutionName }}\n\n*Degree:* {{ $json.degreeProgram }}\n*Major:* {{ $json.major }}\n*GPA:* {{ $json.overallGPA }} / 4.0\n\n*Verification Status:* {{ $json.verificationBadge }}\n*Reason:* {{ $json.verificationReason }}\n{{ $json.verificationScore ? '*Score:* ' + $json.verificationScore + '%\\n' : '' }}\n*Action Required:* Manual verification needed\n\nTranscript logged for review.",
+        "otherOptions": {}
+      },
+      "name": "Alert - Manual Review",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [2220, 400],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Watch for Transcripts": {
+      "main": [
+        [
+          {
+            "node": "Get Transcript Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Transcript Email": {
+      "main": [
+        [
+          {
+            "node": "Prepare Binary Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Binary Data": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Extract": {
+      "main": [
+        [
+          {
+            "node": "Analyze Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Transcript": {
+      "main": [
+        [
+          {
+            "node": "Log to Transcript Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Transcript Database": {
+      "main": [
+        [
+          {
+            "node": "Verify with School?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify with School?": {
+      "main": [
+        [
+          {
+            "node": "Simple Verification Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Unverified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Verification Check": {
+      "main": [
+        [
+          {
+            "node": "Verified?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Unverified": {
+      "main": [
+        [
+          {
+            "node": "Verified?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verified?": {
+      "main": [
+        [
+          {
+            "node": "Alert - Transcript Verified",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert - Manual Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

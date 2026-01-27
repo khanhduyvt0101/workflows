@@ -1,0 +1,149 @@
+{
+  "meta": {
+    "instanceId": "placeholder"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute",
+              "minute": 5
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false,
+          "labelIds": [],
+          "searchQuery": "has:attachment"
+        },
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true,
+          "simplify": true
+        }
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "notes": "Monitors inbox for emails with invoice attachments"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "attachment_0",
+        "prompt": "Extract invoice data: invoice number, vendor name, invoice date (convert to YYYY-MM-DD), total amount, and all line items with descriptions, quantities, unit prices, and amounts.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"invoiceNumber\":{\"type\":\"string\"},\"vendorName\":{\"type\":\"string\"},\"invoiceDate\":{\"type\":\"string\"},\"totalAmount\":{\"type\":\"number\"},\"lineItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unitPrice\":{\"type\":\"number\"},\"amount\":{\"type\":\"number\"}},\"additionalProperties\":false}}},\"required\":[\"invoiceNumber\",\"totalAmount\"],\"additionalProperties\":false}",
+        "useLLM": "smart"
+      },
+      "id": "extract-invoice",
+      "name": "Extract structured data from a document",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "notes": "AI extracts invoice data with structured schema"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const invoiceData = $json.data;\nconst formatCurrency = (amount) => `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;\n\nlet markdown = `# Invoice ${invoiceData.invoiceNumber}\\n\\n`;\nmarkdown += `## Summary\\n\\n`;\nmarkdown += `- **Invoice Number**: ${invoiceData.invoiceNumber}\\n`;\nmarkdown += `- **Vendor**: ${invoiceData.vendorName}\\n`;\nmarkdown += `- **Date**: ${invoiceData.invoiceDate}\\n`;\nmarkdown += `- **Total Amount**: ${formatCurrency(invoiceData.totalAmount)}\\n\\n`;\nmarkdown += `## Line Items\\n\\n`;\n\nif (invoiceData.lineItems && invoiceData.lineItems.length > 0) {\n  markdown += `| Description | Quantity | Unit Price | Amount |\\n`;\n  markdown += `|-------------|----------|------------|--------|\\n`;\n  invoiceData.lineItems.forEach(item => {\n    markdown += `| ${item.description} | ${item.quantity} | ${formatCurrency(item.unitPrice)} | ${formatCurrency(item.amount)} |\\n`;\n  });\n}\n\nmarkdown += `\\n---\\n*Document generated automatically from invoice PDF*\\n`;\n\nreturn {\n  json: {\n    markdown: markdown,\n    documentTitle: `Invoice ${invoiceData.invoiceNumber} - ${invoiceData.vendorName}`,\n    invoiceNumber: invoiceData.invoiceNumber,\n    vendor: invoiceData.vendorName,\n    total: invoiceData.totalAmount\n  }\n};"
+      },
+      "id": "format-markdown",
+      "name": "Format Invoice Markdown",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "notes": "Formats extracted data into beautiful markdown document"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "title": "={{ $json.documentTitle }}",
+        "options": {}
+      },
+      "id": "create-doc",
+      "name": "Create a document",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "notes": "Creates new Google Doc with invoice title"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insertText",
+              "insertTextOptions": {
+                "text": "={{ $('Format Invoice Markdown').item.json.markdown }}",
+                "location": "body"
+              }
+            }
+          ]
+        }
+      },
+      "id": "update-doc",
+      "name": "Update a document",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [1050, 300],
+      "notes": "Adds formatted invoice content to the document"
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract structured data from a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract structured data from a document": {
+      "main": [
+        [
+          {
+            "node": "Format Invoice Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Invoice Markdown": {
+      "main": [
+        [
+          {
+            "node": "Create a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a document": {
+      "main": [
+        [
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "name": "Tax Document Organizer",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [{"mode": "everyMinute"}]
+        },
+        "filters": {},
+        "format": "resolved"
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-download",
+      "name": "Get a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split multiple attachments into separate items\nconst message = $input.first();\nconst attachments = [];\n\n// Find all binary attachments\nfor (const key in message.binary) {\n  if (key.startsWith('attachment_') || key.startsWith('data')) {\n    attachments.push({\n      json: {\n        attachmentFileName: message.binary[key].fileName,\n        messageId: message.json.id,\n        messageSubject: message.json.subject || 'No subject'\n      },\n      binary: {\n        data: message.binary[key]\n      }\n    });\n  }\n}\n\n// Return all attachments as separate items\nreturn attachments.length > 0 ? attachments : [{\n  json: { error: 'No attachments found' }\n}];"
+      },
+      "id": "code-split-attachments",
+      "name": "Split Attachments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "notes": "Split multiple attachments into separate items for processing"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract tax document information including form type (W-2, 1099, receipt, etc), tax year, taxpayer information (name, SSN/EIN, address), income amounts, deduction amounts, and any other relevant tax information",
+        "schema": "{\"type\":\"object\",\"properties\":{\"formType\":{\"type\":\"string\"},\"taxYear\":{\"type\":\"number\"},\"taxpayer\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"ssn\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"}}},\"incomeAmounts\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"}}}},\"deductions\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"category\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"}}}},\"totalIncome\":{\"type\":\"number\"},\"totalDeductions\":{\"type\":\"number\"}},\"required\":[\"formType\",\"taxYear\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Tax Document",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first();\nconst doc = input.json.data;\n\n// Get binary data from the original Split Attachments node\n// (PDF Vector doesn't pass binary through)\nconst originalBinary = $('Split Attachments').item.binary;\n\n// Categorize by form type - using .includes() for flexible matching\nconst formType = doc.formType || '';\nconst categories = {\n  'W-2': 'Income_Statements',\n  '1099': 'Income_Statements',\n  'Receipt': 'Deductions',\n  'Invoice': 'Deductions',\n  '1098': 'Deductions',\n  '1040': 'Tax_Returns'\n};\n\n// Find matching category\nlet category = 'Other';\nfor (const [key, value] of Object.entries(categories)) {\n  if (formType.includes(key)) {\n    category = value;\n    break;\n  }\n}\n\nconst year = doc.taxYear || new Date().getFullYear();\nconst folderPath = `Tax_Documents/${year}/${category}`;\n\nreturn [{\n  json: {\n    document: doc,\n    category: category,\n    taxYear: year,\n    folderPath: folderPath,\n    fileName: $('Split Attachments').item.json.attachmentFileName\n  },\n  binary: originalBinary  // Use binary from Split Attachments node!\n}];"
+      },
+      "id": "code-categorize",
+      "name": "Categorize Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "folderId": {
+          "__rl": true,
+          "value": "YOUR_TAX_FOLDER_ID",
+          "mode": "list"
+        },
+        "name": "={{ $json.taxYear }}_{{ $json.category }}_{{ $json.fileName }}",
+        "binaryPropertyName": "data",
+        "options": {}
+      },
+      "id": "gdrive-upload",
+      "name": "File in Tax Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Form Type": "={{ $json.document.formType }}",
+            "Tax Year": "={{ $json.document.taxYear }}",
+            "Taxpayer": "={{ $json.document.taxpayer.name }}",
+            "Total Income": "={{ $json.document.totalIncome || 0 }}",
+            "Total Deductions": "={{ $json.document.totalDeductions || 0 }}",
+            "Category": "={{ $json.category }}",
+            "File Name": "={{ $json.fileName }}",
+            "Date Received": "={{ new Date().toISOString().split('T')[0] }}"
+          }
+        }
+      },
+      "id": "sheets-log",
+      "name": "Update Tax Checklist",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [[{"node": "Get a message", "type": "main", "index": 0}]]
+    },
+    "Get a message": {
+      "main": [[{"node": "Split Attachments", "type": "main", "index": 0}]]
+    },
+    "Split Attachments": {
+      "main": [[{"node": "PDF Vector - Extract Tax Document", "type": "main", "index": 0}]]
+    },
+    "PDF Vector - Extract Tax Document": {
+      "main": [[{"node": "Categorize Document", "type": "main", "index": 0}]]
+    },
+    "Categorize Document": {
+      "main": [[{"node": "File in Tax Folder", "type": "main", "index": 0}]]
+    },
+    "File in Tax Folder": {
+      "main": [[{"node": "Update Tax Checklist", "type": "main", "index": 0}]]
+    }
+  }
+}

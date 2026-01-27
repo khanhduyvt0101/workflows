@@ -1,0 +1,457 @@
+{
+  "name": "19. Mortgage Application Validator",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "subject": "Mortgage Application"
+        }
+      },
+      "name": "Watch for Applications",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "messageId": "={{ $json.id }}",
+        "options": {
+          "downloadAttachments": true
+        },
+        "operation": "get",
+        "simple": false
+      },
+      "name": "Get Application Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [460, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfor (const item of items) {\n  if (item.binary) {\n    const binaryKey = Object.keys(item.binary)[0];\n    if (binaryKey && binaryKey !== 'data') {\n      item.binary.data = item.binary[binaryKey];\n      delete item.binary[binaryKey];\n    }\n  }\n  \n  item.json.applicantEmail = item.json.from?.address || item.json.from || 'unknown@email.com';\n  item.json.originalFilename = 'mortgage-application.pdf';\n  item.json.receivedAt = new Date().toISOString();\n}\n\nreturn items;"
+      },
+      "name": "Prepare Binary Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract complete mortgage application data including borrower personal information, employment details, income sources, assets, liabilities, property information, and loan details",
+        "schema": "{\"type\":\"object\",\"properties\":{\"borrower\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"ssn\":{\"type\":\"string\"},\"dateOfBirth\":{\"type\":\"string\"},\"maritalStatus\":{\"type\":\"string\"}}},\"coBorrower\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"relationship\":{\"type\":\"string\"}}},\"employment\":{\"type\":\"object\",\"properties\":{\"employer\":{\"type\":\"string\"},\"position\":{\"type\":\"string\"},\"yearsEmployed\":{\"type\":\"number\"},\"employmentType\":{\"type\":\"string\"},\"employerPhone\":{\"type\":\"string\"}}},\"income\":{\"type\":\"object\",\"properties\":{\"annualSalary\":{\"type\":\"number\"},\"bonuses\":{\"type\":\"number\"},\"commissions\":{\"type\":\"number\"},\"otherIncome\":{\"type\":\"number\"},\"totalMonthlyIncome\":{\"type\":\"number\"}}},\"assets\":{\"type\":\"object\",\"properties\":{\"checking\":{\"type\":\"number\"},\"savings\":{\"type\":\"number\"},\"retirement\":{\"type\":\"number\"},\"investments\":{\"type\":\"number\"},\"totalAssets\":{\"type\":\"number\"}}},\"liabilities\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\"},\"creditor\":{\"type\":\"string\"},\"balance\":{\"type\":\"number\"},\"monthlyPayment\":{\"type\":\"number\"}}}},\"property\":{\"type\":\"object\",\"properties\":{\"address\":{\"type\":\"string\"},\"propertyType\":{\"type\":\"string\"},\"purchasePrice\":{\"type\":\"number\"},\"estimatedValue\":{\"type\":\"number\"},\"occupancyType\":{\"type\":\"string\"}}},\"loan\":{\"type\":\"object\",\"properties\":{\"loanAmount\":{\"type\":\"number\"},\"downPayment\":{\"type\":\"number\"},\"loanTerm\":{\"type\":\"number\"},\"interestRate\":{\"type\":\"number\"},\"loanType\":{\"type\":\"string\"},\"loanPurpose\":{\"type\":\"string\"}}},\"creditScore\":{\"type\":\"number\"},\"hasDeclarations\":{\"type\":\"boolean\"},\"bankruptcyHistory\":{\"type\":\"boolean\"},\"foreclosureHistory\":{\"type\":\"boolean\"}},\"required\":[\"borrower\",\"employment\",\"income\",\"property\",\"loan\"],\"additionalProperties\":false}",
+        "useLLM": "smart"
+      },
+      "name": "PDF Vector Extract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst data = item.json.data || item.json;\n\nconst monthlyIncome = data.income?.totalMonthlyIncome || 0;\nconst liabilities = data.liabilities || [];\nconst totalMonthlyDebt = liabilities.reduce((sum, debt) => sum + (debt.monthlyPayment || 0), 0);\n\nconst loanAmount = data.loan?.loanAmount || 0;\nconst interestRate = (data.loan?.interestRate || 4.5) / 100 / 12;\nconst loanTerm = (data.loan?.loanTerm || 30) * 12;\nconst monthlyPayment = loanAmount > 0 ? \n  (loanAmount * interestRate * Math.pow(1 + interestRate, loanTerm)) / \n  (Math.pow(1 + interestRate, loanTerm) - 1) : 0;\n\nconst propertyValue = data.property?.purchasePrice || data.property?.estimatedValue || 0;\nconst monthlyPropertyTax = (propertyValue * 0.012) / 12;\nconst monthlyInsurance = (propertyValue * 0.006) / 12;\nconst totalHousingPayment = monthlyPayment + monthlyPropertyTax + monthlyInsurance;\n\nconst frontEndDTI = monthlyIncome > 0 ? ((totalHousingPayment / monthlyIncome) * 100).toFixed(2) : 0;\nconst backEndDTI = monthlyIncome > 0 ? (((totalHousingPayment + totalMonthlyDebt) / monthlyIncome) * 100).toFixed(2) : 0;\n\nconst downPayment = data.loan?.downPayment || 0;\nconst ltvRatio = propertyValue > 0 ? ((loanAmount / propertyValue) * 100).toFixed(2) : 0;\n\nconst totalAssets = data.assets?.totalAssets || \n  (data.assets?.checking || 0) + (data.assets?.savings || 0) + \n  (data.assets?.retirement || 0) + (data.assets?.investments || 0);\n\nconst monthsReserves = totalHousingPayment > 0 ? (totalAssets / totalHousingPayment).toFixed(1) : 0;\n\nconst qualificationIssues = [];\nlet qualificationStatus = 'Approved';\n\nif (parseFloat(backEndDTI) > 43) {\n  qualificationIssues.push(`High DTI: ${backEndDTI}% (max 43%)`);\n  qualificationStatus = 'Needs Review';\n}\n\nif (parseFloat(frontEndDTI) > 28) {\n  qualificationIssues.push(`High front-end DTI: ${frontEndDTI}% (max 28%)`);\n  if (qualificationStatus === 'Approved') qualificationStatus = 'Conditional';\n}\n\nif (parseFloat(ltvRatio) > 80 && !data.loan?.pmiIncluded) {\n  qualificationIssues.push(`High LTV: ${ltvRatio}% (PMI required)`);\n}\n\nif (parseFloat(ltvRatio) > 95) {\n  qualificationIssues.push(`Very high LTV: ${ltvRatio}%`);\n  qualificationStatus = 'Needs Review';\n}\n\nconst creditScore = data.creditScore || 0;\nif (creditScore > 0 && creditScore < 620) {\n  qualificationIssues.push(`Low credit score: ${creditScore} (min 620)`);\n  qualificationStatus = 'Needs Review';\n}\n\nconst yearsEmployed = data.employment?.yearsEmployed || 0;\nif (yearsEmployed < 2) {\n  qualificationIssues.push('Less than 2 years employment');\n  if (qualificationStatus === 'Approved') qualificationStatus = 'Conditional';\n}\n\nif (parseFloat(monthsReserves) < 2) {\n  qualificationIssues.push(`Low reserves: ${monthsReserves} months (min 2)`);\n  if (qualificationStatus === 'Approved') qualificationStatus = 'Conditional';\n}\n\nif (data.bankruptcyHistory) {\n  qualificationIssues.push('Bankruptcy history');\n  qualificationStatus = 'Needs Review';\n}\n\nif (data.foreclosureHistory) {\n  qualificationIssues.push('Foreclosure history');\n  qualificationStatus = 'Needs Review';\n}\n\nconst missingDocs = [];\nif (!data.income?.annualSalary) missingDocs.push('Income verification');\nif (!data.assets?.totalAssets && !data.assets?.checking) missingDocs.push('Asset statements');\nif (!data.creditScore) missingDocs.push('Credit report');\n\nif (missingDocs.length > 0) {\n  qualificationIssues.push(`Missing: ${missingDocs.join(', ')}`);\n  if (qualificationStatus === 'Approved') qualificationStatus = 'Incomplete';\n}\n\nlet riskLevel = 'Low';\nif (qualificationStatus === 'Needs Review' || qualificationIssues.length >= 3) {\n  riskLevel = 'High';\n} else if (qualificationStatus === 'Conditional' || qualificationIssues.length > 0) {\n  riskLevel = 'Medium';\n}\n\n// Determine credit tier for SWITCH routing\nlet creditTier = 'no_score';\nif (creditScore >= 740) {\n  creditTier = 'excellent';\n} else if (creditScore >= 670) {\n  creditTier = 'good';\n} else if (creditScore >= 620) {\n  creditTier = 'fair';\n} else if (creditScore > 0) {\n  creditTier = 'poor';\n}\n\nreturn {\n  json: {\n    borrowerName: data.borrower?.name || 'Unknown',\n    borrowerEmail: data.borrower?.email || item.json.applicantEmail,\n    borrowerPhone: data.borrower?.phone || '',\n    coBorrowerName: data.coBorrower?.name || 'None',\n    employer: data.employment?.employer || 'Unknown',\n    position: data.employment?.position || '',\n    yearsEmployed: yearsEmployed,\n    employmentType: data.employment?.employmentType || 'Full-time',\n    monthlyIncome: monthlyIncome.toFixed(2),\n    monthlyDebt: totalMonthlyDebt.toFixed(2),\n    totalAssets: totalAssets.toFixed(2),\n    monthsReserves: monthsReserves,\n    creditScore: creditScore || 'Not provided',\n    creditTier: creditTier,\n    propertyAddress: data.property?.address || 'Not specified',\n    propertyType: data.property?.propertyType || 'Single Family',\n    purchasePrice: propertyValue.toFixed(2),\n    occupancyType: data.property?.occupancyType || 'Primary',\n    loanAmount: loanAmount.toFixed(2),\n    downPayment: downPayment.toFixed(2),\n    loanTerm: data.loan?.loanTerm || 30,\n    interestRate: data.loan?.interestRate || 4.5,\n    loanType: data.loan?.loanType || 'Conventional',\n    loanPurpose: data.loan?.loanPurpose || 'Purchase',\n    monthlyPayment: monthlyPayment.toFixed(2),\n    totalHousingPayment: totalHousingPayment.toFixed(2),\n    frontEndDTI: frontEndDTI,\n    backEndDTI: backEndDTI,\n    ltvRatio: ltvRatio,\n    downPaymentPercent: propertyValue > 0 ? ((downPayment / propertyValue) * 100).toFixed(1) : 0,\n    qualificationStatus: qualificationStatus,\n    riskLevel: riskLevel,\n    qualificationIssues: qualificationIssues.join('; ') || 'None',\n    issueCount: qualificationIssues.length,\n    requiresUnderwriting: qualificationStatus !== 'Approved',\n    hasBankruptcy: data.bankruptcyHistory ? 'Yes' : 'No',\n    hasForeclosure: data.foreclosureHistory ? 'Yes' : 'No',\n    applicationDate: new Date().toISOString().split('T')[0],\n    receivedAt: item.json.receivedAt,\n    documentName: item.json.originalFilename,\n    alertReason: qualificationStatus === 'Needs Review' ? qualificationIssues[0] : 'Review required'\n  }\n};"
+      },
+      "name": "Calculate DTI & Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "your-sheet-id",
+          "mode": "list",
+          "cachedResultName": "Mortgage Applications"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "borrowerName": "={{ $json.borrowerName }}",
+            "borrowerEmail": "={{ $json.borrowerEmail }}",
+            "creditScore": "={{ $json.creditScore }}",
+            "creditTier": "={{ $json.creditTier }}",
+            "loanAmount": "={{ $json.loanAmount }}",
+            "propertyAddress": "={{ $json.propertyAddress }}",
+            "monthlyIncome": "={{ $json.monthlyIncome }}",
+            "backEndDTI": "={{ $json.backEndDTI }}",
+            "ltvRatio": "={{ $json.ltvRatio }}",
+            "qualificationStatus": "={{ $json.qualificationStatus }}",
+            "riskLevel": "={{ $json.riskLevel }}",
+            "applicationDate": "={{ $json.applicationDate }}"
+          },
+          "matchingColumns": ["borrowerName", "applicationDate"]
+        },
+        "options": {}
+      },
+      "name": "Log to Application Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1340, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "3",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.creditTier }}",
+                    "rightValue": "excellent",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "excellent"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.creditTier }}",
+                    "rightValue": "good",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "good"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.creditTier }}",
+                    "rightValue": "fair",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "fair"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.creditTier }}",
+                    "rightValue": "poor",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "poor"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "name": "Route by Credit Score",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1560, 300],
+      "notes": "4-way routing based on credit score tier"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#mortgage-approvals"
+        },
+        "text": "=✅ *FAST TRACK APPROVAL - Excellent Credit*\n\n*Applicant:* {{ $json.borrowerName }}\n*Credit Score:* {{ $json.creditScore }} 🌟 (Excellent)\n*Loan Amount:* ${{ $json.loanAmount }}\n*Property:* {{ $json.propertyAddress }}\n\n*Financial Profile:*\n• Monthly Income: ${{ $json.monthlyIncome }}\n• DTI Ratio: {{ $json.backEndDTI }}%\n• LTV Ratio: {{ $json.ltvRatio }}%\n• Down Payment: {{ $('Calculate DTI & Validate').item.json.downPaymentPercent }}%\n• Reserves: {{ $('Calculate DTI & Validate').item.json.monthsReserves }} months\n\n*Employment:*\n• Employer: {{ $('Calculate DTI & Validate').item.json.employer }}\n• Position: {{ $('Calculate DTI & Validate').item.json.position }}\n• Years: {{ $('Calculate DTI & Validate').item.json.yearsEmployed }} years\n\n*Status:* {{ $json.qualificationStatus }}\n*Issues:* {{ $('Calculate DTI & Validate').item.json.qualificationIssues }}\n\n*Processing:* Fast-tracked for immediate approval\n*Next Step:* Send pre-approval letter",
+        "otherOptions": {}
+      },
+      "name": "Alert - Excellent Credit",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1780, 100],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#mortgage-approvals"
+        },
+        "text": "=✅ *STANDARD APPROVAL - Good Credit*\n\n*Applicant:* {{ $json.borrowerName }}\n*Credit Score:* {{ $json.creditScore }} (Good)\n*Loan Amount:* ${{ $json.loanAmount }}\n*Property:* {{ $json.propertyAddress }}\n\n*Financial Profile:*\n• Monthly Income: ${{ $json.monthlyIncome }}\n• DTI Ratio: {{ $json.backEndDTI }}%\n• LTV Ratio: {{ $json.ltvRatio }}%\n• Down Payment: {{ $('Calculate DTI & Validate').item.json.downPaymentPercent }}%\n• Reserves: {{ $('Calculate DTI & Validate').item.json.monthsReserves }} months\n\n*Employment:*\n• Employer: {{ $('Calculate DTI & Validate').item.json.employer }}\n• Years: {{ $('Calculate DTI & Validate').item.json.yearsEmployed }} years\n\n*Status:* {{ $json.qualificationStatus }}\n*Issues:* {{ $('Calculate DTI & Validate').item.json.qualificationIssues }}\n\n*Processing:* Standard approval workflow\n*Timeline:* 3-5 business days",
+        "otherOptions": {}
+      },
+      "name": "Alert - Good Credit",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1780, 250],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#mortgage-underwriting"
+        },
+        "text": "=⚠️ *ADDITIONAL DOCS REQUIRED - Fair Credit*\n\n*Applicant:* {{ $json.borrowerName }}\n*Credit Score:* {{ $json.creditScore }} (Fair)\n*Loan Amount:* ${{ $json.loanAmount }}\n*Property:* {{ $json.propertyAddress }}\n\n*Financial Profile:*\n• Monthly Income: ${{ $json.monthlyIncome }}\n• DTI Ratio: {{ $json.backEndDTI }}%\n• LTV Ratio: {{ $json.ltvRatio }}%\n• Reserves: {{ $('Calculate DTI & Validate').item.json.monthsReserves }} months\n\n*Status:* {{ $json.qualificationStatus }}\n*Risk Level:* {{ $json.riskLevel }}\n*Issues:* {{ $('Calculate DTI & Validate').item.json.qualificationIssues }}\n\n*Required Actions:*\n• Additional income verification\n• Detailed employment history\n• Explanation letters for credit issues\n• Higher reserves recommended\n\n*Processing:* Enhanced documentation review\n*Timeline:* 7-10 business days",
+        "otherOptions": {}
+      },
+      "name": "Alert - Fair Credit",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1780, 400],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#mortgage-underwriting"
+        },
+        "text": "=🚨 *MANUAL UNDERWRITING REQUIRED - Poor Credit*\n\n*Applicant:* {{ $json.borrowerName }}\n*Credit Score:* {{ $json.creditScore }} (Poor)\n*Loan Amount:* ${{ $json.loanAmount }}\n*Property:* {{ $json.propertyAddress }}\n\n*Financial Profile:*\n• Monthly Income: ${{ $json.monthlyIncome }}\n• DTI Ratio: {{ $json.backEndDTI }}%\n• LTV Ratio: {{ $json.ltvRatio }}%\n• Reserves: {{ $('Calculate DTI & Validate').item.json.monthsReserves }} months\n\n*Status:* {{ $json.qualificationStatus }}\n*Risk Level:* {{ $json.riskLevel }}\n*Issues:* {{ $('Calculate DTI & Validate').item.json.qualificationIssues }}\n\n*Credit History:*\n• Bankruptcy: {{ $('Calculate DTI & Validate').item.json.hasBankruptcy }}\n• Foreclosure: {{ $('Calculate DTI & Validate').item.json.hasForeclosure }}\n\n*Processing:* Senior underwriter manual review required\n*Timeline:* 10-15 business days\n*Action:* Schedule call with applicant for full review",
+        "otherOptions": {}
+      },
+      "name": "Alert - Poor Credit",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1780, 550],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "channel": {
+          "__rl": true,
+          "value": "C12345678",
+          "mode": "list",
+          "cachedResultName": "#mortgage-underwriting"
+        },
+        "text": "=⚠️ *INCOMPLETE APPLICATION*\n\n*Applicant:* {{ $json.borrowerName }}\n*Loan Amount:* ${{ $json.loanAmount }}\n*Property:* {{ $json.propertyAddress }}\n\n*Missing:* Credit score not provided\n\n*Status:* {{ $json.qualificationStatus }}\n*Issues:* {{ $('Calculate DTI & Validate').item.json.qualificationIssues }}\n\n*Action Required:* Request credit report authorization",
+        "otherOptions": {}
+      },
+      "name": "Alert - No Credit Score",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1780, 700],
+      "credentials": {
+        "slackApi": {
+          "id": "4",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Watch for Applications": {
+      "main": [
+        [
+          {
+            "node": "Get Application Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Application Email": {
+      "main": [
+        [
+          {
+            "node": "Prepare Binary Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Binary Data": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Extract": {
+      "main": [
+        [
+          {
+            "node": "Calculate DTI & Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate DTI & Validate": {
+      "main": [
+        [
+          {
+            "node": "Log to Application Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Application Database": {
+      "main": [
+        [
+          {
+            "node": "Route by Credit Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Credit Score": {
+      "main": [
+        [
+          {
+            "node": "Alert - Excellent Credit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert - Good Credit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert - Fair Credit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert - Poor Credit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert - No Credit Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
