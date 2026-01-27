@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-11_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-12_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 11 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 12 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -617,6 +617,84 @@ Automatically extract Bill of Lading data from email attachments, log to trackin
 - Add delivery confirmation workflows
 - Connect to your TMS (Transportation Management System)
 - Create customer-facing tracking portal
+
+</details>
+
+<details>
+<summary><strong>📚 Research Paper Analyzer</strong> - Extract and analyze academic papers with AI | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/research-paper-analyzer.json">⬇️ Download</a></summary>
+
+Automatically analyze research papers by extracting structured data, generating AI summaries, and storing comprehensive analysis in a database. Perfect for researchers and academics.
+
+#### Who is this for?
+- Academic researchers managing literature reviews
+- Research institutions building paper databases
+- Graduate students organizing research materials
+- Knowledge management teams cataloging publications
+
+#### How it works
+1. **Manual Trigger** starts the paper analysis workflow
+2. **Google Drive - Get Paper** downloads the research paper PDF
+3. **PDF Vector - Parse Paper** extracts the full text content from the PDF
+4. **PDF Vector - Extract Data** uses AI to extract structured information:
+   - Title, authors with affiliations and emails
+   - Abstract and keywords
+   - Research questions and methodology (approach, data collection, analysis, tools)
+   - Key findings, conclusions, limitations, and future work
+   - Reference count
+5. **Generate AI Summary** uses GPT-4 to create:
+   - Concise 150-word summary for research databases
+   - Main contribution to the field
+   - Potential applications and impact
+   - Classification tags (empirical study, theoretical framework, etc.)
+6. **Prepare Database Entry** combines all data:
+   - Calculates word count and reading time
+   - Creates searchable text field
+   - Adds processing timestamp
+7. **Store in Database** saves the complete analysis to PostgreSQL
+
+#### Services used
+- Google Drive (paper retrieval)
+- PDF Vector (parsing & AI extraction)
+- OpenAI GPT-4 (summary generation)
+- PostgreSQL (research database)
+
+#### Extracted data fields
+- **Basic Info**: Title, authors (name, affiliation, email), URL
+- **Content**: Abstract, keywords, full text
+- **Analysis**: AI summary, methodology, findings, conclusions
+- **Research**: Limitations, future work suggestions
+- **Metadata**: Word count, reading time, reference count, processed date
+
+#### Database schema
+```sql
+CREATE TABLE research_papers (
+  title TEXT,
+  authors JSONB,
+  url TEXT,
+  abstract TEXT,
+  keywords TEXT[],
+  ai_summary TEXT,
+  methodology JSONB,
+  findings TEXT[],
+  processed_at TIMESTAMP,
+  search_text TEXT
+);
+```
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Configure Google Drive credentials
+3. Configure OpenAI credentials with GPT-4 access
+4. Set up PostgreSQL database with the research_papers table
+5. Configure the PostgreSQL node with your database connection
+6. Activate the workflow and provide a fileId to analyze
+
+#### Customizing this workflow
+- Change the trigger to watch a Google Drive folder automatically
+- Modify the extraction schema for specific paper types
+- Add citation network analysis
+- Include Slack notifications when papers are processed
+- Connect to reference managers like Zotero or Mendeley
 
 </details>
 
