@@ -42,24 +42,8 @@ Before importing, ensure you have:
 
 ### Available Workflows
 
-| | Workflow | Description | |
-|:---:|---|---|:---:|
-| 📄 | **Invoice Data Extraction** | Extract structured data from invoice PDFs using AI and save to Google Sheets | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-data-extraction.json) |
-| 💰 | **Invoice Processing & Approval** | Process invoices with approval routing, budget validation, and Slack notifications | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-approval.json) |
-| 📧 | **Gmail Invoice Processor** | Monitor Gmail for invoice PDFs and create formatted Google Docs automatically | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/gmail-invoice-processor.json) |
-| 💰 | **Tax Document Organizer** | Categorize and organize tax PDFs from email attachments automatically | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/tax-document-organizer.json) |
-| 🏥 | **Insurance Pre-Authorization** | Process insurance authorization PDFs with automated document extraction | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/insurance-pre-authorization.json) |
-| 🏥 | **Medical Records Intake** | Automate patient medical records PDF intake and organization | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/medical-records-intake.json) |
-| ⚖️ | **NDA Compliance Checker** | Validate NDA documents for compliance using AI-powered PDF analysis | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/nda-compliance-checker.json) |
-| 🏠 | **Mortgage Application Validator** | Validate mortgage application PDFs and extract key information | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/mortgage-application-validator.json) |
-| 🎓 | **Education Transcript Processor** | Extract and process academic transcript PDFs for verification | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/education-transcript-processor.json) |
-| 👤 | **Resume Parser & Scoring** | Parse resume PDFs, score candidates, and log to Google Sheets with Slack alerts | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/resume-parser.json) |
-| 🚚 | **Bill of Lading Tracker** | Track and process bill of lading documents for logistics management | [Download](https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bill-of-lading-tracker.json) |
-
-### Workflow Details
-
 <details>
-<summary><strong>📄 Invoice Data Extraction</strong> - Extract structured data from invoice PDFs</summary>
+<summary><strong>📄 Invoice Data Extraction</strong> - Extract structured data from invoice PDFs | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-data-extraction.json">⬇️ Download</a></summary>
 
 Perfect for finance teams, accountants, and small businesses who need to automate invoice processing. Drop invoices into a Google Drive folder and let AI extract all the key data automatically.
 
@@ -100,7 +84,7 @@ Perfect for finance teams, accountants, and small businesses who need to automat
 </details>
 
 <details>
-<summary><strong>💰 Invoice Processing & Approval</strong> - Enterprise invoice workflow with fraud detection</summary>
+<summary><strong>💰 Invoice Processing & Approval</strong> - Enterprise invoice workflow with fraud detection | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-approval.json">⬇️ Download</a></summary>
 
 A comprehensive invoice processing system with duplicate detection, vendor validation, budget tracking, fraud detection, and intelligent approval routing. Built for organizations that need enterprise-grade invoice management.
 
@@ -155,7 +139,7 @@ A comprehensive invoice processing system with duplicate detection, vendor valid
 </details>
 
 <details>
-<summary><strong>📧 Gmail Invoice Processor</strong> - Convert invoice PDFs to formatted Google Docs</summary>
+<summary><strong>📧 Gmail Invoice Processor</strong> - Convert invoice PDFs to formatted Google Docs | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/gmail-invoice-processor.json">⬇️ Download</a></summary>
 
 Automatically monitor your Gmail for invoice attachments and convert them into beautifully formatted Google Docs with markdown tables. Great for creating readable invoice records.
 
@@ -193,7 +177,7 @@ Automatically monitor your Gmail for invoice attachments and convert them into b
 </details>
 
 <details>
-<summary><strong>💰 Tax Document Organizer</strong> - Auto-categorize and file tax documents</summary>
+<summary><strong>💰 Tax Document Organizer</strong> - Auto-categorize and file tax documents | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/tax-document-organizer.json">⬇️ Download</a></summary>
 
 Automatically organize tax documents from email into categorized Google Drive folders. AI identifies document types (W-2, 1099, receipts) and files them by year and category.
 
@@ -247,7 +231,7 @@ Tax_Documents/
 </details>
 
 <details>
-<summary><strong>🏥 Insurance Pre-Authorization</strong> - Process prior auth requests with emergency fast-tracking</summary>
+<summary><strong>🏥 Insurance Pre-Authorization</strong> - Process prior auth requests with emergency fast-tracking | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/insurance-pre-authorization.json">⬇️ Download</a></summary>
 
 Automate insurance prior authorization processing with emergency triage, coverage validation, and intelligent routing. Emergency requests are auto-approved and fast-tracked.
 
@@ -298,7 +282,7 @@ Automate insurance prior authorization processing with emergency triage, coverag
 </details>
 
 <details>
-<summary><strong>🏥 Medical Records Intake</strong> - Automate patient intake form processing</summary>
+<summary><strong>🏥 Medical Records Intake</strong> - Automate patient intake form processing | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/medical-records-intake.json">⬇️ Download</a></summary>
 
 Streamline patient intake by automatically extracting data from intake forms, adding to your patient database, and sending appropriate follow-up emails based on form completeness.
 
@@ -339,7 +323,7 @@ Streamline patient intake by automatically extracting data from intake forms, ad
 </details>
 
 <details>
-<summary><strong>⚖️ NDA Compliance Checker</strong> - Validate NDAs for required clauses and risk</summary>
+<summary><strong>⚖️ NDA Compliance Checker</strong> - Validate NDAs for required clauses and risk | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/nda-compliance-checker.json">⬇️ Download</a></summary>
 
 Automatically analyze NDA documents for compliance with required clauses, calculate risk scores, and route alerts based on risk level. Perfect for legal teams reviewing contracts.
 
@@ -400,7 +384,7 @@ Automatically analyze NDA documents for compliance with required clauses, calcul
 </details>
 
 <details>
-<summary><strong>🏠 Mortgage Application Validator</strong> - Validate applications with DTI/LTV calculations</summary>
+<summary><strong>🏠 Mortgage Application Validator</strong> - Validate applications with DTI/LTV calculations | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/mortgage-application-validator.json">⬇️ Download</a></summary>
 
 Comprehensive mortgage application processing with automatic DTI and LTV calculations, credit score routing, and risk assessment. Routes applications to different channels based on credit tier.
 
@@ -461,7 +445,7 @@ Comprehensive mortgage application processing with automatic DTI and LTV calcula
 </details>
 
 <details>
-<summary><strong>🎓 Education Transcript Processor</strong> - Process transcripts with GPA analysis</summary>
+<summary><strong>🎓 Education Transcript Processor</strong> - Process transcripts with GPA analysis | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/education-transcript-processor.json">⬇️ Download</a></summary>
 
 Extract and analyze academic transcripts with GPA calculation, academic standing determination, and automated verification. Great for admissions offices and HR departments.
 
@@ -521,7 +505,7 @@ Extract and analyze academic transcripts with GPA calculation, academic standing
 </details>
 
 <details>
-<summary><strong>👤 Resume Parser & Scoring</strong> - Parse and score candidates automatically</summary>
+<summary><strong>👤 Resume Parser & Scoring</strong> - Parse and score candidates automatically | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/resume-parser.json">⬇️ Download</a></summary>
 
 Automated resume processing with AI extraction, 100-point scoring system, and recruiter notifications. Drop resumes in Google Drive and get scored candidates in your spreadsheet.
 
@@ -581,7 +565,7 @@ JavaScript, Python, React, Node.js, SQL, API, Git, AWS, Docker
 </details>
 
 <details>
-<summary><strong>🚚 Bill of Lading Tracker</strong> - Track shipments and notify customers</summary>
+<summary><strong>🚚 Bill of Lading Tracker</strong> - Track shipments and notify customers | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bill-of-lading-tracker.json">⬇️ Download</a></summary>
 
 Automatically extract Bill of Lading data from email attachments, log to tracking database, and send professional HTML notification emails to customers.
 
@@ -638,22 +622,22 @@ Automatically extract Bill of Lading data from email attachments, log to trackin
 
 ### How to Import
 
-#### Option 1: Direct Download
+#### Option 1: Copy & Paste (Recommended)
+1. **Click** the **Download** link next to any workflow
+2. The JSON will open in your browser - press `Ctrl+A` (Windows/Linux) or `Cmd+A` (Mac) to **select all**
+3. Press `Ctrl+C` (Windows/Linux) or `Cmd+C` (Mac) to **copy** the content
+4. In n8n, open the **Workflows** panel
+5. Press `Ctrl+V` (Windows/Linux) or `Cmd+V` (Mac) to **paste** - n8n will automatically create the workflow!
+
+> This is the fastest method - just click, select all, copy, and paste directly into n8n!
+
+#### Option 2: Direct Download
 1. **Right-click** the **Download** link next to any workflow
 2. Select **"Save Link As..."** (Chrome/Edge) or **"Download Linked File"** (Safari)
 3. Save the `.json` file to your computer
 4. In n8n, click **Workflows** in the sidebar
 5. Click **Add Workflow** → **Import from File**
 6. Select your downloaded file
-
-> **Tip**: If you left-click the Download link, it will open the raw JSON in your browser. You can still save it using `Ctrl+S` (Windows/Linux) or `Cmd+S` (Mac).
-
-#### Option 2: Import from URL (Recommended)
-1. **Right-click** the **Download** link and select **"Copy Link Address"**
-2. In n8n, click **Add Workflow** → **Import from URL**
-3. Paste the URL and click **Import**
-
-> This method imports directly without downloading a file!
 
 ---
 
