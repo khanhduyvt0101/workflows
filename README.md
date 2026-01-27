@@ -29,7 +29,6 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 Before importing, ensure you have:
 - An **n8n instance** (self-hosted or [n8n Cloud](https://n8n.io/cloud/))
-- The **[PDF Vector](https://www.npmjs.com/package/n8n-nodes-pdfvector)** community node installed (required for document AI features)
 - Relevant **credentials** configured (Google, Slack, etc.)
 
 ### Quick Start
@@ -95,39 +94,6 @@ Before importing, ensure you have:
 ## Make.com Workflows
 
 > Coming Soon - Make.com scenarios for PDF processing will be added in future updates.
-
----
-
-## Repository Structure
-
-```
-workflows/
-├── README.md                  # This file
-├── n8n-workflows/             # n8n workflow JSON files
-│   ├── invoice-data-extraction.json
-│   ├── invoice-processing-approval.json
-│   ├── gmail-invoice-processor.json
-│   ├── tax-document-organizer.json
-│   ├── insurance-pre-authorization.json
-│   ├── medical-records-intake.json
-│   ├── nda-compliance-checker.json
-│   ├── mortgage-application-validator.json
-│   ├── education-transcript-processor.json
-│   ├── resume-parser.json
-│   └── bill-of-lading-tracker.json
-├── zapier-workflows/          # Zapier Zap templates (coming soon)
-└── make-workflows/            # Make.com scenario files (coming soon)
-```
-
----
-
-## Features
-
-- **AI-Powered Extraction** - Use GPT and vision models to extract data from any PDF
-- **Structured Output** - Get clean, structured data ready for your databases
-- **Smart Notifications** - Slack, email, and webhook integrations
-- **Google Sheets Integration** - Automatic logging and data storage
-- **One-Click Import** - Ready-to-use JSON templates
 
 ---
 
