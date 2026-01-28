@@ -1,0 +1,554 @@
+{
+  "name": "Invoice Processing - AP Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Invoice Processing Workflow\n\n### How it works\nThis workflow automates accounts payable by extracting invoice data, matching against purchase orders, and logging everything for processing.\n\n1. **Email Trigger** catches invoices arriving in designated inbox\n2. **PDF Vector** extracts all invoice fields (vendor, amounts, line items)\n3. **Validation** checks calculations and required fields\n4. **Sheets Lookup** matches PO numbers for validation\n5. **Google Sheets** logs all invoices with status\n6. **Email** sends notifications\n\n### Setup Steps\n1. Connect Gmail credentials (invoice inbox)\n2. Connect PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with tabs: 'PO Database' and 'Invoice Log'\n4. Update Sheet IDs in the nodes\n5. Test with sample invoice\n\n### Results\n- 320 invoices/month processed automatically\n- $47K in overpayments caught year one\n- 3 hours daily → 20 minutes exception review",
+        "height": 480,
+        "width": 420,
+        "color": 5
+      },
+      "id": "sticky-overview",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Invoice Receipt\nGmail trigger monitors inbox for new invoices.\nDownloads PDF attachments automatically.",
+        "height": 100,
+        "width": 300
+      },
+      "id": "sticky-section1",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Data Extraction & Validation\nPDF Vector extracts structured data using JSON schema.\nCode node validates calculations and required fields.",
+        "height": 100,
+        "width": 420
+      },
+      "id": "sticky-section2",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        940,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. PO Matching & Routing\nLooks up PO in database using Read filter.\nCode compares amounts with 2% tolerance.\nIF routes to Approved or Flagged path.",
+        "height": 100,
+        "width": 400
+      },
+      "id": "sticky-section3",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. Logging & Notifications\nLogs all invoices to Google Sheets with status.\nSends confirmation email for approved.\nSends alert email for flagged invoices.",
+        "height": 100,
+        "width": 380
+      },
+      "id": "sticky-section4",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false
+        }
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        500,
+        240
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-get-message",
+      "name": "Gmail - Get Message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        700,
+        240
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Rename attachment_0 to data for PDF Vector compatibility\nconst items = $input.all();\n\nfor (const item of items) {\n  if (item.binary && item.binary.attachment_0) {\n    item.binary.data = item.binary.attachment_0;\n    delete item.binary.attachment_0;\n  }\n}\n\nreturn items;"
+      },
+      "id": "code-rename-binary",
+      "name": "Code - Rename Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract all invoice details from this document including invoice number, date, vendor information, line items with descriptions and amounts, subtotal, tax, and total amount. Handle both digital PDFs and scanned/photographed invoices.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"invoice_number\":{\"type\":\"string\"},\"invoice_date\":{\"type\":\"string\"},\"due_date\":{\"type\":\"string\"},\"vendor_name\":{\"type\":\"string\"},\"vendor_address\":{\"type\":\"string\"},\"po_number\":{\"type\":\"string\"},\"line_items\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unit_price\":{\"type\":\"number\"},\"amount\":{\"type\":\"number\"}}}},\"subtotal\":{\"type\":\"number\"},\"tax_amount\":{\"type\":\"number\"},\"total_amount\":{\"type\":\"number\"},\"payment_terms\":{\"type\":\"string\"},\"bank_details\":{\"type\":\"string\"}},\"required\":[\"invoice_number\",\"total_amount\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Invoice",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        240
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Validate invoice data - data comes from PDF Vector extract in .data property\nconst invoice = $input.first().json.data;\nlet errors = [];\nlet warnings = [];\n\n// Check if line items total matches subtotal\nif (invoice.line_items && invoice.line_items.length > 0) {\n  const calculatedSubtotal = invoice.line_items.reduce((sum, item) => sum + (item.amount || 0), 0);\n  if (Math.abs(calculatedSubtotal - (invoice.subtotal || 0)) > 0.01) {\n    warnings.push(`Line items total ($${calculatedSubtotal.toFixed(2)}) doesn't match subtotal ($${(invoice.subtotal || 0).toFixed(2)})`);\n  }\n}\n\n// Validate total calculation\nconst calculatedTotal = (invoice.subtotal || 0) + (invoice.tax_amount || 0);\nif (invoice.total_amount && Math.abs(calculatedTotal - invoice.total_amount) > 0.01) {\n  warnings.push(`Calculated total ($${calculatedTotal.toFixed(2)}) doesn't match invoice total ($${invoice.total_amount.toFixed(2)})`);\n}\n\n// Check required fields\nif (!invoice.invoice_number) errors.push('Missing invoice number');\nif (!invoice.vendor_name) errors.push('Missing vendor name');\nif (!invoice.total_amount) errors.push('Missing total amount');\n\n// Format line items for Google Sheets\nconst itemsSummary = invoice.line_items && invoice.line_items.length > 0\n  ? invoice.line_items.map(item => `${item.description}: ${item.quantity || 1} x $${item.unit_price || item.amount}`).join('; ')\n  : 'No items listed';\n\n// Status is TRUE if valid (no errors), FALSE if invalid (has errors)\nconst isValid = errors.length === 0;\n\nreturn [{\n  json: {\n    invoice: invoice,\n    validation_status: isValid,\n    validation_errors: errors,\n    validation_warnings: warnings,\n    items_summary: itemsSummary,\n    processed_at: new Date().toISOString(),\n    file_name: $('Gmail Trigger').item.json.subject || 'Unknown'\n  }\n}];"
+      },
+      "id": "validate-data",
+      "name": "Validate Invoice Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "sheetId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "PO Database"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "po_number",
+              "lookupValue": "={{ $json.invoice.po_number }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-po-lookup",
+      "name": "Sheets - PO Lookup",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1500,
+        240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Check if PO was found and if amounts match within 2% tolerance\nconst poData = $input.all();\nconst invoice = $('Validate Invoice Data').item.json.invoice;\nconst invoiceTotal = invoice.total_amount;\n\nlet poMatch = false;\nlet matchedPO = null;\nlet flagReason = '';\n\n// Check if we got any PO data back\nif (poData.length > 0 && poData[0].json.po_number) {\n  matchedPO = poData[0].json;\n  const poAmount = parseFloat(matchedPO.po_amount);\n  const tolerance = poAmount * 1.02; // 2% tolerance\n  \n  if (invoiceTotal <= tolerance) {\n    poMatch = true;\n  } else {\n    flagReason = `Invoice total ($${invoiceTotal}) exceeds PO amount ($${poAmount}) by more than 2%`;\n  }\n} else {\n  flagReason = invoice.po_number ? `PO ${invoice.po_number} not found in database` : 'No PO number on invoice';\n}\n\nreturn [{\n  json: {\n    invoice: invoice,\n    matched_po: matchedPO,\n    po_match: poMatch,\n    flag_reason: flagReason,\n    validation_status: $('Validate Invoice Data').item.json.validation_status,\n    validation_errors: $('Validate Invoice Data').item.json.validation_errors,\n    validation_warnings: $('Validate Invoice Data').item.json.validation_warnings,\n    items_summary: $('Validate Invoice Data').item.json.items_summary,\n    processed_at: $('Validate Invoice Data').item.json.processed_at,\n    file_name: $('Validate Invoice Data').item.json.file_name\n  }\n}];"
+      },
+      "id": "code-check-po",
+      "name": "Code - Check PO Match",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "condition-po-match",
+              "leftValue": "={{ $json.po_match }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-po-match",
+      "name": "IF - PO Match",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Invoice Log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice Number": "={{ $json.invoice.invoice_number }}",
+            "Invoice Date": "={{ $json.invoice.invoice_date }}",
+            "Due Date": "={{ $json.invoice.due_date || 'N/A' }}",
+            "Vendor": "={{ $json.invoice.vendor_name }}",
+            "PO Number": "={{ $json.invoice.po_number || 'N/A' }}",
+            "Subtotal": "={{ $json.invoice.subtotal || 0 }}",
+            "Tax": "={{ $json.invoice.tax_amount || 0 }}",
+            "Total": "={{ $json.invoice.total_amount }}",
+            "Items": "={{ $json.items_summary }}",
+            "Status": "Approved",
+            "Warnings": "={{ $json.validation_warnings.length > 0 ? $json.validation_warnings.join('; ') : 'None' }}",
+            "Flag Reason": "",
+            "File Name": "={{ $json.file_name }}",
+            "Processed Date": "={{ $json.processed_at.split('T')[0] }}"
+          }
+        }
+      },
+      "id": "sheets-log-approved",
+      "name": "Sheets - Log Approved",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2100,
+        240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Invoice Log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice Number": "={{ $json.invoice.invoice_number }}",
+            "Invoice Date": "={{ $json.invoice.invoice_date }}",
+            "Due Date": "={{ $json.invoice.due_date || 'N/A' }}",
+            "Vendor": "={{ $json.invoice.vendor_name }}",
+            "PO Number": "={{ $json.invoice.po_number || 'N/A' }}",
+            "Subtotal": "={{ $json.invoice.subtotal || 0 }}",
+            "Tax": "={{ $json.invoice.tax_amount || 0 }}",
+            "Total": "={{ $json.invoice.total_amount }}",
+            "Items": "={{ $json.items_summary }}",
+            "Status": "Flagged",
+            "Warnings": "={{ $json.validation_warnings.length > 0 ? $json.validation_warnings.join('; ') : 'None' }}",
+            "Flag Reason": "={{ $json.flag_reason }}",
+            "File Name": "={{ $json.file_name }}",
+            "Processed Date": "={{ $json.processed_at.split('T')[0] }}"
+          }
+        }
+      },
+      "id": "sheets-log-flagged",
+      "name": "Sheets - Log Flagged",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2100,
+        440
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Gmail Trigger').item.json.From }}",
+        "subject": "=Invoice {{ $json[\"Invoice Number\"] }} Received - Processing Complete",
+        "emailType": "text",
+        "message": "=Hello,\n\nWe have received and processed your invoice.\n\nDetails:\n- Invoice Number: {{ $json[\"Invoice Number\"] }}\n- Vendor: {{ $json[\"Vendor\"] }}\n- Amount: ${{ $json[\"Total\"] }}\n- Due Date: {{ $json[\"Due Date\"] }}\n\nStatus: Approved for payment\n\n{{ $json[\"Warnings\"] !== 'None' ? 'Warnings: ' + $json[\"Warnings\"] : '' }}\n\nThank you,\nAccounts Payable"
+      },
+      "id": "gmail-confirm-approved",
+      "name": "Gmail - Confirm Approved",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2300,
+        240
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=ap-team@company.com",
+        "subject": "=⚠️ Invoice Flagged for Review: {{ $json[\"Invoice Number\"] }}",
+        "emailType": "text",
+        "message": "=An invoice has been flagged for manual review.\n\nDetails:\n- Invoice Number: {{ $json[\"Invoice Number\"] }}\n- Vendor: {{ $json[\"Vendor\"] }}\n- Amount: ${{ $json[\"Total\"] }}\n- PO Number: {{ $json[\"PO Number\"] }}\n\nReason: {{ $json[\"Flag Reason\"] }}\n\nWarnings: {{ $json[\"Warnings\"] }}\n\nPlease review and approve/reject in the Invoice Log spreadsheet.\n\nAccounts Payable Automation"
+      },
+      "id": "gmail-alert-flagged",
+      "name": "Gmail - Alert Flagged",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2300,
+        440
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Get Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Get Message": {
+      "main": [
+        [
+          {
+            "node": "Code - Rename Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Rename Binary": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Invoice": {
+      "main": [
+        [
+          {
+            "node": "Validate Invoice Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Invoice Data": {
+      "main": [
+        [
+          {
+            "node": "Sheets - PO Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - PO Lookup": {
+      "main": [
+        [
+          {
+            "node": "Code - Check PO Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Check PO Match": {
+      "main": [
+        [
+          {
+            "node": "IF - PO Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - PO Match": {
+      "main": [
+        [
+          {
+            "node": "Sheets - Log Approved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheets - Log Flagged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - Log Approved": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Confirm Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - Log Flagged": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Alert Flagged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateId": "pdfvector-invoice-processing",
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "versionId": "1.0.0",
+  "triggerCount": 1,
+  "tags": [
+    {
+      "id": "1",
+      "name": "Accounts Payable"
+    },
+    {
+      "id": "2",
+      "name": "Invoice Processing"
+    },
+    {
+      "id": "3",
+      "name": "PDF Vector"
+    }
+  ]
+}

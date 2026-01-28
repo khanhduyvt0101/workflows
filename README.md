@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-11_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-12_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 11 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 12 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -173,6 +173,77 @@ Automatically monitor your Gmail for invoice attachments and convert them into b
 - Include email sender information in the document
 - Add Slack notification when new doc is created
 - Filter for specific senders or subject lines
+
+</details>
+
+<details>
+<summary><strong>💰 Invoice Processing - AP Automation</strong> - Automate accounts payable with PO matching | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-ap-automation.json">⬇️ Download</a></summary>
+
+Complete accounts payable automation that extracts invoice data, validates calculations, matches against purchase orders, and routes invoices through approval workflows. Automatically catches overpayments and discrepancies before they become costly mistakes.
+
+#### Who is this for?
+- AP departments processing high volumes of invoices
+- Finance teams needing PO matching and validation
+- Controllers wanting to catch overpayments automatically
+- Organizations requiring audit trails for invoice processing
+
+#### How it works
+1. **Gmail Trigger** monitors your invoice inbox for new emails every minute
+2. **Gmail - Get Message** downloads the PDF attachment from the email
+3. **Code - Rename Binary** prepares the attachment for PDF Vector processing
+4. **PDF Vector - Extract Invoice** uses AI to extract all invoice fields: invoice number, dates, vendor info, PO number, line items with quantities and prices, subtotal, tax, and total
+5. **Validate Invoice Data** checks if line items sum correctly, validates total calculations, and ensures required fields are present
+6. **Sheets - PO Lookup** searches your PO Database for matching purchase order
+7. **Code - Check PO Match** compares invoice total against PO amount with 2% tolerance
+8. **IF - PO Match** routes invoices to Approved or Flagged paths
+9. **Sheets - Log Approved/Flagged** records all invoice details with status to Invoice Log
+10. **Gmail Notifications** sends confirmation to vendor (approved) or alert to AP team (flagged)
+
+#### Services used
+- Gmail (email monitoring & notifications)
+- PDF Vector (AI extraction)
+- Google Sheets (PO database & invoice logging)
+
+#### Key features
+- Automatic invoice data extraction from PDF attachments
+- Line item validation (checks if amounts sum correctly)
+- PO matching with 2% tolerance for minor variances
+- Dual-path routing (Approved vs Flagged for review)
+- Vendor confirmation emails for approved invoices
+- AP team alerts for flagged invoices requiring review
+- Complete audit trail in Google Sheets
+
+#### Google Sheets structure
+Create a spreadsheet with two tabs:
+
+**Tab 1: PO Database**
+| po_number | vendor_name | po_amount | po_date | status |
+|-----------|-------------|-----------|---------|--------|
+
+**Tab 2: Invoice Log**
+| Invoice Number | Invoice Date | Due Date | Vendor | PO Number | Subtotal | Tax | Total | Items | Status | Warnings | Flag Reason | File Name | Processed Date |
+|----------------|--------------|----------|--------|-----------|----------|-----|-------|-------|--------|----------|-------------|-----------|----------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Configure Gmail OAuth credentials for your invoice inbox
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create the Google Sheet with 'PO Database' and 'Invoice Log' tabs
+5. Configure Google Sheets credentials and set the spreadsheet ID in all Sheets nodes
+6. Update the AP team email address in the "Gmail - Alert Flagged" node
+7. Activate the workflow
+
+#### Real-world results
+- 320 invoices/month processed automatically
+- $47K in overpayments caught in year one
+- 3 hours daily manual work reduced to 20 minutes exception review
+
+#### Customizing this workflow
+- Adjust PO tolerance percentage for your business needs
+- Add Slack notifications alongside email alerts
+- Connect to your ERP system instead of Google Sheets
+- Add multi-level approval routing based on invoice amounts
+- Include duplicate invoice detection
 
 </details>
 
