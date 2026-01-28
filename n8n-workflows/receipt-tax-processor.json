@@ -1,0 +1,142 @@
+{
+  "name": "Receipt Tax Processor",
+  "meta": {
+    "instanceId": "placeholder"
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "notes": "Process receipt"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.fileId }}"
+      },
+      "id": "google-drive",
+      "name": "Google Drive - Get Receipt",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [450, 300],
+      "notes": "Retrieve receipt from Drive"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract all receipt information from this document or image including merchant name and address, transaction date and time, all items with descriptions and prices, subtotal, tax amount and rate, tip if applicable, total amount, payment method, and any loyalty or membership numbers. Use OCR if this is a scanned receipt or image.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"merchant\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"taxId\":{\"type\":\"string\"}}},\"transaction\":{\"type\":\"object\",\"properties\":{\"date\":{\"type\":\"string\"},\"time\":{\"type\":\"string\"},\"receiptNumber\":{\"type\":\"string\"},\"cashier\":{\"type\":\"string\"}}},\"items\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unitPrice\":{\"type\":\"number\"},\"totalPrice\":{\"type\":\"number\"},\"taxable\":{\"type\":\"boolean\"}}}},\"financial\":{\"type\":\"object\",\"properties\":{\"subtotal\":{\"type\":\"number\"},\"taxRate\":{\"type\":\"number\"},\"taxAmount\":{\"type\":\"number\"},\"tip\":{\"type\":\"number\"},\"total\":{\"type\":\"number\"},\"currency\":{\"type\":\"string\"}}},\"payment\":{\"type\":\"object\",\"properties\":{\"method\":{\"type\":\"string\"},\"lastFourDigits\":{\"type\":\"string\"},\"authCode\":{\"type\":\"string\"}}},\"loyalty\":{\"type\":\"object\",\"properties\":{\"memberNumber\":{\"type\":\"string\"},\"pointsEarned\":{\"type\":\"number\"},\"pointsBalance\":{\"type\":\"number\"}}}},\"required\":[\"merchant\",\"financial\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Receipt",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "notes": "Extract receipt data"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Based on this receipt document or image, determine: 1) The most appropriate tax category (meals, travel, supplies, equipment, etc.), 2) Whether this is likely tax deductible for business, 3) If this is a meal receipt, what percentage would typically be deductible, 4) Any special considerations for tax purposes. Process any image format using OCR if needed."
+      },
+      "id": "pdfvector-categorize",
+      "name": "PDF Vector - Tax Categorization",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "notes": "Categorize for taxes"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process receipt data and tax categorization\nconst receiptData = $node['PDF Vector - Extract Receipt'].json.data;\nconst taxCategory = $node['PDF Vector - Tax Categorization'].json.answer;\n\n// Validate financial calculations\nlet validationErrors = [];\nif (receiptData.items && receiptData.items.length > 0) {\n  const calculatedSubtotal = receiptData.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);\n  if (Math.abs(calculatedSubtotal - receiptData.financial.subtotal) > 0.02) {\n    validationErrors.push('Item totals do not match subtotal');\n  }\n}\n\n// Calculate tax consistency\nconst expectedTax = receiptData.financial.subtotal * (receiptData.financial.taxRate / 100);\nif (Math.abs(expectedTax - receiptData.financial.taxAmount) > 0.02) {\n  validationErrors.push('Tax calculation inconsistency');\n}\n\n// Determine expense category and deductibility\nlet expenseCategory = 'Other';\nlet deductiblePercentage = 100;\nlet taxNotes = '';\n\nif (taxCategory.toLowerCase().includes('meal')) {\n  expenseCategory = 'Meals & Entertainment';\n  deductiblePercentage = 50; // Typical meal deduction\n  taxNotes = 'Business meal - 50% deductible';\n} else if (taxCategory.toLowerCase().includes('travel')) {\n  expenseCategory = 'Travel';\n  deductiblePercentage = 100;\n  taxNotes = 'Business travel expense';\n} else if (taxCategory.toLowerCase().includes('supplies')) {\n  expenseCategory = 'Office Supplies';\n  deductiblePercentage = 100;\n  taxNotes = 'Business supplies';\n}\n\n// Create processed expense record\nconst processedExpense = {\n  // Receipt data\n  merchant: receiptData.merchant.name,\n  date: receiptData.transaction.date,\n  amount: receiptData.financial.total,\n  currency: receiptData.financial.currency || 'USD',\n  \n  // Tax information\n  expenseCategory,\n  deductiblePercentage,\n  deductibleAmount: (receiptData.financial.total * deductiblePercentage / 100).toFixed(2),\n  taxNotes,\n  \n  // Original data\n  originalReceipt: receiptData,\n  aiCategorization: taxCategory,\n  \n  // Validation\n  isValid: validationErrors.length === 0,\n  validationErrors,\n  \n  // Metadata\n  processedAt: new Date().toISOString(),\n  taxYear: new Date(receiptData.transaction.date).getFullYear()\n};\n\nreturn [{ json: processedExpense }];"
+      },
+      "id": "process-expense",
+      "name": "Process Expense Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "notes": "Validate and categorize"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "{{ $json.taxYear }}-expenses",
+        "range": "A:H",
+        "data": "={{ [[$json.date, $json.merchant, $json.expenseCategory, $json.amount, $json.deductibleAmount, $json.deductiblePercentage + '%', $json.taxNotes, $json.processedAt]] }}"
+      },
+      "id": "save-spreadsheet",
+      "name": "Save to Expense Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "notes": "Track in spreadsheet"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Drive - Get Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive - Get Receipt": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Receipt": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Tax Categorization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Tax Categorization": {
+      "main": [
+        [
+          {
+            "node": "Process Expense Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Expense Data": {
+      "main": [
+        [
+          {
+            "node": "Save to Expense Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

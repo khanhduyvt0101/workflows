@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-11_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-12_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 11 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 12 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -617,6 +617,76 @@ Automatically extract Bill of Lading data from email attachments, log to trackin
 - Add delivery confirmation workflows
 - Connect to your TMS (Transportation Management System)
 - Create customer-facing tracking portal
+
+</details>
+
+<details>
+<summary><strong>🧾 Receipt Tax Processor</strong> - Extract receipt data and categorize for taxes | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/receipt-tax-processor.json">⬇️ Download</a></summary>
+
+Automatically extract data from receipts and categorize expenses for tax purposes. AI identifies merchant details, line items, totals, and determines appropriate tax categories with deductibility percentages.
+
+#### Who is this for?
+- Freelancers and self-employed professionals tracking business expenses
+- Small business owners organizing receipts for tax season
+- Accountants processing client expense documentation
+- Anyone needing to categorize receipts for tax deductions
+
+#### How it works
+1. **Manual Trigger** initiates processing with a receipt file ID
+2. **Google Drive - Get Receipt** downloads the receipt file from Google Drive
+3. **PDF Vector - Extract Receipt** uses AI with OCR to extract:
+   - Merchant name, address, phone, and tax ID
+   - Transaction date, time, receipt number, and cashier
+   - All line items with quantities, prices, and taxable status
+   - Subtotal, tax rate, tax amount, tip, and total
+   - Payment method and card details
+   - Loyalty program information
+4. **PDF Vector - Tax Categorization** analyzes the receipt to determine:
+   - Appropriate tax category (meals, travel, supplies, equipment)
+   - Business deductibility assessment
+   - Deductible percentage (e.g., 50% for meals)
+   - Special tax considerations
+5. **Process Expense Data** validates and processes:
+   - Verifies line items sum to subtotal
+   - Checks tax calculation consistency
+   - Assigns expense category and deductible percentage
+   - Calculates deductible amount
+   - Creates comprehensive expense record
+6. **Save to Expense Sheet** appends to year-specific Google Sheets with all expense details
+
+#### Services used
+- Google Drive (file retrieval)
+- PDF Vector (AI extraction & categorization)
+- Google Sheets (expense tracking)
+
+#### Extracted data fields
+- **Merchant**: Name, address, phone, tax ID
+- **Transaction**: Date, time, receipt number, cashier
+- **Items**: Name, description, quantity, unit price, total price, taxable flag
+- **Financial**: Subtotal, tax rate, tax amount, tip, total, currency
+- **Payment**: Method, last 4 digits, authorization code
+- **Loyalty**: Member number, points earned, points balance
+
+#### Tax categories supported
+- **Meals & Entertainment**: 50% deductible
+- **Travel**: 100% deductible
+- **Office Supplies**: 100% deductible
+- **Equipment**: 100% deductible
+- **Other**: Categorized based on AI analysis
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Configure Google Drive credentials
+3. Create yearly expense tracking spreadsheets (e.g., "2024-expenses")
+4. Configure Google Sheets credentials
+5. To process a receipt, trigger the workflow with the Google Drive file ID
+
+#### Customizing this workflow
+- Add Google Drive folder trigger for automatic processing
+- Include Slack notifications for high-value expenses
+- Connect to accounting software (QuickBooks, Xero)
+- Add receipt image archival with expense category folders
+- Implement expense approval workflow for amounts over threshold
 
 </details>
 
