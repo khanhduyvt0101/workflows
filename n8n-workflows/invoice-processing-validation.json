@@ -1,0 +1,473 @@
+{
+  "name": "W1 - Invoice Processing with Validation",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ⚙️ CREDENTIALS NEEDED\n\n1. **Gmail OAuth2** - for trigger & attachments\n2. **PDF Vector API** - get key at pdfvector.com/api-keys\n3. **Google Sheets OAuth2** - for logging\n4. **Slack API** - for notifications\n\n**Google Sheet tabs needed:**\n- \"Invoices\" (valid)\n- \"Flagged Invoices\" (errors)",
+        "height": 260,
+        "width": 320,
+        "color": 7
+      },
+      "id": "sticky-creds",
+      "name": "Sticky Note - Credentials",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📧 STEP 1: Email Trigger\n\nWatches Gmail for new emails with PDF attachments.\n\n**Setup:**\n1. Configure Gmail OAuth2 credentials\n2. Filters for unread emails\n3. Downloads PDF attachments\n4. Code node renames binary to `data`",
+        "height": 200,
+        "width": 300,
+        "color": 4
+      },
+      "id": "sticky-trigger",
+      "name": "Sticky Note - Trigger",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        280,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔍 STEP 2: PDF Vector Extract\n\n**Uses Extract operation with JSON Schema**\n\nExtracts:\n- Vendor name & address\n- Invoice number & dates\n- Line items (qty, price, amount)\n- Subtotal, tax, total\n- PO number, payment terms\n\n**Credits:** 3 per page",
+        "height": 240,
+        "width": 300,
+        "color": 6
+      },
+      "id": "sticky-extract",
+      "name": "Sticky Note - Extract",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        760,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ✅ STEP 3: Validate Math\n\n**Checks:**\n• Line items sum = subtotal\n• subtotal + tax = total\n• Required fields present\n\n**Tolerance:** ±$0.01 for rounding",
+        "height": 180,
+        "width": 260,
+        "color": 5
+      },
+      "id": "sticky-validate",
+      "name": "Sticky Note - Validate",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 STEP 4: Route & Log\n\n**Valid invoices (true) →**\n✓ Log to \"Invoices\" sheet\n✓ Slack success notification\n\n**Invalid invoices (false) →**\n✗ Log to \"Flagged Invoices\" sheet\n✗ Slack error notification",
+        "height": 200,
+        "width": 300,
+        "color": 3
+      },
+      "id": "sticky-route",
+      "name": "Sticky Note - Route",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false
+        }
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger - Watch for Invoices",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        300,
+        0
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-get-message",
+      "name": "Get Invoice Attachment",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        500,
+        0
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Rename attachment_0 to data for PDF Vector compatibility\nconst items = $input.all();\n\nfor (const item of items) {\n  if (item.binary && item.binary.attachment_0) {\n    item.binary.data = item.binary.attachment_0;\n    delete item.binary.attachment_0;\n  }\n}\n\nreturn items;"
+      },
+      "id": "code-rename-binary",
+      "name": "Rename Binary to data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract all invoice details from this document including invoice number, date, vendor information, line items with descriptions and amounts, subtotal, tax, and total amount. Handle both digital PDFs and scanned/photographed invoices.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"invoice_number\":{\"type\":\"string\"},\"invoice_date\":{\"type\":\"string\"},\"due_date\":{\"type\":\"string\"},\"vendor_name\":{\"type\":\"string\"},\"vendor_address\":{\"type\":\"string\"},\"payment_terms\":{\"type\":\"string\"},\"line_items\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unit_price\":{\"type\":\"number\"},\"amount\":{\"type\":\"number\"}}}},\"subtotal\":{\"type\":\"number\"},\"tax_amount\":{\"type\":\"number\"},\"total_amount\":{\"type\":\"number\"},\"bank_details\":{\"type\":\"string\"}},\"required\":[\"invoice_number\",\"vendor_name\",\"total_amount\"],\"additionalProperties\":false}"
+      },
+      "id": "pdf-vector-extract",
+      "name": "PDF Vector - Extract Invoice Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        0
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDF_VECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Validate invoice data - data comes from PDF Vector extract in .data property\nconst invoice = $input.first().json.data;\nlet validation_errors = [];\nlet calculated_subtotal = 0;\n\n// Check if line items exist and validate\nif (invoice.line_items && invoice.line_items.length > 0) {\n  invoice.line_items.forEach((item, index) => {\n    // Check if quantity * unit_price = amount (if all fields present)\n    if (item.quantity && item.unit_price && item.amount) {\n      const expectedAmount = item.quantity * item.unit_price;\n      if (Math.abs(expectedAmount - item.amount) > 0.01) {\n        validation_errors.push({\n          type: 'line_item_math_error',\n          line_index: index,\n          description: item.description,\n          message: `Line ${index + 1}: ${item.quantity} × $${item.unit_price} should = $${expectedAmount.toFixed(2)}, but shows $${item.amount.toFixed(2)}`\n        });\n      }\n    }\n    calculated_subtotal += (item.amount || 0);\n  });\n} else {\n  validation_errors.push({\n    type: 'missing_line_items',\n    message: 'No line items found in invoice'\n  });\n}\n\n// Validate subtotal matches sum of line items\nconst stated_subtotal = invoice.subtotal || 0;\nif (stated_subtotal > 0 && Math.abs(calculated_subtotal - stated_subtotal) > 0.01) {\n  validation_errors.push({\n    type: 'subtotal_mismatch',\n    message: `Subtotal mismatch: Line items sum to $${calculated_subtotal.toFixed(2)}, but subtotal shows $${stated_subtotal.toFixed(2)}`\n  });\n}\n\n// Validate total = subtotal + tax\nconst tax = invoice.tax_amount || 0;\nconst total = invoice.total_amount || 0;\nconst subtotal_for_calc = stated_subtotal > 0 ? stated_subtotal : calculated_subtotal;\nconst expected_total = subtotal_for_calc + tax;\n\nif (total > 0 && Math.abs(expected_total - total) > 0.01) {\n  validation_errors.push({\n    type: 'total_mismatch',\n    message: `Total mismatch: $${subtotal_for_calc.toFixed(2)} + $${tax.toFixed(2)} tax should = $${expected_total.toFixed(2)}, but shows $${total.toFixed(2)}`\n  });\n}\n\n// Check for required fields\nif (!invoice.invoice_number) validation_errors.push({ type: 'missing_field', message: 'Missing invoice number' });\nif (!invoice.vendor_name) validation_errors.push({ type: 'missing_field', message: 'Missing vendor name' });\nif (!invoice.total_amount) validation_errors.push({ type: 'missing_field', message: 'Missing total amount' });\n\n// Format line items for summary\nconst items_summary = invoice.line_items && invoice.line_items.length > 0\n  ? invoice.line_items.map(item => `${item.description}: ${item.quantity || 1} x $${item.unit_price || item.amount}`).join('; ')\n  : 'No items listed';\n\n// Determine validation status\nconst is_valid = validation_errors.length === 0;\n\nreturn [{\n  json: {\n    validation_status: is_valid ? 'valid' : 'needs_review',\n    is_valid: is_valid,\n    validation_errors: validation_errors,\n    error_count: validation_errors.length,\n    invoice_data: invoice,\n    items_summary: items_summary,\n    calculated_subtotal: calculated_subtotal.toFixed(2),\n    processed_at: new Date().toISOString(),\n    email_subject: $('Gmail Trigger - Watch for Invoices').first().json.subject || 'Unknown'\n  }\n}];"
+      },
+      "id": "validate-invoice",
+      "name": "Validate Line Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "valid-check",
+              "leftValue": "={{ $json.is_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-valid",
+      "name": "IF Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Invoices"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "vendor_name": "={{ $json.invoice_data.vendor_name }}",
+            "vendor_address": "={{ $json.invoice_data.vendor_address }}",
+            "invoice_number": "={{ $json.invoice_data.invoice_number }}",
+            "invoice_date": "={{ $json.invoice_data.invoice_date }}",
+            "due_date": "={{ $json.invoice_data.due_date || 'N/A' }}",
+            "payment_terms": "={{ $json.invoice_data.payment_terms }}",
+            "subtotal": "={{ $json.invoice_data.subtotal || 0 }}",
+            "tax_amount": "={{ $json.invoice_data.tax_amount || 0 }}",
+            "total_amount": "={{ $json.invoice_data.total_amount }}",
+            "items_summary": "={{ $json.items_summary }}",
+            "validation_status": "={{ $json.validation_status }}",
+            "processed_at": "={{ $json.processed_at }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "log-valid-invoice",
+      "name": "Log to Database (Valid)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1520,
+        -100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#invoices",
+        "text": "=✅ *Invoice Processed Successfully*\n\n*Vendor:* {{ $json.vendor_name }}\n*Invoice #:* {{ $json.invoice_number }}\n*Date:* {{ $json.invoice_date }}\n*Total:* ${{ $json.total_amount }}\n*Due:* {{ $('IF Valid?').item.json.invoice_data.due_date || 'N/A' }}\n\n_Processed at {{ $json.processed_at }}_",
+        "otherOptions": {}
+      },
+      "id": "notify-success",
+      "name": "Notify Success (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1740,
+        -100
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Flagged Invoices"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "vendor_name": "={{ $json.invoice_data.vendor_name }}",
+            "invoice_number": "={{ $json.invoice_data.invoice_number }}",
+            "invoice_date": "={{ $json.invoice_data.invoice_date }}",
+            "total_amount": "={{ $json.invoice_data.total_amount }}",
+            "error_count": "={{ $json.error_count }}",
+            "errors": "={{ $json.validation_errors.map(e => e.message).join('; ') }}",
+            "validation_status": "={{ $json.validation_status }}",
+            "processed_at": "={{ $json.processed_at }}",
+            "email_subject": "={{ $json.email_subject }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "log-flagged-invoice",
+      "name": "Flag for Review (Database)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1520,
+        100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#invoices-review",
+        "text": "=⚠️ *Invoice Needs Review*\n\n*Vendor:* {{ $json.vendor_name }}\n*Invoice #:* {{ $json.invoice_number }}\n*Total:* ${{ $json.total_amount }}\n\n*Validation Errors ({{ $json.error_count }}):*\n{{ $json.errors }}\n\n_Please review this invoice manually._",
+        "otherOptions": {}
+      },
+      "id": "notify-errors",
+      "name": "Notify Errors (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1740,
+        100
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger - Watch for Invoices": {
+      "main": [
+        [
+          {
+            "node": "Get Invoice Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Invoice Attachment": {
+      "main": [
+        [
+          {
+            "node": "Rename Binary to data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rename Binary to data": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Invoice Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Invoice Data": {
+      "main": [
+        [
+          {
+            "node": "Validate Line Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Line Items": {
+      "main": [
+        [
+          {
+            "node": "IF Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Valid?": {
+      "main": [
+        [
+          {
+            "node": "Log to Database (Valid)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Flag for Review (Database)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Database (Valid)": {
+      "main": [
+        [
+          {
+            "node": "Notify Success (Slack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag for Review (Database)": {
+      "main": [
+        [
+          {
+            "node": "Notify Errors (Slack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateId": "pdfvector-w1-invoice-validation",
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "name": "Invoice Processing",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "PDF Vector",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
