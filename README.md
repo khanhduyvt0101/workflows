@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-12_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-13_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 12 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 13 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -244,6 +244,75 @@ Create a spreadsheet with two tabs:
 - Connect to your ERP system instead of Google Sheets
 - Add multi-level approval routing based on invoice amounts
 - Include duplicate invoice detection
+
+</details>
+
+<details>
+<summary><strong>💰 Invoice Processing with Validation</strong> - Validate line item math and flag errors | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-validation.json">⬇️ Download</a></summary>
+
+Automated invoice processing with rigorous mathematical validation. Extracts invoice data using AI, validates that line item calculations are correct (quantity × price = amount), checks subtotal and total math, and routes invoices to separate sheets based on validity with Slack notifications.
+
+#### Who is this for?
+- Finance teams needing strict invoice validation
+- AP departments catching calculation errors before payment
+- Auditors requiring mathematical verification
+- Businesses processing invoices from multiple vendors with varying quality
+
+#### How it works
+1. **Gmail Trigger** watches your inbox for new emails with PDF attachments every minute
+2. **Get Invoice Attachment** downloads the PDF from the email
+3. **Rename Binary to data** prepares the attachment for PDF Vector processing
+4. **PDF Vector - Extract Invoice Data** uses AI to extract all invoice fields: vendor info, invoice number, dates, line items with quantity/price/amount, subtotal, tax, and total
+5. **Validate Line Items** performs comprehensive math validation:
+   - Checks each line item: quantity × unit_price = amount
+   - Verifies line items sum equals subtotal
+   - Confirms subtotal + tax = total
+   - Validates required fields are present
+6. **IF Valid?** routes invoices based on validation results
+7. **Log to Database (Valid)** saves clean invoices to "Invoices" sheet
+8. **Flag for Review (Database)** saves problematic invoices to "Flagged Invoices" sheet with error details
+9. **Slack Notifications** sends success message to #invoices or error alert to #invoices-review
+
+#### Services used
+- Gmail (email monitoring)
+- PDF Vector (AI extraction)
+- Google Sheets (invoice logging)
+- Slack (notifications)
+
+#### Validation checks performed
+| Check | Description | Tolerance |
+|-------|-------------|-----------|
+| Line item math | quantity × unit_price = amount | ±$0.01 |
+| Subtotal verification | Sum of line items = subtotal | ±$0.01 |
+| Total calculation | subtotal + tax = total | ±$0.01 |
+| Required fields | invoice_number, vendor_name, total_amount | - |
+
+#### Google Sheets structure
+Create a spreadsheet with two tabs:
+
+**Tab 1: Invoices** (valid invoices)
+| vendor_name | vendor_address | invoice_number | invoice_date | due_date | payment_terms | subtotal | tax_amount | total_amount | items_summary | validation_status | processed_at |
+|-------------|----------------|----------------|--------------|----------|---------------|----------|------------|--------------|---------------|-------------------|--------------|
+
+**Tab 2: Flagged Invoices** (needs review)
+| vendor_name | invoice_number | invoice_date | total_amount | error_count | errors | validation_status | processed_at | email_subject |
+|-------------|----------------|--------------|--------------|-------------|--------|-------------------|--------------|---------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Configure Gmail OAuth2 credentials
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create the Google Sheet with 'Invoices' and 'Flagged Invoices' tabs
+5. Configure Google Sheets credentials and set the spreadsheet ID
+6. Set up Slack credentials and configure channels (#invoices and #invoices-review)
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust tolerance thresholds for different rounding policies
+- Add additional validation rules (e.g., maximum invoice amount)
+- Connect to accounting software instead of Google Sheets
+- Add email notifications alongside Slack
+- Include vendor whitelist validation
 
 </details>
 
