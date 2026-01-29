@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-15_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-16_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 15 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 16 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -528,6 +528,77 @@ Automatically analyze bank statements with AI-powered transaction extraction, sp
 - Add email notifications alongside Slack
 - Create weekly spending alerts instead of monthly summaries
 - Add budget limit warnings for specific categories
+
+</details>
+
+<details>
+<summary><strong>🧾 Receipt Scanner & Tax Organizer</strong> - Scan receipts and build tax deduction tracker | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/receipt-scanner-tax-organizer.json">⬇️ Download</a></summary>
+
+Automatically process receipts with AI-powered extraction, identify tax-deductible expenses, and organize by quarter/year. Perfect for freelancers and small business owners preparing for tax season.
+
+#### Who is this for?
+- Freelancers tracking business expenses
+- Small business owners managing receipts
+- Self-employed individuals preparing for taxes
+- Anyone needing organized tax deduction records
+
+#### How it works
+1. **Google Drive Trigger** monitors your receipts folder for new uploads
+2. **Download file** retrieves the receipt from Google Drive
+3. **PDF Vector Extract** uses AI to extract receipt details: store name, date, items with prices, subtotal, tax, total, payment method, and determines if tax-deductible
+4. **Process Receipt** generates unique receipt ID, calculates tax year and quarter, formats items for storage
+5. **Log to Receipt Database** appends all receipt data to Google Sheets
+6. **Tax Deductible?** checks if the receipt is marked as tax-deductible
+7. **Add to Tax Deductions** (deductible path) logs to separate Tax Deductions sheet for easy tax prep
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI extraction)
+- Google Sheets (receipt database & tax deductions)
+
+#### Tax deduction categories
+- Office Supplies
+- Business Meals
+- Travel
+- Equipment
+- Software
+- Professional Services
+- Marketing
+- Not Deductible
+
+#### Google Sheets structure
+Create a spreadsheet with two tabs:
+
+**Tab 1: Receipt Database**
+| Receipt ID | Date | Store | Items | Subtotal | Tax | Total | Payment | Tax Deductible | Deduction Category | Tax Year | Quarter |
+|------------|------|-------|-------|----------|-----|-------|---------|----------------|-------------------|----------|---------|
+
+**Tab 2: Tax Deductions**
+| Receipt ID | Date | Vendor | Amount | Category | Tax Year | Quarter |
+|------------|------|--------|--------|----------|----------|---------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Receipts" folder in Google Drive and configure the trigger with the folder ID
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with 'Receipt Database' and 'Tax Deductions' tabs
+5. Configure Google Sheets credentials and set the spreadsheet ID in both Sheets nodes
+6. Activate the workflow
+
+#### Key features
+- Unique receipt ID generation (RCP-XXXXX format)
+- Automatic tax year and quarter calculation
+- AI-powered tax deductibility assessment
+- Categorized deduction tracking
+- Organized by tax year for easy annual reporting
+
+#### Customizing this workflow
+- Add Slack notifications when receipts are processed
+- Integrate with accounting software (QuickBooks, FreshBooks)
+- Add monthly/quarterly summary reports
+- Include receipt image storage with Google Drive links
+- Add duplicate receipt detection
+- Create annual tax deduction exports
 
 </details>
 
