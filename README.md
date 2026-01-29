@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-18_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-19_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 18 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 19 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1024,6 +1024,91 @@ JavaScript, Python, React, Node.js, SQL, API, Git, AWS, Docker
 - Add job requisition matching
 - Include automated candidate emails
 - Connect to your ATS (Applicant Tracking System)
+
+</details>
+
+<details>
+<summary><strong>📋 Job Application Processor & Candidate Scorer</strong> - Process applications with AI scoring and auto-replies | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/job-application-processor.json">⬇️ Download</a></summary>
+
+End-to-end job application processing with AI-powered resume parsing, 100-point candidate scoring, automatic ATS logging, candidate auto-replies, and HR team notifications via Slack. Perfect for streamlining your recruiting pipeline.
+
+#### Who is this for?
+- HR departments processing job applications
+- Recruiters managing candidate pipelines
+- Hiring managers screening applicants
+- Staffing agencies handling high volumes of applications
+
+#### How it works
+1. **Gmail Trigger** monitors inbox for job application emails every minute
+2. **Get a message** downloads the email with resume attachment
+3. **Prepare Binary File** normalizes attachment format for PDF Vector processing
+4. **PDF Vector - Parse Resume** uses AI to extract comprehensive candidate data:
+   - Full name, email, phone, location
+   - LinkedIn profile URL
+   - Years of experience and current title
+   - Work history with companies, titles, dates, and achievements
+   - Education with degrees and institutions
+   - Technical skills, soft skills, certifications
+   - Languages spoken
+5. **Score Candidate** calculates 100-point score:
+   - Experience (40 pts): 7+ yrs = 40, 5-6 yrs = 35, 3-4 yrs = 25, 1-2 yrs = 15, <1 yr = 5
+   - Education (30 pts): PhD = 30, Masters = 25, Bachelors = 20, Other = 10
+   - Skills Match (30 pts): 3 points per matched required skill
+6. **Add to ATS** logs candidate data to Google Sheets with score and status
+7. **Send Auto-Reply** sends professional acknowledgment email to candidate
+8. **Notify HR Team** posts Slack notification with candidate summary and score
+
+#### Services used
+- Gmail (email monitoring & auto-replies)
+- PDF Vector (AI resume parsing)
+- Google Sheets (ATS database)
+- Slack (HR notifications)
+
+#### Scoring breakdown (100 points total)
+| Component | Max Points | Criteria |
+|-----------|------------|----------|
+| Experience | 40 | Years of professional experience |
+| Education | 30 | Highest degree achieved |
+| Skills Match | 30 | Technical skills matching job requirements |
+
+#### Default required skills (customizable)
+JavaScript, Python, React, Node.js, SQL, API, Git, AWS, Docker, TypeScript
+
+#### Status assignment
+- **75+ = Schedule Interview** - Strong candidate, prioritize
+- **50-74 = Review Further** - Potential fit, needs evaluation
+- **<50 = Pass** - Not a match for current requirements
+
+#### Google Sheets structure
+| Name | Email | Phone | Location | Current Title | Years Experience | Score | Status | Skills | Skills Matched | Application Date | Processed Date |
+|------|-------|-------|----------|---------------|------------------|-------|--------|--------|----------------|------------------|----------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Configure Gmail OAuth credentials for your job application inbox
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and set the spreadsheet ID
+6. Set up Slack OAuth credentials and select your HR/recruiting channel
+7. Customize required skills in the "Score Candidate" node for your position
+8. Activate the workflow
+
+#### Key features
+- AI-powered resume parsing with structured data extraction
+- Configurable skills matching for different positions
+- Automatic candidate scoring with transparent breakdown
+- Professional auto-reply emails to candidates
+- Real-time Slack notifications for HR team
+- Complete audit trail in Google Sheets ATS
+
+#### Customizing this workflow
+- Modify the required skills list for different job positions
+- Adjust scoring weights in the "Score Candidate" node
+- Add Gmail filters to only process specific subject lines (e.g., "Application for Software Engineer")
+- Connect to your existing ATS instead of Google Sheets
+- Add conditional routing based on score (e.g., high scorers to fast-track channel)
+- Include LinkedIn profile lookup for additional candidate data
+- Add interview scheduling automation for high-scoring candidates
 
 </details>
 
