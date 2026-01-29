@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-14_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-15_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 14 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 15 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -439,6 +439,95 @@ Automatically process expense receipts with AI-powered data extraction, smart ca
 - Add email notifications alongside Slack
 - Connect to your expense management system (Expensify, Concur, etc.)
 - Add manager-specific approval routing based on department
+
+</details>
+
+<details>
+<summary><strong>🏦 Bank Statement Analyzer</strong> - Auto-categorize spending and track savings rate | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bank-statement-analyzer.json">⬇️ Download</a></summary>
+
+Automatically analyze bank statements with AI-powered transaction extraction, spending categorization, savings rate calculation, and monthly summary reports. Perfect for personal finance tracking and budget analysis.
+
+#### Who is this for?
+- Individuals tracking personal finances
+- Small business owners monitoring expenses
+- Freelancers managing business accounts
+- Anyone wanting automated budget insights
+
+#### How it works
+1. **Gmail Trigger** monitors inbox for bank statement emails every minute
+2. **Get Statement Email** downloads the PDF attachment
+3. **PDF Vector Extract** uses AI to extract all transactions with:
+   - Date, description, amount (positive for deposits, negative for withdrawals)
+   - Running balance for each transaction
+   - Smart categorization based on merchant names
+4. **Analyze Spending** calculates:
+   - Total income and spending
+   - Savings rate percentage
+   - Spending breakdown by category
+   - Identifies large transactions (>$500)
+5. **Log Monthly Summary** appends key metrics to Google Sheets
+6. **Send Analysis Report** posts comprehensive summary to Slack
+
+#### Services used
+- Gmail (email monitoring)
+- PDF Vector (AI extraction)
+- Google Sheets (summary logging)
+- Slack (monthly reports)
+
+#### Spending categories
+- Income
+- Utilities
+- Groceries
+- Dining
+- Shopping
+- Transport
+- Travel
+- Subscriptions
+- Healthcare
+- Entertainment
+- Transfer
+- Other
+
+#### Category rules
+| Category | Merchants/Keywords |
+|----------|-------------------|
+| Travel | Airlines (DELTA, UNITED, AMERICAN), Hotels (HILTON, MARRIOTT, HYATT), Airbnb, Booking.com |
+| Transport | UBER, LYFT, Gas stations (SHELL, CHEVRON, BP), Parking |
+| Subscriptions | NETFLIX, SPOTIFY, ADOBE, APPLE.COM, recurring services |
+| Groceries | WHOLE FOODS, TRADER JOE'S, COSTCO, PUBLIX, supermarkets |
+| Dining | Restaurants, STARBUCKS, MCDONALD'S, DOORDASH, UBER EATS |
+| Shopping | AMAZON, TARGET, BEST BUY, WALMART, retail stores |
+| Utilities | Electric, gas, water, AT&T, COMCAST, VERIZON |
+| Healthcare | CVS, WALGREENS, doctors, PLANET FITNESS |
+| Entertainment | AMC, concerts, streaming, games |
+
+#### Google Sheets structure
+| Period Start | Period End | Opening Balance | Closing Balance | Total Income | Total Spending | Savings Rate % | Transaction Count | Processed Date |
+|--------------|------------|-----------------|-----------------|--------------|----------------|----------------|-------------------|----------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Configure Gmail OAuth credentials for your bank statement inbox
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the "Monthly Summaries" tab and columns listed above
+5. Configure Google Sheets credentials and spreadsheet ID
+6. Set up Slack credentials and select your finance notification channel
+7. Activate the workflow
+
+#### Slack report includes
+- Statement period dates
+- Total income and spending
+- Savings rate percentage
+- Spending breakdown by category with percentages
+- List of large transactions (>$500)
+
+#### Customizing this workflow
+- Adjust the $500 threshold for large transaction alerts
+- Add more merchant keywords for better categorization
+- Connect to your budgeting app (YNAB, Mint) instead of Google Sheets
+- Add email notifications alongside Slack
+- Create weekly spending alerts instead of monthly summaries
+- Add budget limit warnings for specific categories
 
 </details>
 

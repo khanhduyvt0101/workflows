@@ -1,0 +1,366 @@
+{
+  "name": "Bank Statement Analyzer & Budget Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🏦 Bank Statement Analyzer\n\n**What this workflow does:**\n1. Monitors Gmail for bank statements\n2. Extracts all transactions\n3. Categorizes spending\n4. Calculates savings rate\n5. Identifies large transactions\n6. Sends monthly summary\n\n**Perfect for:**\n- Personal finance tracking\n- Small business bookkeeping\n- Budget analysis",
+        "height": 388,
+        "width": 300
+      },
+      "id": "881d092b-c4f8-46c2-aec3-1a7fdd012d47",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        704,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Spending Categories\n\n- Income\n- Utilities\n- Groceries\n- Dining\n- Shopping\n- Transport\n- Subscriptions\n- Healthcare\n- Entertainment\n- Transfers",
+        "height": 296,
+        "width": 344
+      },
+      "id": "c2351f31-8359-405b-874e-815c9f87d98d",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false
+        }
+      },
+      "id": "d90379fe-717d-458e-90da-77fda205fc61",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        224
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "Monitor for bank statement emails"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "attachment_0",
+        "prompt": "Extract all transactions from this bank statement including date, description, amount (positive for deposits, negative for withdrawals), running balance, and categorize each transaction.\n\nCategory rules:\n- Travel: airlines (DELTA, UNITED, AMERICAN), hotels (HILTON, MARRIOTT, HYATT), airbnb, booking.com\n- Transport: UBER, LYFT, taxi, gas stations (SHELL, CHEVRON, BP), parking\n- Subscriptions: NETFLIX, SPOTIFY, ADOBE, APPLE.COM, recurring monthly services\n- Groceries: WHOLE FOODS, TRADER JOE'S, COSTCO, PUBLIX, supermarkets\n- Dining: restaurants, STARBUCKS, MCDONALD'S, DOORDASH, UBER EATS\n- Shopping: AMAZON, TARGET, BEST BUY, WALMART, retail stores\n- Utilities: electric, gas, water, internet, phone (AT&T, COMCAST, VERIZON)\n- Healthcare: pharmacy (CVS, WALGREENS), doctors, gym (PLANET FITNESS)\n- Entertainment: movies (AMC), concerts, streaming, games\n- Other: anything that doesn't fit above",
+        "schema": "{\"type\":\"object\",\"properties\":{\"accountNumber\":{\"type\":\"string\"},\"statementPeriod\":{\"type\":\"object\",\"properties\":{\"startDate\":{\"type\":\"string\"},\"endDate\":{\"type\":\"string\"}}},\"openingBalance\":{\"type\":\"number\"},\"closingBalance\":{\"type\":\"number\"},\"totalDeposits\":{\"type\":\"number\"},\"totalWithdrawals\":{\"type\":\"number\"},\"transactions\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"date\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"},\"category\":{\"type\":\"string\",\"enum\":[\"Income\",\"Utilities\",\"Groceries\",\"Dining\",\"Shopping\",\"Transport\",\"Travel\",\"Subscriptions\",\"Healthcare\",\"Entertainment\",\"Transfer\",\"Other\"]},\"balance\":{\"type\":\"number\"}}}}},\"required\":[\"closingBalance\",\"transactions\"],\"additionalProperties\":false}"
+      },
+      "id": "63171083-8064-420a-a76c-87ec0554580f",
+      "name": "PDF Vector - Extract Statement",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        224
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const statement = $input.first().json.data;\n\n// Calculate spending by category\nconst categoryTotals = {};\nlet totalSpending = 0;\nlet totalIncome = 0;\n\nstatement.transactions.forEach(tx => {\n  if (tx.amount < 0) {\n    totalSpending += Math.abs(tx.amount);\n    categoryTotals[tx.category] = (categoryTotals[tx.category] || 0) + Math.abs(tx.amount);\n  } else {\n    totalIncome += tx.amount;\n  }\n});\n\n// Format category breakdown\nconst categoryBreakdown = Object.entries(categoryTotals)\n  .sort((a, b) => b[1] - a[1])\n  .map(([cat, amount]) => `${cat}: $${amount.toFixed(2)} (${((amount/totalSpending)*100).toFixed(1)}%)`)\n  .join('\\n');\n\n// Find unusual transactions (over $500)\nconst largeTransactions = statement.transactions\n  .filter(tx => Math.abs(tx.amount) > 500)\n  .map(tx => `${tx.date}: ${tx.description} - $${tx.amount}`)\n  .join('\\n');\n\nreturn [{\n  json: {\n    ...statement,\n    totalSpending: totalSpending,\n    totalIncome: totalIncome,\n    savingsRate: totalIncome > 0 ? ((totalIncome - totalSpending) / totalIncome * 100).toFixed(1) : 0,\n    categoryTotals: categoryTotals,\n    categoryBreakdown: categoryBreakdown,\n    largeTransactions: largeTransactions || 'None',\n    transactionCount: statement.transactions.length,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "4c5423e8-0f2a-474a-bba5-a87a3e990041",
+      "name": "Analyze Spending",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Monthly Summaries",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Period Start": "={{ $json.statementPeriod.startDate }}",
+            "Period End": "={{ $json.statementPeriod.endDate }}",
+            "Opening Balance": "={{ $json.openingBalance }}",
+            "Closing Balance": "={{ $json.closingBalance }}",
+            "Total Income": "={{ $json.totalIncome }}",
+            "Total Spending": "={{ $json.totalSpending }}",
+            "Savings Rate %": "={{ $json.savingsRate }}",
+            "Transaction Count": "={{ $json.transactionCount }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Period Start",
+              "displayName": "Period Start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Period End",
+              "displayName": "Period End",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Opening Balance",
+              "displayName": "Opening Balance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Closing Balance",
+              "displayName": "Closing Balance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Income",
+              "displayName": "Total Income",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Spending",
+              "displayName": "Total Spending",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Savings Rate %",
+              "displayName": "Savings Rate %",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Transaction Count",
+              "displayName": "Transaction Count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "111872d6-305e-48ac-a2a6-f120a406479f",
+      "name": "Log Monthly Summary",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1792,
+        224
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "text": "=📊 *Monthly Bank Statement Analysis*\n\n*Period:* {{ $('Analyze Spending').item.json.statementPeriod.startDate }} - {{ $('Analyze Spending').item.json.statementPeriod.endDate }}\n\n💰 *Summary*\n• Income: ${{ $('Analyze Spending').item.json.totalIncome.toFixed(2) }}\n• Spending: ${{ $('Analyze Spending').item.json.totalSpending.toFixed(2) }}\n• Savings Rate: {{ $('Analyze Spending').item.json.savingsRate }}%\n\n📈 *Spending by Category*\n{{ $('Analyze Spending').item.json.categoryBreakdown }}\n\n⚠️ *Large Transactions (>$500)*\n{{ $('Analyze Spending').item.json.largeTransactions }}",
+        "otherOptions": {}
+      },
+      "id": "3e8d146a-5598-42a8-a2f3-8b741167155e",
+      "name": "Send Analysis Report",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        2000,
+        224
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1184,
+        224
+      ],
+      "id": "05d46ff9-c8a2-4e6e-862c-a5540b6d5ad9",
+      "name": "Get Statement Email",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Statement Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Statement": {
+      "main": [
+        [
+          {
+            "node": "Analyze Spending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Spending": {
+      "main": [
+        [
+          {
+            "node": "Log Monthly Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Monthly Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Analysis Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Statement Email": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Statement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateId": "pdfvector-bank-statement-analyzer",
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "id": "1",
+      "name": "Personal Finance"
+    },
+    {
+      "id": "2",
+      "name": "Budget Tracking"
+    },
+    {
+      "id": "3",
+      "name": "PDF Vector"
+    },
+    {
+      "id": "4",
+      "name": "Bank Statements"
+    }
+  ]
+}
