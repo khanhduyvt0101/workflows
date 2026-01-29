@@ -1,0 +1,354 @@
+{
+  "name": "W6 - Job Application Processor & Candidate Scorer",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📋 Job Application Processor\n\n**What this workflow does:**\n1. Monitors email for job applications\n2. Downloads attachments (resumes)\n3. Extracts candidate info from resume\n4. Scores candidates based on skills & experience\n5. Logs to ATS spreadsheet\n6. Sends auto-reply to candidates\n7. Notifies HR team via Slack\n\n**Setup Required:**\n1. Gmail credential\n2. PDF Vector credential\n3. Google Sheets credential\n4. Slack credential\n5. Create ATS spreadsheet with columns\n6. Configure required skills in Code node",
+        "height": 380,
+        "width": 320
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🎯 Scoring Logic\n\nCandidates scored on:\n- Years of experience (40%)\n- Education level (30%)\n- Skills match (30%)\n\n**Status Assignment:**\n- Score 75+ → Schedule Interview\n- Score 50-74 → Review Further\n- Score <50 → Pass\n\n**Customize required skills** in the Score Candidate node!",
+        "height": 260,
+        "width": 280
+      },
+      "id": "sticky-scoring",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        704,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Google Sheets Columns\n\nCreate these columns in Row 1:\n\nName | Email | Phone | Location | Current Title | Years Experience | Score | Status | Skills | Skills Matched | Application Date | Processed Date",
+        "height": 160,
+        "width": 320
+      },
+      "id": "sticky-sheets",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false
+        }
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        128,
+        272
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-get",
+      "name": "Get a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        272
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rename attachment_0 to data for PDF Vector compatibility\nconst items = $input.all();\n\nfor (const item of items) {\n  if (item.binary && item.binary.attachment_0) {\n    item.binary.data = item.binary.attachment_0;\n    delete item.binary.attachment_0;\n  }\n}\n\nreturn items;"
+      },
+      "id": "prepare-binary",
+      "name": "Prepare Binary File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract candidate information from this resume:\n\n- Full name\n- Email address\n- Phone number\n- Location (city, state)\n- LinkedIn profile URL if present\n- Total years of professional experience\n- Current or most recent job title\n- Work experience history with company names, titles, dates, and key achievements\n- Education with institution, degree, field of study, and year\n- Technical skills (programming languages, tools, frameworks)\n- Soft skills\n- Certifications\n- Languages spoken",
+        "schema": "{\"type\":\"object\",\"properties\":{\"fullName\":{\"type\":\"string\",\"description\":\"Candidate's full name\"},\"email\":{\"type\":\"string\",\"description\":\"Email address\"},\"phone\":{\"type\":\"string\",\"description\":\"Phone number\"},\"location\":{\"type\":\"string\",\"description\":\"City and state/country\"},\"linkedIn\":{\"type\":\"string\",\"description\":\"LinkedIn profile URL\"},\"yearsOfExperience\":{\"type\":\"number\",\"description\":\"Total years of professional experience\"},\"currentTitle\":{\"type\":\"string\",\"description\":\"Current or most recent job title\"},\"workExperience\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"company\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"startDate\":{\"type\":\"string\"},\"endDate\":{\"type\":\"string\"},\"highlights\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}},\"education\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"institution\":{\"type\":\"string\"},\"degree\":{\"type\":\"string\"},\"field\":{\"type\":\"string\"},\"year\":{\"type\":\"string\"}}}},\"technicalSkills\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Programming languages, tools, frameworks\"},\"softSkills\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"certifications\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"languages\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"fullName\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Parse Resume",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        736,
+        272
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const candidate = $input.first().json.data;\nconst emailData = $('Gmail Trigger').item.json;\n\n// ============================================\n// CUSTOMIZE REQUIRED SKILLS FOR YOUR POSITION\n// ============================================\nconst requiredSkills = [\n  'javascript', 'python', 'react', 'node', 'sql', \n  'api', 'git', 'aws', 'docker', 'typescript'\n];\n\n// ============================================\n// EXPERIENCE SCORING (40 points max)\n// ============================================\nlet expScore = 0;\nconst years = candidate.yearsOfExperience || 0;\nif (years >= 7) expScore = 40;\nelse if (years >= 5) expScore = 35;\nelse if (years >= 3) expScore = 25;\nelse if (years >= 1) expScore = 15;\nelse expScore = 5;\n\n// ============================================\n// EDUCATION SCORING (30 points max)\n// ============================================\nlet eduScore = 10; // Base score\nif (candidate.education && candidate.education.length > 0) {\n  const degrees = candidate.education.map(e => (e.degree || '').toLowerCase());\n  if (degrees.some(d => d.includes('phd') || d.includes('doctorate'))) eduScore = 30;\n  else if (degrees.some(d => d.includes('master') || d.includes('mba'))) eduScore = 25;\n  else if (degrees.some(d => d.includes('bachelor'))) eduScore = 20;\n}\n\n// ============================================\n// SKILLS MATCHING (30 points max)\n// ============================================\nlet skillsMatched = 0;\nconst candidateSkills = (candidate.technicalSkills || []).map(s => s.toLowerCase());\nrequiredSkills.forEach(skill => {\n  if (candidateSkills.some(cs => cs.includes(skill))) skillsMatched++;\n});\nconst skillsScore = Math.min(skillsMatched * 3, 30);\n\n// ============================================\n// TOTAL SCORE & STATUS\n// ============================================\nconst totalScore = expScore + eduScore + skillsScore;\n\nlet status = 'Pass';\nif (totalScore >= 75) status = 'Schedule Interview';\nelse if (totalScore >= 50) status = 'Review Further';\n\nreturn [{\n  json: {\n    ...candidate,\n    applicantEmail: emailData?.from?.value?.[0]?.address || candidate.email || 'unknown',\n    applicationDate: emailData?.date || new Date().toISOString(),\n    subject: emailData?.subject || 'Manual Test',\n    score: totalScore,\n    expScore: expScore,\n    eduScore: eduScore,\n    skillsScore: skillsScore,\n    skillsMatched: skillsMatched,\n    status: status,\n    skillsList: candidate.technicalSkills ? candidate.technicalSkills.join(', ') : '',\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "score-candidate",
+      "name": "Score Candidate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.fullName }}",
+            "Email": "={{ $json.email || $json.applicantEmail }}",
+            "Phone": "={{ $json.phone || 'N/A' }}",
+            "Location": "={{ $json.location || 'N/A' }}",
+            "Current Title": "={{ $json.currentTitle || 'N/A' }}",
+            "Years Experience": "={{ $json.yearsOfExperience || 0 }}",
+            "Score": "={{ $json.score }}/100",
+            "Status": "={{ $json.status }}",
+            "Skills": "={{ $json.skillsList }}",
+            "Skills Matched": "={{ $json.skillsMatched }}/10",
+            "Application Date": "={{ $json.applicationDate }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Add to ATS",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1152,
+        272
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Score Candidate').item.json.email || $('Score Candidate').item.json.applicantEmail }}",
+        "subject": "Thank you for your application",
+        "emailType": "text",
+        "message": "=Dear {{ $('Score Candidate').item.json.fullName }},\n\nThank you for your interest in joining our team. We have received your application and our team is currently reviewing it.\n\nWe will be in touch within the next few business days regarding next steps.\n\nBest regards,\nThe Hiring Team",
+        "options": {}
+      },
+      "id": "gmail-reply",
+      "name": "Send Auto-Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        272
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=📥 *New Application Received*\n\n*Candidate:* {{ $('Score Candidate').item.json.fullName }}\n*Current Role:* {{ $('Score Candidate').item.json.currentTitle || 'N/A' }}\n*Experience:* {{ $('Score Candidate').item.json.yearsOfExperience || 0 }} years\n*Score:* {{ $('Score Candidate').item.json.score }}/100\n*Status:* {{ $('Score Candidate').item.json.status }}\n\n*Top Skills:* {{ $('Score Candidate').item.json.skillsList.split(', ').slice(0, 5).join(', ') || 'N/A' }}",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Notify HR Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1536,
+        272
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "Prepare Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Binary File": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Parse Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Parse Resume": {
+      "main": [
+        [
+          {
+            "node": "Score Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Candidate": {
+      "main": [
+        [
+          {
+            "node": "Add to ATS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to ATS": {
+      "main": [
+        [
+          {
+            "node": "Send Auto-Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Auto-Reply": {
+      "main": [
+        [
+          {
+            "node": "Notify HR Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "HR"
+    },
+    {
+      "name": "Recruiting"
+    },
+    {
+      "name": "Resume Parser"
+    },
+    {
+      "name": "ATS"
+    }
+  ],
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
