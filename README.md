@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-17_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-18_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 17 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 18 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1080,6 +1080,89 @@ Automatically extract Bill of Lading data from email attachments, log to trackin
 - Add delivery confirmation workflows
 - Connect to your TMS (Transportation Management System)
 - Create customer-facing tracking portal
+
+</details>
+
+<details>
+<summary><strong>🎓 Research Paper Analyzer & Literature Review</strong> - Extract metadata, find related papers, build citation database | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/research-paper-analyzer.json">⬇️ Download</a></summary>
+
+Automatically analyze research papers with AI-powered extraction of metadata, findings, and conclusions. Searches academic databases for related papers and builds a comprehensive literature database with auto-generated citations.
+
+#### Who is this for?
+- PhD students conducting literature reviews
+- Researchers tracking papers in their field
+- Academic writers managing references
+- Anyone building a knowledge base from research papers
+
+#### How it works
+1. **Google Drive Trigger** monitors your research papers folder for new PDF uploads
+2. **Download Paper** retrieves the PDF from Google Drive
+3. **PDF Vector - Extract Paper Info** uses AI to extract comprehensive metadata:
+   - Title, authors, journal, publication year, DOI
+   - Full abstract and keywords
+   - Research field and study type (Experimental, Review, Meta-analysis, etc.)
+   - Sample size, methodology summary
+   - Main findings, conclusions, limitations
+   - Future research suggestions
+4. **PDF Vector - Find Related Papers** searches Semantic Scholar and PubMed using paper keywords
+5. **Compile Analysis** formats all data:
+   - Generates APA-style citation
+   - Creates author list and keyword summary
+   - Formats related papers with citation counts
+   - Prepares Notion summary content
+6. **Add to Literature Database** logs comprehensive paper data to Google Sheets
+7. **Create Notion Summary** creates a new page with paper summary for easy reference
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI extraction & academic search)
+- Google Sheets (literature database)
+- Notion (paper summaries)
+
+#### Study types detected
+- Experimental
+- Observational
+- Review
+- Meta-analysis
+- Case Study
+- Qualitative
+- Mixed Methods
+- Theoretical
+
+#### Academic databases searched
+- Semantic Scholar
+- PubMed
+
+#### Google Sheets structure
+| Title | Authors | Year | Journal | DOI | Research Field | Study Type | Sample Size | Keywords | Abstract | Conclusions | Citation | Related Papers Found | File Link | Added Date |
+|-------|---------|------|---------|-----|----------------|------------|-------------|----------|----------|-------------|----------|---------------------|-----------|------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Research Papers" folder in Google Drive and configure the trigger with the folder ID
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and spreadsheet ID
+6. Create a parent page in Notion for paper summaries
+7. Configure Notion credentials and set the parent page ID
+8. Activate the workflow
+
+#### Key features
+- Comprehensive metadata extraction (15+ fields)
+- Automatic study type classification
+- Related paper discovery across multiple databases
+- APA-style citation generation
+- Notion integration for quick paper summaries
+- Direct links to original papers in Google Drive
+
+#### Customizing this workflow
+- Add more academic databases (arXiv, Google Scholar via custom nodes)
+- Create citation network visualizations
+- Add Slack notifications for high-impact related papers
+- Integrate with reference managers (Zotero, Mendeley)
+- Add duplicate paper detection
+- Create weekly literature digest reports
+- Tag papers by research theme or project
 
 </details>
 

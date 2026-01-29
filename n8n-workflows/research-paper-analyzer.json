@@ -1,0 +1,351 @@
+{
+  "name": "W5 - Research Paper Analyzer",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Research Paper Analyzer\n\n**What this workflow does:**\n1. Monitors Google Drive for new papers\n2. Extracts metadata & findings\n3. Searches related papers (Semantic Scholar, PubMed)\n4. Generates citations\n5. Logs to Google Sheets\n6. Creates Notion summary page\n\n**Perfect for:**\n- PhD students\n- Researchers\n- Academic writers\n- Literature reviews\n\n**Setup Required:**\n1. Google Drive credential\n2. PDF Vector credential\n3. Google Sheets credential\n4. Notion credential\n5. Create Drive folder for papers\n6. Create Google Sheets with columns\n7. Create Notion parent page",
+        "height": 420,
+        "width": 320
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Google Sheets Columns\n\nCreate these columns in Row 1:\n\nTitle | Authors | Year | Journal | DOI | Research Field | Study Type | Sample Size | Keywords | Abstract | Conclusions | Citation | Related Papers Found | File Link | Added Date\n\n**Tip:** Copy the tab-separated text above and paste into cell A1",
+        "height": 240,
+        "width": 320
+      },
+      "id": "sticky-sheets",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Academic Search\n\nSearches across:\n- Semantic Scholar\n- PubMed\n\nUses paper keywords to find\nrelated research automatically!\n\nReturns up to 10 related papers\nwith citation counts.",
+        "height": 200,
+        "width": 220
+      },
+      "id": "sticky-databases",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        820,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        420,
+        320
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Paper",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        620,
+        320
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract comprehensive research paper metadata and content.\n\nExtract:\n- Title (exact as written)\n- All authors (full names)\n- Journal name\n- Publication year\n- DOI if present\n- Full abstract\n- Keywords/key terms\n- Research field/discipline\n- Study type (Experimental, Observational, Review, Meta-analysis, Case Study, Qualitative, Mixed Methods, or Theoretical)\n- Sample size if applicable\n- Methodology summary\n- Main findings (list key results)\n- Conclusions\n- Limitations mentioned\n- Future research suggestions",
+        "schema": "{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"description\":\"Full title of the research paper\"},\"authors\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"List of all author names\"},\"journal\":{\"type\":\"string\",\"description\":\"Journal or publication name\"},\"publicationYear\":{\"type\":\"number\",\"description\":\"Year of publication\"},\"doi\":{\"type\":\"string\",\"description\":\"Digital Object Identifier if present\"},\"abstract\":{\"type\":\"string\",\"description\":\"Full abstract text\"},\"keywords\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Keywords or key terms\"},\"researchField\":{\"type\":\"string\",\"description\":\"Research field or discipline\"},\"studyType\":{\"type\":\"string\",\"enum\":[\"Experimental\",\"Observational\",\"Review\",\"Meta-analysis\",\"Case Study\",\"Qualitative\",\"Mixed Methods\",\"Theoretical\"],\"description\":\"Type of research study\"},\"sampleSize\":{\"type\":\"number\",\"description\":\"Sample size if applicable\"},\"methodology\":{\"type\":\"string\",\"description\":\"Brief methodology description\"},\"mainFindings\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"List of main findings or results\"},\"conclusions\":{\"type\":\"string\",\"description\":\"Main conclusions of the study\"},\"limitations\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Study limitations mentioned\"},\"futureResearch\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Suggested future research directions\"}},\"required\":[\"title\",\"abstract\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Paper Info",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        820,
+        320
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "academic",
+        "operation": "search",
+        "query": "={{ $json.data.keywords ? $json.data.keywords.slice(0, 3).join(' ') : $json.data.title.split(' ').slice(0, 5).join(' ') }}",
+        "providers": [
+          "semantic-scholar",
+          "pubmed"
+        ],
+        "limit": 10,
+        "offset": 0
+      },
+      "id": "pdfvector-search",
+      "name": "PDF Vector - Find Related Papers",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        320
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const paper = $('PDF Vector - Extract Paper Info').item.json.data;\nconst relatedPapers = $input.first().json.results || [];\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Format authors\nconst authorsList = paper.authors ? paper.authors.join(', ') : 'Unknown';\n\n// Format findings\nconst findingsList = paper.mainFindings \n  ? paper.mainFindings.map((f, i) => `${i + 1}. ${f}`).join('\\n') \n  : 'Not extracted';\n\n// Format limitations\nconst limitationsList = paper.limitations \n  ? paper.limitations.join('; ') \n  : 'Not specified';\n\n// Format keywords\nconst keywordsList = paper.keywords \n  ? paper.keywords.join(', ') \n  : 'Not specified';\n\n// Format related papers\nconst relatedList = relatedPapers.slice(0, 5).map(p => \n  `• ${p.title} (${p.year || 'N/A'}) - ${p.citationCount || 0} citations`\n).join('\\n') || 'No related papers found';\n\n// Generate APA-style citation\nconst citation = `${authorsList} (${paper.publicationYear || 'n.d.'}). ${paper.title}. ${paper.journal || 'Unknown Journal'}${paper.doi ? `. https://doi.org/${paper.doi}` : ''}`;\n\n// Create summary for Notion (truncated to avoid 2000 char limit)\nconst abstractShort = paper.abstract && paper.abstract.length > 800 \n  ? paper.abstract.substring(0, 800) + '...' \n  : paper.abstract;\n\nconst notionSummary = `Authors: ${authorsList}\\nYear: ${paper.publicationYear || 'N/A'}\\nJournal: ${paper.journal || 'N/A'}\\n\\n${abstractShort}\\n\\n${paper.conclusions || ''}`;\n\nreturn [{\n  json: {\n    ...paper,\n    authorsList: authorsList,\n    findingsList: findingsList,\n    limitationsList: limitationsList,\n    keywordsList: keywordsList,\n    relatedPapers: relatedList,\n    relatedCount: relatedPapers.length,\n    citation: citation,\n    notionSummary: notionSummary,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "compile-analysis",
+      "name": "Compile Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Title": "={{ $json.title }}",
+            "Authors": "={{ $json.authorsList }}",
+            "Year": "={{ $json.publicationYear || 'N/A' }}",
+            "Journal": "={{ $json.journal || 'N/A' }}",
+            "DOI": "={{ $json.doi || 'N/A' }}",
+            "Research Field": "={{ $json.researchField || 'N/A' }}",
+            "Study Type": "={{ $json.studyType || 'N/A' }}",
+            "Sample Size": "={{ $json.sampleSize || 'N/A' }}",
+            "Keywords": "={{ $json.keywordsList }}",
+            "Abstract": "={{ $json.abstract }}",
+            "Conclusions": "={{ $json.conclusions || 'N/A' }}",
+            "Citation": "={{ $json.citation }}",
+            "Related Papers Found": "={{ $json.relatedCount }}",
+            "File Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Add to Literature Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1420,
+        320
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "page",
+        "operation": "create",
+        "pageId": {
+          "__rl": true,
+          "value": "YOUR_NOTION_PAGE_ID",
+          "mode": "id"
+        },
+        "title": "={{ $json.title }}",
+        "contentUi": {
+          "contentValues": [
+            {
+              "type": "text",
+              "text": "={{ $json.notionSummary }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notion-page",
+      "name": "Create Notion Summary",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1620,
+        320
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_NOTION_CREDENTIAL_ID",
+          "name": "Notion Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Paper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Paper": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Paper Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Paper Info": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Find Related Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Find Related Papers": {
+      "main": [
+        [
+          {
+            "node": "Compile Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Analysis": {
+      "main": [
+        [
+          {
+            "node": "Add to Literature Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Literature Database": {
+      "main": [
+        [
+          {
+            "node": "Create Notion Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "Research"
+    },
+    {
+      "name": "Academic"
+    },
+    {
+      "name": "Notion"
+    },
+    {
+      "name": "Literature Review"
+    }
+  ],
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
