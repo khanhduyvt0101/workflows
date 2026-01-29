@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-13_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-14_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 13 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 14 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -373,6 +373,72 @@ Tax_Documents/
 - Send notifications when documents are filed
 - Create annual summary reports
 - Add duplicate document detection
+
+</details>
+
+<details>
+<summary><strong>💳 Expense Report Processor</strong> - Auto-categorize expenses with AI and route for approval | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/expense-report-processor.json">⬇️ Download</a></summary>
+
+Automatically process expense receipts with AI-powered data extraction, smart categorization based on merchant names, and intelligent approval routing for high-value expenses. Perfect for finance teams managing employee expenses.
+
+#### Who is this for?
+- Finance teams processing expense reports
+- Employees submitting receipts for reimbursement
+- Small businesses tracking company spending
+- Managers needing visibility into team expenses
+
+#### How it works
+1. **Google Drive Trigger** monitors your "Expenses" folder for new receipt uploads
+2. **Download Expense Document** retrieves the PDF/image from Google Drive
+3. **PDF Vector Extract** uses AI to extract expense details: date, merchant, amount, category, payment method, tax, and line items
+4. **Process & Categorize** auto-categorizes based on merchant keywords:
+   - Travel: Uber, Lyft, airlines, hotels
+   - Meals: restaurants, cafes, DoorDash
+   - Office Supplies: Amazon, Staples, office stores
+   - Software: SaaS, subscriptions
+   - Also flags expenses >$500 for approval
+5. **Log to Expense Tracker** appends all data to Google Sheets with receipt link
+6. **Needs Approval?** routes based on amount threshold
+7. **Request Approval** (>$500) sends Slack message with expense details and receipt link
+8. **Confirm Logged** (≤$500) sends Slack confirmation of logged expense
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI extraction)
+- Google Sheets (expense tracking)
+- Slack (notifications & approvals)
+
+#### Expense categories
+- Travel
+- Meals
+- Office Supplies
+- Software
+- Equipment
+- Marketing
+- Professional Services
+- Utilities
+- Other
+
+#### Google Sheets structure
+| Date | Merchant | Category | Amount | Currency | Tax | Payment Method | Description | Requires Approval | Receipt Link | Processed Date |
+|------|----------|----------|--------|----------|-----|----------------|-------------|-------------------|--------------|----------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create an "Expenses" folder in Google Drive and configure the trigger
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and spreadsheet ID
+6. Set up Slack credentials and select your expense notification channel
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the $500 approval threshold in the "Process & Categorize" node
+- Add more merchant keywords for better auto-categorization
+- Include additional expense categories
+- Add email notifications alongside Slack
+- Connect to your expense management system (Expensify, Concur, etc.)
+- Add manager-specific approval routing based on department
 
 </details>
 
