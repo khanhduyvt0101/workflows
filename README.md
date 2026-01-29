@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-16_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-17_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 16 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 17 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -752,6 +752,97 @@ Automatically analyze NDA documents for compliance with required clauses, calcul
 - Modify risk scoring thresholds
 - Include automatic legal team assignment
 - Add expiration reminder notifications
+
+</details>
+
+<details>
+<summary><strong>📝 AI Contract Review & Risk Analysis</strong> - Analyze contracts for risks and key terms | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/contract-review-risk-analysis.json">⬇️ Download</a></summary>
+
+Automatically review contracts with AI-powered extraction of key terms, risk identification, and executive summary generation. Perfect for legal teams and business operations needing to streamline contract review processes.
+
+#### Who is this for?
+- Legal teams reviewing contracts
+- Business operations managing vendor agreements
+- Procurement departments evaluating supplier contracts
+- Sales operations reviewing customer contracts
+
+#### How it works
+1. **Google Drive Trigger** monitors your contracts folder for new uploads
+2. **Download Contract** retrieves the PDF from Google Drive
+3. **PDF Vector - Analyze Contract** uses AI to extract structured data:
+   - Contract type (Service Agreement, NDA, Lease, etc.)
+   - Parties involved with roles
+   - Effective and expiration dates
+   - Contract value and payment terms
+   - Auto-renewal and termination clauses
+   - Liability limitations and indemnification
+   - Risk flags with severity levels (High/Medium/Low)
+4. **PDF Vector - Executive Summary** generates a brief summary with top concerns and overall risk rating
+5. **Compile Review** aggregates all data, counts risks by severity, and determines review status
+6. **Log Contract Review** appends comprehensive analysis to Google Sheets
+7. **Send Review Report** posts detailed Slack notification with:
+   - Contract details and parties
+   - Executive summary
+   - Risk assessment counts
+   - List of identified risks
+   - Review status recommendation
+   - Direct link to contract
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI extraction & analysis)
+- Google Sheets (contract tracking)
+- Slack (review notifications)
+
+#### Risk severity levels
+- **High** - Requires legal review before signing
+- **Medium** - Review recommended
+- **Low** - Ready for signature
+
+#### Risk flags detected
+- Unusual liability clauses
+- Missing standard protections
+- One-sided indemnification
+- Unfavorable termination terms
+- Auto-renewal traps
+- Non-compete restrictions
+- Confidentiality concerns
+
+#### Contract types supported
+- Service Agreements
+- Employment Contracts
+- NDAs
+- Lease Agreements
+- Sales Contracts
+- Partnership Agreements
+- License Agreements
+
+#### Google Sheets structure
+| File Name | Contract Type | Parties | Effective Date | Expiration Date | Value | Auto Renewal | Termination Notice | High Risks | Medium Risks | Review Status | Contract Link | Reviewed Date |
+|-----------|---------------|---------|----------------|-----------------|-------|--------------|-------------------|------------|--------------|---------------|---------------|---------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Contracts" folder in Google Drive and configure the trigger with the folder ID
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and spreadsheet ID
+6. Set up Slack OAuth credentials and select your #contract-reviews channel
+7. Activate the workflow
+
+#### Review status logic
+- **Requires Legal Review** - Any high-risk flags detected
+- **Review Recommended** - 2 or more medium-risk flags
+- **Ready for Signature** - Low risk, standard terms
+
+#### Customizing this workflow
+- Add additional contract types to the extraction schema
+- Modify risk assessment criteria in the Compile Review node
+- Route high-risk contracts to specific legal team members
+- Add email notifications alongside Slack
+- Integrate with your CLM (Contract Lifecycle Management) system
+- Add expiration date reminders and renewal tracking
+- Include contract comparison against your standard templates
 
 </details>
 

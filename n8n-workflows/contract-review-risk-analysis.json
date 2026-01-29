@@ -1,0 +1,346 @@
+{
+  "name": "AI Contract Review & Risk Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📝 AI Contract Review\n\n### What this workflow does\n1. Monitors Google Drive for new contracts\n2. Extracts key terms & parties\n3. Identifies risks & red flags\n4. Generates executive summary\n5. Recommends review status\n\n### Setup steps\n1. Create Google Drive folder for contracts\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns (see below)\n4. Connect Slack and set your channel\n5. Update all credential IDs\n\n### Sheet columns\nFile Name, Contract Type, Parties, Effective Date, Expiration Date, Value, Auto Renewal, Termination Notice, High Risks, Medium Risks, Review Status, Contract Link, Reviewed Date\n\n### Perfect for\n- Legal teams\n- Business operations\n- Procurement\n- Sales operations",
+        "height": 480,
+        "width": 364,
+        "color": 5
+      },
+      "id": "064fd578-3a4c-4546-adda-17552d95c334",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⚠️ Risk Severity Levels\n\n**High** - Requires legal review\n**Medium** - Review recommended\n**Low** - Ready for signature\n\nFlags unusual clauses,\nmissing protections,\nand liability concerns.",
+        "height": 220,
+        "width": 400
+      },
+      "id": "f37a145d-45f9-478a-aea4-638bc6683af3",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Contracts"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "5b816d86-63c9-4f0a-8a76-ff5d41b7ea90",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        256,
+        80
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      },
+      "notes": "Watch for new contracts to review"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "65478e53-9d51-43b5-9d5f-cd2aad07e8cb",
+      "name": "Download Contract",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        496,
+        80
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Analyze this contract and extract key terms, parties involved, important dates, payment terms, termination clauses, liability limitations, and identify any potential risks or unusual clauses.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"contractType\":{\"type\":\"string\",\"enum\":[\"Service Agreement\",\"Employment Contract\",\"NDA\",\"Lease Agreement\",\"Sales Contract\",\"Partnership Agreement\",\"License Agreement\",\"Other\"]},\"parties\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"role\":{\"type\":\"string\"}}}},\"effectiveDate\":{\"type\":\"string\"},\"expirationDate\":{\"type\":\"string\"},\"autoRenewal\":{\"type\":\"boolean\"},\"renewalTerms\":{\"type\":\"string\"},\"totalValue\":{\"type\":\"number\"},\"paymentTerms\":{\"type\":\"string\"},\"terminationNoticeDays\":{\"type\":\"number\"},\"terminationClauses\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"liabilityLimitations\":{\"type\":\"string\"},\"indemnificationClauses\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"confidentialityTerms\":{\"type\":\"string\"},\"nonCompeteClause\":{\"type\":\"boolean\"},\"nonCompeteDetails\":{\"type\":\"string\"},\"riskFlags\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"risk\":{\"type\":\"string\"},\"severity\":{\"type\":\"string\",\"enum\":[\"High\",\"Medium\",\"Low\"]},\"clause\":{\"type\":\"string\"}}}}},\"required\":[\"contractType\",\"parties\"],\"additionalProperties\":false}"
+      },
+      "id": "df895e74-25d1-4913-91c3-30a9c5b28d0a",
+      "name": "PDF Vector - Analyze Contract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -96
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "f4ad5c8a-97bd-4bc8-99fe-56638f563438",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "prompt": "Provide a brief executive summary of this contract (2-3 sentences), list the top 3 things the signer should be aware of, and give an overall risk rating (Low/Medium/High) with justification."
+      },
+      "id": "06b75976-6f60-46db-bfe3-28982f88ac33",
+      "name": "PDF Vector - Executive Summary",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        64
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const contract = $('PDF Vector - Analyze Contract').item.json.data;\nconst summary = $input.first().json.markdown;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Count risk levels\nconst risks = contract.riskFlags || [];\nconst highRisks = risks.filter(r => r.severity === 'High').length;\nconst mediumRisks = risks.filter(r => r.severity === 'Medium').length;\n\n// Format parties\nconst partiesList = contract.parties ? contract.parties.map(p => `${p.name} (${p.role})`).join(', ') : 'Not specified';\n\n// Format risks\nconst risksList = risks.map(r => `[${r.severity}] ${r.risk}`).join('\\n') || 'No significant risks identified';\n\n// Determine overall status\nlet reviewStatus = 'Ready for Signature';\nif (highRisks > 0) reviewStatus = 'Requires Legal Review';\nelse if (mediumRisks >= 2) reviewStatus = 'Review Recommended';\n\nreturn [{\n  json: {\n    ...contract,\n    executiveSummary: summary,\n    partiesList: partiesList,\n    risksList: risksList,\n    highRiskCount: highRisks,\n    mediumRiskCount: mediumRisks,\n    reviewStatus: reviewStatus,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "fd623fe4-996a-4f50-8d61-034ecf2452ae",
+      "name": "Compile Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Contract Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Contract Review"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "File Name": "={{ $json.fileName }}",
+            "Contract Type": "={{ $json.contractType }}",
+            "Parties": "={{ $json.partiesList }}",
+            "Effective Date": "={{ $json.effectiveDate || 'N/A' }}",
+            "Expiration Date": "={{ $json.expirationDate || 'N/A' }}",
+            "Value": "={{ $json.totalValue || 'N/A' }}",
+            "Auto Renewal": "={{ $json.autoRenewal ? 'Yes' : 'No' }}",
+            "Termination Notice": "={{ $json.terminationNoticeDays || 'N/A' }} days",
+            "High Risks": "={{ $json.highRiskCount }}",
+            "Medium Risks": "={{ $json.mediumRiskCount }}",
+            "Review Status": "={{ $json.reviewStatus }}",
+            "Contract Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Reviewed Date": "={{ $json.processedAt.split('T')[0] }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "5bbff199-b29f-43fb-a573-de1d62e2c20f",
+      "name": "Log Contract Review",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1440,
+        64
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "#contract-reviews"
+        },
+        "text": "=📝 *Contract Review Complete*\n\n*File:* {{ $('Compile Review').item.json.fileName }}\n*Type:* {{ $('Compile Review').item.json.contractType }}\n*Parties:* {{ $('Compile Review').item.json.partiesList }}\n\n📋 *Executive Summary*\n{{ $('Compile Review').item.json.executiveSummary }}\n\n⚠️ *Risk Assessment*\n• High Risks: {{ $('Compile Review').item.json.highRiskCount }}\n• Medium Risks: {{ $('Compile Review').item.json.mediumRiskCount }}\n\n{{ $('Compile Review').item.json.risksList }}\n\n🏷️ *Status:* {{ $('Compile Review').item.json.reviewStatus }}\n\n<https://drive.google.com/file/d/{{ $('Compile Review').item.json.fileId }}/view|View Contract>",
+        "otherOptions": {}
+      },
+      "id": "0e950e68-35d9-4b59-ad24-109028c95e0b",
+      "name": "Send Review Report",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1648,
+        64
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Contract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Contract": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Analyze Contract",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Analyze Contract": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Executive Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Executive Summary": {
+      "main": [
+        [
+          {
+            "node": "Compile Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Review": {
+      "main": [
+        [
+          {
+            "node": "Log Contract Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Contract Review": {
+      "main": [
+        [
+          {
+            "node": "Send Review Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "Legal"
+    },
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "Contracts"
+    }
+  ]
+}
