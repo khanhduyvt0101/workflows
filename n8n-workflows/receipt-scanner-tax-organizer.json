@@ -1,0 +1,356 @@
+{
+  "name": "Smart Receipt Scanner & Tax Organizer",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Receipt Scanner & Tax Organizer\n\n### How it works\nThis workflow automates receipt processing and tax organization by extracting receipt data, identifying tax-deductible items, and organizing by quarter/year.\n\n1. **Google Drive Trigger** monitors folder for new receipts\n2. **PDF Vector** extracts receipt details and tax info\n3. **Code Node** processes data and determines tax year/quarter\n4. **Google Sheets** logs to Receipt Database\n5. **IF Node** routes tax-deductible items to separate tracker\n\n### Setup Steps\n1. Create Google Drive folder for receipts\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with 2 tabs (see columns below)\n4. Update folder ID and Sheet IDs in nodes\n5. Connect all OAuth credentials\n\n### Sheet 1: Receipt Database\nReceipt ID, Date, Store, Items, Subtotal, Tax, Total, Payment, Tax Deductible, Deduction Category, Tax Year, Quarter\n\n### Sheet 2: Tax Deductions\nReceipt ID, Date, Vendor, Amount, Category, Tax Year, Quarter\n\n### Great for\n- Freelancers\n- Small business owners\n- Self-employed individuals\n- Tax preparation",
+        "height": 560,
+        "width": 428,
+        "color": 5
+      },
+      "id": "07876671-a609-41c7-962c-9253c6393de9",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Tax Deduction Categories\n\n- Office Supplies\n- Business Meals\n- Travel\n- Equipment\n- Software\n- Professional Services\n- Marketing\n- Not Deductible",
+        "height": 252,
+        "width": 360
+      },
+      "id": "7ae5e66f-71e3-469b-adac-1b3d6ac580cf",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Receipts"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        176,
+        160
+      ],
+      "id": "c8737604-1ce8-4620-837d-1e5989529430",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GDRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        384,
+        160
+      ],
+      "id": "5fdd65e0-d7ab-4a59-912e-5efce097b112",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GDRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract receipt details: store name, date, items purchased with prices, subtotal, tax, total, and payment method. Determine if this is a tax-deductible business expense.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"storeName\":{\"type\":\"string\"},\"storeAddress\":{\"type\":\"string\"},\"receiptDate\":{\"type\":\"string\"},\"items\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"price\":{\"type\":\"number\"}}}},\"subtotal\":{\"type\":\"number\"},\"taxAmount\":{\"type\":\"number\"},\"taxRate\":{\"type\":\"number\"},\"total\":{\"type\":\"number\"},\"paymentMethod\":{\"type\":\"string\"},\"lastFourDigits\":{\"type\":\"string\"},\"isTaxDeductible\":{\"type\":\"boolean\"},\"deductionCategory\":{\"type\":\"string\",\"enum\":[\"Office Supplies\",\"Business Meals\",\"Travel\",\"Equipment\",\"Software\",\"Professional Services\",\"Marketing\",\"Not Deductible\"]}},\"required\":[\"storeName\",\"total\"],\"additionalProperties\":false}"
+      },
+      "id": "b63af606-9ec8-4779-9662-b247f32a4fba",
+      "name": "PDF Vector - Extract Receipt",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        576,
+        160
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const receipt = $input.first().json.data;\n\n// Generate unique receipt ID\nconst receiptId = `RCP-${Date.now().toString(36).toUpperCase()}`;\n\n// Determine tax year\nconst receiptDate = new Date(receipt.receiptDate);\nconst taxYear = receiptDate.getFullYear();\nconst quarter = Math.ceil((receiptDate.getMonth() + 1) / 3);\n\n// Format items for storage\nconst itemsList = receipt.items && receipt.items.length > 0\n  ? receipt.items.map(i => `${i.name} x${i.quantity || 1}: $${i.price.toFixed(2)}`).join('; ')\n  : 'Items not itemized';\n\nreturn [{\n  json: {\n    receiptId: receiptId,\n    ...receipt,\n    taxYear: taxYear,\n    quarter: `Q${quarter}`,\n    itemsList: itemsList,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "a2bf0617-3d8c-422f-b10d-f9f189ff535d",
+      "name": "Process Receipt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Receipt Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Receipt Database"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Receipt ID": "={{ $json.receiptId }}",
+            "Date": "={{ $json.receiptDate }}",
+            "Store": "={{ $json.storeName }}",
+            "Items": "={{ $json.itemsList }}",
+            "Subtotal": "={{ $json.subtotal || $json.total }}",
+            "Tax": "={{ $json.taxAmount || 0 }}",
+            "Total": "={{ $json.total }}",
+            "Payment": "={{ $json.paymentMethod || 'N/A' }}",
+            "Tax Deductible": "={{ $json.isTaxDeductible ? 'Yes' : 'No' }}",
+            "Deduction Category": "={{ $json.deductionCategory || 'N/A' }}",
+            "Tax Year": "={{ $json.taxYear }}",
+            "Quarter": "={{ $json.quarter }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "4ecbcde4-58ac-4436-895b-ccf18bd4572e",
+      "name": "Log to Receipt Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        992,
+        160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "4119f7c9-14c8-4e5b-8252-b35bcf2cbc0e",
+              "leftValue": "={{ $('Process Receipt').item.json.isTaxDeductible }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8b1f5a23-6e4c-4d89-a012-3c5b6d7e8f90",
+      "name": "Tax Deductible?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1192,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Receipt Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=1",
+          "mode": "list",
+          "cachedResultName": "Tax Deductions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Receipt ID": "={{ $('Process Receipt').item.json.receiptId }}",
+            "Date": "={{ $('Process Receipt').item.json.receiptDate }}",
+            "Vendor": "={{ $('Process Receipt').item.json.storeName }}",
+            "Amount": "={{ $('Process Receipt').item.json.total }}",
+            "Category": "={{ $('Process Receipt').item.json.deductionCategory }}",
+            "Tax Year": "={{ $('Process Receipt').item.json.taxYear }}",
+            "Quarter": "={{ $('Process Receipt').item.json.quarter }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "f4825c52-3f9d-4c03-a340-de40fe827bfc",
+      "name": "Add to Tax Deductions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1392,
+        64
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Receipt": {
+      "main": [
+        [
+          {
+            "node": "Process Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Receipt": {
+      "main": [
+        [
+          {
+            "node": "Log to Receipt Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Receipt Database": {
+      "main": [
+        [
+          {
+            "node": "Tax Deductible?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tax Deductible?": {
+      "main": [
+        [
+          {
+            "node": "Add to Tax Deductions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateId": "pdfvector-receipt-scanner-tax-organizer",
+    "templateCredsSetupCompleted": false
+  },
+  "versionId": "1.0.0",
+  "triggerCount": 1,
+  "tags": [
+    {
+      "id": "1",
+      "name": "Finance"
+    },
+    {
+      "id": "2",
+      "name": "PDF Vector"
+    },
+    {
+      "id": "3",
+      "name": "Receipts"
+    },
+    {
+      "id": "4",
+      "name": "Tax"
+    }
+  ]
+}
