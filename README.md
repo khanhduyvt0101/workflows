@@ -1,4 +1,4 @@
-# Awesome PDF Automation Workflows
+# Awesome Document-Processing Automation Workflows
 
 ![n8n Workflows](https://img.shields.io/badge/n8n-22_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
