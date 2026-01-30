@@ -43,7 +43,7 @@ Before importing, ensure you have:
 ### Available Workflows
 
 <details>
-<summary><strong>📄 Invoice Data Extraction</strong> - Extract structured data from invoice PDFs | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-data-extraction.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/invoice-data-extraction.json">📋 Open JSON file</a></summary>
+<summary><strong>📄 Invoice Data Extraction</strong> - Extract structured data from invoice PDFs | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-data-extraction.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/invoice-data-extraction.json">📋 Open</a></summary>
 
 Perfect for finance teams, accountants, and small businesses who need to automate invoice processing. Drop invoices into a Google Drive folder and let AI extract all the key data automatically.
 
@@ -84,7 +84,7 @@ Perfect for finance teams, accountants, and small businesses who need to automat
 </details>
 
 <details>
-<summary><strong>💰 Invoice Processing & Approval</strong> - Enterprise invoice workflow with fraud detection | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-approval.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/invoice-processing-approval.json">📋 Open JSON file</a></summary>
+<summary><strong>💰 Invoice Processing & Approval</strong> - Enterprise invoice workflow with fraud detection | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-approval.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/invoice-processing-approval.json">📋 Open</a></summary>
 
 A comprehensive invoice processing system with duplicate detection, vendor validation, budget tracking, fraud detection, and intelligent approval routing. Built for organizations that need enterprise-grade invoice management.
 
@@ -139,7 +139,7 @@ A comprehensive invoice processing system with duplicate detection, vendor valid
 </details>
 
 <details>
-<summary><strong>📧 Gmail Invoice Processor</strong> - Convert invoice PDFs to formatted Google Docs | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/gmail-invoice-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/gmail-invoice-processor.json">📋 Open JSON file</a></summary>
+<summary><strong>📧 Gmail Invoice Processor</strong> - Convert invoice PDFs to formatted Google Docs | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/gmail-invoice-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/gmail-invoice-processor.json">📋 Open</a></summary>
 
 Automatically monitor your Gmail for invoice attachments and convert them into beautifully formatted Google Docs with markdown tables. Great for creating readable invoice records.
 
@@ -177,7 +177,7 @@ Automatically monitor your Gmail for invoice attachments and convert them into b
 </details>
 
 <details>
-<summary><strong>💰 Invoice Processing - AP Automation</strong> - Automate accounts payable with PO matching | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-ap-automation.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/invoice-processing-ap-automation.json">📋 Open JSON file</a></summary>
+<summary><strong>💰 Invoice Processing - AP Automation</strong> - Automate accounts payable with PO matching | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-ap-automation.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/invoice-processing-ap-automation.json">📋 Open</a></summary>
 
 Complete accounts payable automation that extracts invoice data, validates calculations, matches against purchase orders, and routes invoices through approval workflows. Automatically catches overpayments and discrepancies before they become costly mistakes.
 
@@ -248,7 +248,7 @@ Create a spreadsheet with two tabs:
 </details>
 
 <details>
-<summary><strong>💰 Invoice Processing with Validation</strong> - Extract and validate invoice math automatically | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-validation.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/invoice-processing-validation.json">📋 Open JSON file</a></summary>
+<summary><strong>💰 Invoice Processing with Validation</strong> - Extract and validate invoice math automatically | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/invoice-processing-validation.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/invoice-processing-validation.json">📋 Open</a></summary>
 
 Automated invoice processing that extracts data from PDF attachments, validates line item math, and routes invoices based on validation results. Valid invoices are logged and confirmed; invalid invoices are flagged for manual review.
 
@@ -323,7 +323,7 @@ Create a spreadsheet with two tabs:
 </details>
 
 <details>
-<summary><strong>💰 Tax Document Organizer</strong> - Auto-categorize and file tax documents | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/tax-document-organizer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/tax-document-organizer.json">📋 Open JSON file</a></summary>
+<summary><strong>💰 Tax Document Organizer</strong> - Auto-categorize and file tax documents | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/tax-document-organizer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/tax-document-organizer.json">📋 Open</a></summary>
 
 Automatically organize tax documents from email into categorized Google Drive folders. AI identifies document types (W-2, 1099, receipts) and files them by year and category.
 
@@ -377,7 +377,7 @@ Tax_Documents/
 </details>
 
 <details>
-<summary><strong>💳 Expense Report Processor</strong> - Auto-categorize expenses with AI and route for approval | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/expense-report-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/expense-report-processor.json">📋 Open JSON file</a></summary>
+<summary><strong>💳 Expense Report Processor</strong> - Auto-categorize expenses with AI and route for approval | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/expense-report-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/expense-report-processor.json">📋 Open</a></summary>
 
 Automatically process expense receipts with AI-powered data extraction, smart categorization based on merchant names, and intelligent approval routing for high-value expenses. Perfect for finance teams managing employee expenses.
 
@@ -443,7 +443,7 @@ Automatically process expense receipts with AI-powered data extraction, smart ca
 </details>
 
 <details>
-<summary><strong>🏦 Bank Statement Analyzer</strong> - Auto-categorize spending and track savings rate | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bank-statement-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/bank-statement-analyzer.json">📋 Open JSON file</a></summary>
+<summary><strong>🏦 Bank Statement Analyzer</strong> - Auto-categorize spending and track savings rate | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bank-statement-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/bank-statement-analyzer.json">📋 Open</a></summary>
 
 Automatically analyze bank statements with AI-powered transaction extraction, spending categorization, savings rate calculation, and monthly summary reports. Perfect for personal finance tracking and budget analysis.
 
@@ -532,7 +532,7 @@ Automatically analyze bank statements with AI-powered transaction extraction, sp
 </details>
 
 <details>
-<summary><strong>🧾 Receipt Scanner & Tax Organizer</strong> - Scan receipts and build tax deduction tracker | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/receipt-scanner-tax-organizer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/receipt-scanner-tax-organizer.json">📋 Open JSON file</a></summary>
+<summary><strong>🧾 Receipt Scanner & Tax Organizer</strong> - Scan receipts and build tax deduction tracker | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/receipt-scanner-tax-organizer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/receipt-scanner-tax-organizer.json">📋 Open</a></summary>
 
 Automatically process receipts with AI-powered extraction, identify tax-deductible expenses, and organize by quarter/year. Perfect for freelancers and small business owners preparing for tax season.
 
@@ -603,7 +603,7 @@ Create a spreadsheet with two tabs:
 </details>
 
 <details>
-<summary><strong>🏥 Insurance Pre-Authorization</strong> - Process prior auth requests with emergency fast-tracking | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/insurance-pre-authorization.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/insurance-pre-authorization.json">📋 Open JSON file</a></summary>
+<summary><strong>🏥 Insurance Pre-Authorization</strong> - Process prior auth requests with emergency fast-tracking | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/insurance-pre-authorization.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/insurance-pre-authorization.json">📋 Open</a></summary>
 
 Automate insurance prior authorization processing with emergency triage, coverage validation, and intelligent routing. Emergency requests are auto-approved and fast-tracked.
 
@@ -654,7 +654,7 @@ Automate insurance prior authorization processing with emergency triage, coverag
 </details>
 
 <details>
-<summary><strong>🏥 Medical Records Intake</strong> - Automate patient intake form processing | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/medical-records-intake.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/medical-records-intake.json">📋 Open JSON file</a></summary>
+<summary><strong>🏥 Medical Records Intake</strong> - Automate patient intake form processing | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/medical-records-intake.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/medical-records-intake.json">📋 Open</a></summary>
 
 Streamline patient intake by automatically extracting data from intake forms, adding to your patient database, and sending appropriate follow-up emails based on form completeness.
 
@@ -695,7 +695,7 @@ Streamline patient intake by automatically extracting data from intake forms, ad
 </details>
 
 <details>
-<summary><strong>🏥 Patient Intake Form Processor</strong> - Process healthcare intake forms with allergy alerts | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/patient-intake-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/patient-intake-processor.json">📋 Open JSON file</a></summary>
+<summary><strong>🏥 Patient Intake Form Processor</strong> - Process healthcare intake forms with allergy alerts | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/patient-intake-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/patient-intake-processor.json">📋 Open</a></summary>
 
 HIPAA-compliant patient intake form processor that extracts demographics, insurance, medical history, medications, and allergies from uploaded forms. Automatically creates patient records and sends critical allergy alerts to medical staff.
 
@@ -789,7 +789,7 @@ HIPAA-compliant patient intake form processor that extracts demographics, insura
 </details>
 
 <details>
-<summary><strong>⚖️ NDA Compliance Checker</strong> - Validate NDAs for required clauses and risk | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/nda-compliance-checker.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/nda-compliance-checker.json">📋 Open JSON file</a></summary>
+<summary><strong>⚖️ NDA Compliance Checker</strong> - Validate NDAs for required clauses and risk | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/nda-compliance-checker.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/nda-compliance-checker.json">📋 Open</a></summary>
 
 Automatically analyze NDA documents for compliance with required clauses, calculate risk scores, and route alerts based on risk level. Perfect for legal teams reviewing contracts.
 
@@ -850,7 +850,7 @@ Automatically analyze NDA documents for compliance with required clauses, calcul
 </details>
 
 <details>
-<summary><strong>📝 AI Contract Review & Risk Analysis</strong> - Analyze contracts for risks and key terms | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/contract-review-risk-analysis.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/contract-review-risk-analysis.json">📋 Open JSON file</a></summary>
+<summary><strong>📝 AI Contract Review & Risk Analysis</strong> - Analyze contracts for risks and key terms | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/contract-review-risk-analysis.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/contract-review-risk-analysis.json">📋 Open</a></summary>
 
 Automatically review contracts with AI-powered extraction of key terms, risk identification, and executive summary generation. Perfect for legal teams and business operations needing to streamline contract review processes.
 
@@ -941,7 +941,7 @@ Automatically review contracts with AI-powered extraction of key terms, risk ide
 </details>
 
 <details>
-<summary><strong>🏠 Mortgage Application Validator</strong> - Validate applications with DTI/LTV calculations | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/mortgage-application-validator.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/mortgage-application-validator.json">📋 Open JSON file</a></summary>
+<summary><strong>🏠 Mortgage Application Validator</strong> - Validate applications with DTI/LTV calculations | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/mortgage-application-validator.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/mortgage-application-validator.json">📋 Open</a></summary>
 
 Comprehensive mortgage application processing with automatic DTI and LTV calculations, credit score routing, and risk assessment. Routes applications to different channels based on credit tier.
 
@@ -1002,7 +1002,7 @@ Comprehensive mortgage application processing with automatic DTI and LTV calcula
 </details>
 
 <details>
-<summary><strong>🎓 Education Transcript Processor</strong> - Process transcripts with GPA analysis | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/education-transcript-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/education-transcript-processor.json">📋 Open JSON file</a></summary>
+<summary><strong>🎓 Education Transcript Processor</strong> - Process transcripts with GPA analysis | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/education-transcript-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/education-transcript-processor.json">📋 Open</a></summary>
 
 Extract and analyze academic transcripts with GPA calculation, academic standing determination, and automated verification. Great for admissions offices and HR departments.
 
@@ -1062,7 +1062,7 @@ Extract and analyze academic transcripts with GPA calculation, academic standing
 </details>
 
 <details>
-<summary><strong>👤 Resume Parser & Scoring</strong> - Parse and score candidates automatically | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/resume-parser.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/resume-parser.json">📋 Open JSON file</a></summary>
+<summary><strong>👤 Resume Parser & Scoring</strong> - Parse and score candidates automatically | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/resume-parser.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/resume-parser.json">📋 Open</a></summary>
 
 Automated resume processing with AI extraction, 100-point scoring system, and recruiter notifications. Drop resumes in Google Drive and get scored candidates in your spreadsheet.
 
@@ -1122,7 +1122,7 @@ JavaScript, Python, React, Node.js, SQL, API, Git, AWS, Docker
 </details>
 
 <details>
-<summary><strong>📋 Job Application Processor & Candidate Scorer</strong> - Process applications with AI scoring and auto-replies | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/job-application-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/job-application-processor.json">📋 Open JSON file</a></summary>
+<summary><strong>📋 Job Application Processor & Candidate Scorer</strong> - Process applications with AI scoring and auto-replies | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/job-application-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/job-application-processor.json">📋 Open</a></summary>
 
 End-to-end job application processing with AI-powered resume parsing, 100-point candidate scoring, automatic ATS logging, candidate auto-replies, and HR team notifications via Slack. Perfect for streamlining your recruiting pipeline.
 
@@ -1207,7 +1207,7 @@ JavaScript, Python, React, Node.js, SQL, API, Git, AWS, Docker, TypeScript
 </details>
 
 <details>
-<summary><strong>🚚 Bill of Lading Tracker</strong> - Track shipments and notify customers | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bill-of-lading-tracker.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/bill-of-lading-tracker.json">📋 Open JSON file</a></summary>
+<summary><strong>🚚 Bill of Lading Tracker</strong> - Track shipments and notify customers | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bill-of-lading-tracker.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/bill-of-lading-tracker.json">📋 Open</a></summary>
 
 Automatically extract Bill of Lading data from email attachments, log to tracking database, and send professional HTML notification emails to customers.
 
@@ -1263,7 +1263,7 @@ Automatically extract Bill of Lading data from email attachments, log to trackin
 </details>
 
 <details>
-<summary><strong>🎓 Research Paper Analyzer & Literature Review</strong> - Extract metadata, find related papers, build citation database | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/research-paper-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/research-paper-analyzer.json">📋 Open JSON file</a></summary>
+<summary><strong>🎓 Research Paper Analyzer & Literature Review</strong> - Extract metadata, find related papers, build citation database | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/research-paper-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/research-paper-analyzer.json">📋 Open</a></summary>
 
 Automatically analyze research papers with AI-powered extraction of metadata, findings, and conclusions. Searches academic databases for related papers and builds a comprehensive literature database with auto-generated citations.
 
@@ -1346,7 +1346,7 @@ Automatically analyze research papers with AI-powered extraction of metadata, fi
 </details>
 
 <details>
-<summary><strong>🏠 Lease Agreement Analyzer for Renters</strong> - Analyze leases, extract terms, and detect red flags | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/lease-agreement-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/lease-agreement-analyzer.json">📋 Open JSON file</a></summary>
+<summary><strong>🏠 Lease Agreement Analyzer for Renters</strong> - Analyze leases, extract terms, and detect red flags | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/lease-agreement-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/lease-agreement-analyzer.json">📋 Open</a></summary>
 
 Automatically analyze residential lease agreements with AI-powered extraction of key terms, financial details, and red flag detection. Perfect for renters who want to understand their lease before signing and identify potentially unfair clauses.
 

@@ -97,7 +97,7 @@ Use this exact template:
 
 ```html
 <details>
-<summary><strong>{EMOJI} {Workflow Name}</strong> - {Short description} | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/{filename}.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/{filename}.json">📋 Open JSON file</a></summary>
+<summary><strong>{EMOJI} {Workflow Name}</strong> - {Short description} | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/{filename}.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/{filename}.json">📋 Open</a></summary>
 
 {Opening paragraph describing value proposition - 2-3 sentences explaining what this workflow does and why it's valuable}
 
