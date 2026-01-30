@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-19_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-20_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 19 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 20 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -691,6 +691,100 @@ Streamline patient intake by automatically extracting data from intake forms, ad
 - Connect to your EHR/EMR system
 - Add appointment scheduling follow-up
 - Include insurance verification step
+
+</details>
+
+<details>
+<summary><strong>🏥 Patient Intake Form Processor</strong> - Process healthcare intake forms with allergy alerts | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/patient-intake-processor.json">⬇️ Download</a></summary>
+
+HIPAA-compliant patient intake form processor that extracts demographics, insurance, medical history, medications, and allergies from uploaded forms. Automatically creates patient records and sends critical allergy alerts to medical staff.
+
+#### Who is this for?
+- Medical practices processing new patient intake forms
+- Healthcare clinics automating patient registration
+- Urgent care facilities needing quick patient data entry
+- Telehealth providers collecting patient information
+
+#### How it works
+1. **Google Drive Trigger** monitors your intake forms folder for new uploads
+2. **Download File** retrieves the PDF intake form from Google Drive
+3. **PDF Vector - Extract Intake** uses AI to extract comprehensive patient data:
+   - Patient demographics (name, DOB, gender, contact info)
+   - Insurance information (provider, policy, group number)
+   - Medical history (conditions, surgeries, family history)
+   - Current medications (name, dosage, frequency)
+   - Allergies with reaction severity
+   - Emergency contact details
+   - Reason for visit
+4. **Process Intake Data** generates unique patient ID, calculates age, formats data, and detects critical allergies
+5. **Create Patient Record** appends patient data to Google Sheets database
+6. **Critical Allergy?** checks if patient has critical allergies (penicillin, sulfa, latex, iodine)
+7. **Critical Alert** (if allergies detected) sends urgent Slack alert to medical staff
+8. **Notify Front Desk** (standard path) sends new patient notification to front desk
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI extraction)
+- Google Sheets (patient database)
+- Slack (staff notifications & allergy alerts)
+
+#### Critical allergens detected
+- Penicillin
+- Sulfa drugs
+- Latex
+- Iodine
+- Aspirin
+- NSAIDs
+
+#### Data fields extracted
+| Category | Fields |
+|----------|--------|
+| Demographics | First name, last name, DOB, gender, SSN (last 4), phone, email, address |
+| Insurance | Provider, policy number, group number, subscriber name, relationship |
+| Medical History | Conditions, past surgeries, family history |
+| Medications | Name, dosage, frequency for each medication |
+| Allergies | Allergen name, reaction/severity for each allergy |
+| Emergency Contact | Name, relationship, phone number |
+
+#### Google Sheets structure
+| Patient ID | Name | DOB | Age | Gender | Phone | Email | Insurance | Conditions | Medications | Allergies | Reason for Visit | Emergency Contact | Intake Date |
+|------------|------|-----|-----|--------|-------|-------|-----------|------------|-------------|-----------|------------------|-------------------|-------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Patient Intake Forms" folder in Google Drive and configure the trigger with the folder ID
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and spreadsheet ID
+6. Set up Slack OAuth credentials and configure two channels:
+   - #medical-alerts for critical allergy notifications
+   - #front-desk for standard intake notifications
+7. Activate the workflow
+
+#### HIPAA compliance notes
+- Self-host n8n in a secure, compliant environment
+- Ensure all connections use TLS encryption
+- Restrict access to authorized personnel only
+- Enable audit logging for all workflow executions
+- Consider encrypting data at rest in Google Sheets
+- Review your BAA agreements with all service providers
+
+#### Key features
+- Automatic patient ID generation (PT-XXXXXX format)
+- Age calculation from date of birth
+- Critical allergy detection and urgent alerts
+- NKDA (No Known Drug Allergies) default for patients without allergies
+- Formatted medication and allergy lists
+- Emergency contact information capture
+
+#### Customizing this workflow
+- Add more critical allergens to the detection list in the "Process Intake Data" node
+- Connect to your EHR/EMR system instead of Google Sheets
+- Add appointment scheduling follow-up
+- Include insurance verification via API
+- Add email notifications alongside Slack
+- Create separate alert channels for different allergy severity levels
+- Add duplicate patient detection based on DOB and name
 
 </details>
 
