@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-20_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-21_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 20 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 21 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1342,6 +1342,99 @@ Automatically analyze research papers with AI-powered extraction of metadata, fi
 - Add duplicate paper detection
 - Create weekly literature digest reports
 - Tag papers by research theme or project
+
+</details>
+
+<details>
+<summary><strong>🏠 Lease Agreement Analyzer for Renters</strong> - Analyze leases, extract terms, and detect red flags | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/lease-agreement-analyzer.json">⬇️ Download</a></summary>
+
+Automatically analyze residential lease agreements with AI-powered extraction of key terms, financial details, and red flag detection. Perfect for renters who want to understand their lease before signing and identify potentially unfair clauses.
+
+#### Who is this for?
+- Renters reviewing leases before signing
+- Property managers evaluating lease templates
+- Real estate agents assisting clients
+- Tenant advocates helping renters understand their rights
+
+#### How it works
+1. **Google Drive Trigger** monitors your lease documents folder for new PDF uploads
+2. **Download Lease** retrieves the PDF from Google Drive
+3. **PDF Vector - Analyze Lease** uses AI to extract comprehensive lease data:
+   - Property address and unit information
+   - Landlord and tenant details
+   - Monthly rent and security deposit amounts
+   - Lease duration, start/end dates, renewal terms
+   - Pet policy (allowed, deposits, restrictions)
+   - Included utilities and parking
+   - Late payment fees and grace periods
+   - Early termination penalties
+   - Maintenance responsibilities (landlord vs tenant)
+   - Red flags with severity levels (High/Medium/Low)
+4. **Merge Data** combines extracted data with original file
+5. **PDF Vector - Tenant Advice** generates tenant advocacy analysis:
+   - Overall lease summary
+   - Top 3 negotiation points
+   - Fairness rating (Tenant-Friendly, Neutral, Landlord-Friendly)
+   - Warnings about problematic terms
+6. **Compile Analysis** processes all data:
+   - Calculates total move-in cost (rent + deposits)
+   - Formats landlord and tenant information
+   - Summarizes red flags and determines overall risk level
+   - Truncates advice for spreadsheet compatibility
+7. **Log Lease Analysis** appends comprehensive data to Google Sheets
+8. **High Risk?** checks if lease has High risk level
+9. **High Risk Alert** (if high risk) sends urgent Slack notification with red flags
+10. **Analysis Complete** (standard path) sends Slack confirmation with lease summary
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI extraction & analysis)
+- Google Sheets (lease tracking database)
+- Slack (notifications & alerts)
+
+#### Red flags detected
+- Excessive fees or penalties
+- Unreasonable termination clauses
+- Missing standard tenant protections
+- Vague or ambiguous language
+- One-sided maintenance responsibilities
+- Unusual security deposit requirements
+- Problematic auto-renewal terms
+
+#### Risk level calculation
+- **High** - 2 or more high-severity red flags
+- **Medium** - 1 high-severity flag OR 3+ total flags
+- **Low** - Minor issues or no red flags identified
+
+#### Google Sheets structure
+| Property Address | Landlord | Tenants | Monthly Rent | Security Deposit | Move-In Cost | Lease Start | Lease End | Pet Policy | Utilities Included | Late Fee | Early Termination | Red Flags | Risk Level | Tenant Advice | Analyzed Date |
+|------------------|----------|---------|--------------|------------------|--------------|-------------|-----------|------------|-------------------|----------|-------------------|-----------|------------|---------------|---------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Lease Documents" folder in Google Drive and configure the trigger with the folder ID
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and spreadsheet ID
+6. Set up Slack OAuth credentials and select your notification channel
+7. Activate the workflow
+
+#### Key features
+- Comprehensive lease term extraction (20+ fields)
+- AI-powered red flag detection with severity levels
+- Tenant advocacy analysis with negotiation tips
+- Total move-in cost calculation
+- Risk-based Slack alerting
+- Fairness rating for quick assessment
+
+#### Customizing this workflow
+- Adjust red flag detection criteria in the extraction prompt
+- Modify risk level thresholds in the "Compile Analysis" node
+- Add email notifications alongside Slack alerts
+- Connect to a tenant rights database for jurisdiction-specific advice
+- Add comparison against standard lease templates
+- Include rent-to-income ratio calculations
+- Create renewal reminder workflows based on lease end dates
 
 </details>
 

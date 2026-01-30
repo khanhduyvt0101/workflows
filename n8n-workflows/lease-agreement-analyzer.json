@@ -1,0 +1,448 @@
+{
+  "name": "W8 - Lease Agreement Analyzer for Renters",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🏠 Lease Agreement Analyzer\n\n**Perfect for:**\n- Renters reviewing leases\n- Property managers\n- Real estate agents\n\n**What it extracts:**\n- Rent & deposit amounts\n- Lease duration & renewal terms\n- Pet policies\n- Maintenance responsibilities\n- Early termination clauses\n- Red flags & unusual terms\n\n**Setup Required:**\n1. Google Drive credential\n2. PDF Vector credential\n3. Google Sheets credential\n4. Slack credential\n5. Create lease folder in Drive\n6. Create analysis spreadsheet",
+        "height": 400,
+        "width": 320
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🚩 Red Flag Detection\n\nAutomatically flags:\n- Excessive fees\n- Unreasonable penalties\n- Unusual clauses\n- Missing tenant protections\n- Vague language\n\n**Risk Levels:**\n- High: 2+ high-severity flags\n- Medium: 1 high or 3+ total flags\n- Low: Minor or no issues",
+        "height": 240,
+        "width": 260
+      },
+      "id": "sticky-flags",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        400,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Google Sheets Columns\n\nCreate these columns in Row 1:\n\nProperty Address | Landlord | Tenants | Monthly Rent | Security Deposit | Move-In Cost | Lease Start | Lease End | Pet Policy | Utilities Included | Late Fee | Early Termination | Red Flags | Risk Level | Tenant Advice | Analyzed Date",
+        "height": 160,
+        "width": 400
+      },
+      "id": "sticky-sheets",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        140,
+        340
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Lease",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        340,
+        340
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Analyze this residential lease agreement thoroughly and extract all key terms:\n\n1. Property Information:\n   - Full property address\n   - Unit/apartment number if applicable\n\n2. Parties:\n   - Landlord name, company, contact info\n   - All tenant names\n\n3. Financial Terms:\n   - Monthly rent amount\n   - Security deposit\n   - Any additional deposits (pet, last month)\n   - Late payment grace period and fee\n   - Returned check fee\n\n4. Lease Duration:\n   - Start date and end date\n   - Lease term length\n   - Renewal terms and conditions\n   - Auto-renewal clause (yes/no)\n   - Required notice to vacate\n\n5. Pet Policy:\n   - Pets allowed or not\n   - Pet deposit and monthly pet rent\n   - Breed/size restrictions\n\n6. Utilities & Amenities:\n   - Which utilities are included\n   - Parking included or fee\n   - Storage, laundry access\n\n7. Responsibilities:\n   - Landlord maintenance duties\n   - Tenant maintenance duties\n\n8. Termination:\n   - Early termination penalty\n   - Lease break conditions\n   - Move-out notice required\n\n9. Red Flags:\n   - Identify any unusual, excessive, or potentially unfair clauses\n   - Note vague language that could be problematic\n   - Flag missing standard tenant protections",
+        "schema": "{\"type\":\"object\",\"properties\":{\"propertyAddress\":{\"type\":\"string\",\"description\":\"Full property address including unit number\"},\"landlord\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"company\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"}}},\"tenants\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"List of all tenant names\"},\"monthlyRent\":{\"type\":\"number\",\"description\":\"Monthly rent amount in dollars\"},\"securityDeposit\":{\"type\":\"number\",\"description\":\"Security deposit amount\"},\"leaseStart\":{\"type\":\"string\",\"description\":\"Lease start date\"},\"leaseEnd\":{\"type\":\"string\",\"description\":\"Lease end date\"},\"leaseTerm\":{\"type\":\"string\",\"description\":\"Lease duration (e.g., 12 months)\"},\"renewalTerms\":{\"type\":\"string\",\"description\":\"How lease renews after initial term\"},\"autoRenewal\":{\"type\":\"boolean\",\"description\":\"Whether lease auto-renews\"},\"petPolicy\":{\"type\":\"object\",\"properties\":{\"allowed\":{\"type\":\"boolean\"},\"petDeposit\":{\"type\":\"number\"},\"petRent\":{\"type\":\"number\"},\"restrictions\":{\"type\":\"string\"}}},\"utilitiesIncluded\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"List of included utilities\"},\"parkingIncluded\":{\"type\":\"boolean\"},\"parkingFee\":{\"type\":\"number\"},\"latePaymentGracePeriod\":{\"type\":\"number\",\"description\":\"Days before late fee applies\"},\"latePaymentFee\":{\"type\":\"number\",\"description\":\"Late payment fee amount\"},\"earlyTerminationPenalty\":{\"type\":\"string\",\"description\":\"Penalty for breaking lease early\"},\"moveOutNotice\":{\"type\":\"number\",\"description\":\"Days notice required to move out\"},\"maintenanceResponsibilities\":{\"type\":\"object\",\"properties\":{\"landlord\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"tenant\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}},\"redFlags\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"issue\":{\"type\":\"string\",\"description\":\"Description of the concerning clause\"},\"severity\":{\"type\":\"string\",\"enum\":[\"High\",\"Medium\",\"Low\"]},\"clause\":{\"type\":\"string\",\"description\":\"The actual clause text\"}}}}},\"required\":[\"propertyAddress\",\"monthlyRent\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Analyze Lease",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        540,
+        340
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "merge",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        740,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "As a tenant advocate reviewing this lease agreement, provide:\n\n1. SUMMARY (2-3 sentences): Brief overview of this lease - is it standard or does it have unusual terms?\n\n2. TOP 3 NEGOTIATION POINTS: What should the tenant try to negotiate or get clarified before signing? Be specific.\n\n3. FAIRNESS RATING: Rate this lease as one of:\n   - Tenant-Friendly (favorable terms for renter)\n   - Neutral (standard/balanced terms)\n   - Landlord-Friendly (favors property owner)\n   Include a brief justification.\n\n4. WARNINGS: Any terms that could cause problems during tenancy or at move-out?"
+      },
+      "id": "pdfvector-advice",
+      "name": "PDF Vector - Tenant Advice",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        940,
+        340
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const lease = $('PDF Vector - Analyze Lease').item.json.data;\nconst advice = $input.first().json.markdown;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Calculate total move-in cost\nconst moveInCost = (lease.monthlyRent || 0) + \n  (lease.securityDeposit || 0) + \n  (lease.petPolicy?.petDeposit || 0);\n\n// Format landlord info\nconst landlordInfo = lease.landlord \n  ? `${lease.landlord.name || ''}${lease.landlord.company ? ' (' + lease.landlord.company + ')' : ''}`.trim()\n  : 'Not specified';\n\n// Format tenants\nconst tenantsList = lease.tenants && lease.tenants.length > 0\n  ? lease.tenants.join(', ')\n  : 'Not specified';\n\n// Format utilities\nconst utilities = lease.utilitiesIncluded && lease.utilitiesIncluded.length > 0\n  ? lease.utilitiesIncluded.join(', ')\n  : 'None included';\n\n// Format pet policy\nlet petSummary = 'Not specified';\nif (lease.petPolicy) {\n  if (lease.petPolicy.allowed) {\n    petSummary = `Allowed`;\n    if (lease.petPolicy.petDeposit) petSummary += ` - Deposit: $${lease.petPolicy.petDeposit}`;\n    if (lease.petPolicy.petRent) petSummary += `, Monthly: $${lease.petPolicy.petRent}`;\n    if (lease.petPolicy.restrictions) petSummary += ` (${lease.petPolicy.restrictions})`;\n  } else {\n    petSummary = 'Not allowed';\n  }\n}\n\n// Format late fee\nconst lateFee = lease.latePaymentFee \n  ? `$${lease.latePaymentFee} after ${lease.latePaymentGracePeriod || 0} days`\n  : 'Not specified';\n\n// Format red flags\nconst redFlags = lease.redFlags || [];\nconst highRisks = redFlags.filter(r => r.severity === 'High');\nconst mediumRisks = redFlags.filter(r => r.severity === 'Medium');\nconst flagsSummary = redFlags.length > 0\n  ? redFlags.map(r => `[${r.severity}] ${r.issue}`).join('; ')\n  : 'None identified';\n\n// Determine overall risk level\nlet riskLevel = 'Low';\nif (highRisks.length >= 2) riskLevel = 'High';\nelse if (highRisks.length === 1 || redFlags.length >= 3) riskLevel = 'Medium';\n\n// Truncate advice for Sheets (avoid cell overflow)\nconst adviceShort = advice && advice.length > 500 \n  ? advice.substring(0, 500) + '...'\n  : advice;\n\nreturn [{\n  json: {\n    propertyAddress: lease.propertyAddress || 'Not specified',\n    landlord: landlordInfo,\n    tenants: tenantsList,\n    monthlyRent: lease.monthlyRent || 0,\n    securityDeposit: lease.securityDeposit || 0,\n    moveInCost: moveInCost,\n    leaseStart: lease.leaseStart || 'Not specified',\n    leaseEnd: lease.leaseEnd || 'Not specified',\n    leaseTerm: lease.leaseTerm || 'Not specified',\n    autoRenewal: lease.autoRenewal ? 'Yes' : 'No',\n    petPolicy: petSummary,\n    utilities: utilities,\n    lateFee: lateFee,\n    earlyTermination: lease.earlyTerminationPenalty || 'Not specified',\n    moveOutNotice: lease.moveOutNotice ? `${lease.moveOutNotice} days` : 'Not specified',\n    redFlagCount: redFlags.length,\n    highRiskCount: highRisks.length,\n    flagsSummary: flagsSummary,\n    riskLevel: riskLevel,\n    tenantAdvice: advice,\n    tenantAdviceShort: adviceShort,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "compile-analysis",
+      "name": "Compile Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Property Address": "={{ $json.propertyAddress }}",
+            "Landlord": "={{ $json.landlord }}",
+            "Tenants": "={{ $json.tenants }}",
+            "Monthly Rent": "={{ $json.monthlyRent }}",
+            "Security Deposit": "={{ $json.securityDeposit }}",
+            "Move-In Cost": "={{ $json.moveInCost }}",
+            "Lease Start": "={{ $json.leaseStart }}",
+            "Lease End": "={{ $json.leaseEnd }}",
+            "Pet Policy": "={{ $json.petPolicy }}",
+            "Utilities Included": "={{ $json.utilities }}",
+            "Late Fee": "={{ $json.lateFee }}",
+            "Early Termination": "={{ $json.earlyTermination }}",
+            "Red Flags": "={{ $json.flagsSummary }}",
+            "Risk Level": "={{ $json.riskLevel }}",
+            "Tenant Advice": "={{ $json.tenantAdviceShort }}",
+            "Analyzed Date": "={{ $json.processedAt.split('T')[0] }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log Lease Analysis",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1340,
+        340
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "high-risk-check",
+              "leftValue": "={{ $('Compile Analysis').item.json.riskLevel }}",
+              "rightValue": "High",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "if-high-risk",
+      "name": "High Risk?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=🚨 *HIGH RISK LEASE ALERT*\n\n*Property:* {{ $('Compile Analysis').item.json.propertyAddress }}\n*Rent:* ${{ $('Compile Analysis').item.json.monthlyRent }}/month\n*Move-In Cost:* ${{ $('Compile Analysis').item.json.moveInCost }}\n\n⚠️ *Red Flags ({{ $('Compile Analysis').item.json.redFlagCount }}):*\n{{ $('Compile Analysis').item.json.flagsSummary }}\n\n📋 *File:* {{ $('Compile Analysis').item.json.fileName }}",
+        "otherOptions": {}
+      },
+      "id": "slack-alert",
+      "name": "High Risk Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1740,
+        240
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=✅ *Lease Analyzed*\n\n*Property:* {{ $('Compile Analysis').item.json.propertyAddress }}\n*Rent:* ${{ $('Compile Analysis').item.json.monthlyRent }}/month\n*Term:* {{ $('Compile Analysis').item.json.leaseStart }} to {{ $('Compile Analysis').item.json.leaseEnd }}\n*Risk Level:* {{ $('Compile Analysis').item.json.riskLevel }}\n\n📋 *File:* {{ $('Compile Analysis').item.json.fileName }}",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Analysis Complete",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1740,
+        440
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Lease": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Analyze Lease",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Analyze Lease": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Tenant Advice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Tenant Advice": {
+      "main": [
+        [
+          {
+            "node": "Compile Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Analysis": {
+      "main": [
+        [
+          {
+            "node": "Log Lease Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Lease Analysis": {
+      "main": [
+        [
+          {
+            "node": "High Risk?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Risk?": {
+      "main": [
+        [
+          {
+            "node": "High Risk Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Analysis Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "Real Estate"
+    },
+    {
+      "name": "Lease"
+    },
+    {
+      "name": "Tenant"
+    },
+    {
+      "name": "Contract Analysis"
+    }
+  ],
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
