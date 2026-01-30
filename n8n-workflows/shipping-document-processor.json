@@ -1,0 +1,389 @@
+{
+  "name": "W10 - Shipping Document & Bill of Lading Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🚢 Shipping Document Processor\n\n**Handles:**\n- Bills of Lading (B/L)\n- Packing Lists\n- Commercial Invoices\n- Customs Documents\n- Shipping Manifests\n\n**Features:**\n- Auto-extraction of shipment details\n- Container tracking\n- ETA monitoring\n- Multi-carrier support\n\n**Setup Required:**\n1. Gmail credential\n2. PDF Vector credential\n3. Google Sheets credential\n4. Slack credential",
+        "height": 400,
+        "width": 320
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📦 Tracked Fields\n\n- Shipper/Consignee info\n- Container numbers & types\n- HS codes (customs)\n- Weight/Volume\n- Port of origin/destination\n- Vessel/Voyage info\n- Cargo description\n- ETD/ETA dates\n- Incoterms (FOB, CIF, etc.)",
+        "height": 260,
+        "width": 260
+      },
+      "id": "sticky-fields",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        400,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Google Sheets Columns\n\nShipment ID | Document Type | B/L Number | Shipper | Consignee | Route | Vessel | ETD | ETA | Days to Arrival | Containers | Container Count | Total Weight (kg) | HS Codes | Incoterms | Received Date",
+        "height": 120,
+        "width": 500
+      },
+      "id": "sticky-sheets",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⏰ ETA Status\n\n🔴 Arrived/Overdue: ≤0 days\n🟠 Arriving Soon: 1-3 days\n🟢 In Transit: >3 days",
+        "height": 120,
+        "width": 220
+      },
+      "id": "sticky-eta",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        680,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false
+        }
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        140,
+        340
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "Monitor for shipping documents"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-get",
+      "name": "Get a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        340,
+        340
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "attachment_0",
+        "prompt": "Extract all shipping information from this document:\n\n1. Document Identification:\n   - Document type (Bill of Lading, Packing List, Commercial Invoice, etc.)\n   - B/L number or booking number\n\n2. Parties:\n   - Shipper name, address, country\n   - Consignee name, address, country\n   - Notify party if present\n\n3. Container Information:\n   - Container numbers\n   - Container types (20GP, 40GP, 40HC, etc.)\n   - Seal numbers\n\n4. Voyage Details:\n   - Vessel name\n   - Voyage number\n   - Port of Loading\n   - Port of Discharge\n   - Place of Delivery\n   - ETD (Estimated Time of Departure)\n   - ETA (Estimated Time of Arrival)\n\n5. Cargo Details:\n   - Cargo description\n   - HS codes (tariff codes)\n   - Number of packages\n   - Gross weight\n   - Volume/CBM\n\n6. Terms:\n   - Freight terms (Prepaid/Collect)\n   - Incoterms (FOB, CIF, EXW, etc.)\n   - Special instructions",
+        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\",\"enum\":[\"Bill of Lading\",\"Packing List\",\"Commercial Invoice\",\"Customs Declaration\",\"Shipping Manifest\",\"Arrival Notice\",\"Delivery Order\",\"Other\"]},\"blNumber\":{\"type\":\"string\",\"description\":\"Bill of Lading number\"},\"bookingNumber\":{\"type\":\"string\",\"description\":\"Booking reference number\"},\"shipper\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"country\":{\"type\":\"string\"}}},\"consignee\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"country\":{\"type\":\"string\"}}},\"notifyParty\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"contact\":{\"type\":\"string\"}}},\"containers\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"number\":{\"type\":\"string\"},\"type\":{\"type\":\"string\"},\"sealNumber\":{\"type\":\"string\"}}}},\"vessel\":{\"type\":\"string\",\"description\":\"Vessel/ship name\"},\"voyageNumber\":{\"type\":\"string\"},\"portOfLoading\":{\"type\":\"string\"},\"portOfDischarge\":{\"type\":\"string\"},\"placeOfDelivery\":{\"type\":\"string\"},\"etd\":{\"type\":\"string\",\"description\":\"Estimated departure date\"},\"eta\":{\"type\":\"string\",\"description\":\"Estimated arrival date\"},\"cargo\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"hsCode\":{\"type\":\"string\"},\"packages\":{\"type\":\"number\"},\"grossWeight\":{\"type\":\"number\"},\"volume\":{\"type\":\"number\"}}}},\"freightTerms\":{\"type\":\"string\",\"description\":\"Prepaid or Collect\"},\"incoterms\":{\"type\":\"string\",\"description\":\"FOB, CIF, EXW, etc.\"},\"totalWeight\":{\"type\":\"number\",\"description\":\"Total gross weight in kg\"},\"totalVolume\":{\"type\":\"number\",\"description\":\"Total volume in CBM\"},\"specialInstructions\":{\"type\":\"string\"}},\"required\":[\"documentType\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Shipping",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        540,
+        340
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const doc = $input.first().json.data;\n\n// Get email data with optional chaining for manual testing\nconst emailData = $('Get a message')?.item?.json || {};\nconst senderEmail = emailData?.from?.value?.[0]?.address || 'manual-test@example.com';\nconst receivedDate = emailData?.date || new Date().toISOString();\n\n// Generate shipment ID\nconst shipmentId = doc.blNumber || doc.bookingNumber || `SHP-${Date.now().toString(36).toUpperCase()}`;\n\n// Format containers\nconst containers = doc.containers || [];\nconst containerList = containers.length > 0\n  ? containers.map(c => `${c.number || 'N/A'} (${c.type || 'N/A'})`).join(', ')\n  : 'N/A';\nconst containerCount = containers.length;\n\n// Format cargo\nconst cargo = doc.cargo || [];\nconst cargoList = cargo.length > 0\n  ? cargo.map(c => `${c.description || 'Unknown'} - ${c.packages || 0} pkgs, ${c.grossWeight || 0} kg`).join('; ')\n  : 'N/A';\nconst hsCodes = cargo.map(c => c.hsCode).filter(Boolean).join(', ') || 'N/A';\n\n// Parse ETA with better date handling\nfunction parseDate(dateStr) {\n  if (!dateStr) return null;\n  \n  let date = new Date(dateStr);\n  if (!isNaN(date.getTime())) return date;\n  \n  // Try common date formats\n  const cleanedStr = dateStr\n    .replace(/\\s+at\\s+/i, ' ')\n    .replace(/\\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT|UTC|GMT)$/i, '');\n  \n  date = new Date(cleanedStr);\n  if (!isNaN(date.getTime())) return date;\n  \n  return null;\n}\n\n// Calculate days to arrival\nlet daysToArrival = 'N/A';\nlet etaStatus = 'Unknown';\nconst etaDate = parseDate(doc.eta);\nif (etaDate) {\n  const today = new Date();\n  today.setHours(0, 0, 0, 0);\n  etaDate.setHours(0, 0, 0, 0);\n  daysToArrival = Math.ceil((etaDate - today) / (1000 * 60 * 60 * 24));\n  \n  // Determine status\n  if (daysToArrival <= 0) etaStatus = 'Arrived/Overdue';\n  else if (daysToArrival <= 3) etaStatus = 'Arriving Soon';\n  else etaStatus = 'In Transit';\n}\n\n// Route summary\nconst route = `${doc.portOfLoading || 'N/A'} → ${doc.portOfDischarge || 'N/A'}`;\n\n// Shipper/Consignee names\nconst shipperName = doc.shipper?.name || 'N/A';\nconst consigneeName = doc.consignee?.name || 'N/A';\n\nreturn [{\n  json: {\n    shipmentId: shipmentId,\n    documentType: doc.documentType || 'Unknown',\n    blNumber: doc.blNumber || 'N/A',\n    bookingNumber: doc.bookingNumber || 'N/A',\n    \n    // Parties\n    shipper: doc.shipper,\n    shipperName: shipperName,\n    consignee: doc.consignee,\n    consigneeName: consigneeName,\n    notifyParty: doc.notifyParty,\n    \n    // Route\n    route: route,\n    portOfLoading: doc.portOfLoading || 'N/A',\n    portOfDischarge: doc.portOfDischarge || 'N/A',\n    placeOfDelivery: doc.placeOfDelivery || 'N/A',\n    \n    // Vessel\n    vessel: doc.vessel || 'N/A',\n    voyageNumber: doc.voyageNumber || 'N/A',\n    \n    // Dates\n    etd: doc.etd || 'N/A',\n    eta: doc.eta || 'N/A',\n    daysToArrival: daysToArrival,\n    etaStatus: etaStatus,\n    \n    // Containers\n    containers: containers,\n    containerList: containerList,\n    containerCount: containerCount,\n    \n    // Cargo\n    cargo: cargo,\n    cargoList: cargoList,\n    hsCodes: hsCodes,\n    totalWeight: doc.totalWeight || 0,\n    totalVolume: doc.totalVolume || 0,\n    \n    // Terms\n    freightTerms: doc.freightTerms || 'N/A',\n    incoterms: doc.incoterms || 'N/A',\n    specialInstructions: doc.specialInstructions || 'None',\n    \n    // Meta\n    senderEmail: senderEmail,\n    receivedDate: receivedDate,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-shipping",
+      "name": "Process Shipping Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Shipment ID": "={{ $json.shipmentId }}",
+            "Document Type": "={{ $json.documentType }}",
+            "B/L Number": "={{ $json.blNumber }}",
+            "Shipper": "={{ $json.shipperName }}",
+            "Consignee": "={{ $json.consigneeName }}",
+            "Route": "={{ $json.route }}",
+            "Vessel": "={{ $json.vessel }}",
+            "ETD": "={{ $json.etd }}",
+            "ETA": "={{ $json.eta }}",
+            "Days to Arrival": "={{ $json.daysToArrival }}",
+            "Containers": "={{ $json.containerList }}",
+            "Container Count": "={{ $json.containerCount }}",
+            "Total Weight (kg)": "={{ $json.totalWeight }}",
+            "HS Codes": "={{ $json.hsCodes }}",
+            "Incoterms": "={{ $json.incoterms }}",
+            "Received Date": "={{ $json.receivedDate.split('T')[0] }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Shipment Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        940,
+        340
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "arriving-soon-check",
+              "leftValue": "={{ $('Process Shipping Data').item.json.etaStatus }}",
+              "rightValue": "Arriving Soon",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "if-arriving-soon",
+      "name": "Arriving Soon?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=🚨 *SHIPMENT ARRIVING SOON*\n\n*Shipment:* {{ $('Process Shipping Data').item.json.shipmentId }}\n*Type:* {{ $('Process Shipping Data').item.json.documentType }}\n\n🚢 *Route:* {{ $('Process Shipping Data').item.json.route }}\n*Vessel:* {{ $('Process Shipping Data').item.json.vessel }}\n\n⏰ *ETA:* {{ $('Process Shipping Data').item.json.eta }}\n🔴 *Only {{ $('Process Shipping Data').item.json.daysToArrival }} days until arrival!*\n\n📦 *Cargo:*\n• Containers: {{ $('Process Shipping Data').item.json.containerCount }}\n• Weight: {{ $('Process Shipping Data').item.json.totalWeight }} kg\n• Incoterms: {{ $('Process Shipping Data').item.json.incoterms }}\n\n*Shipper:* {{ $('Process Shipping Data').item.json.shipperName }}\n*Consignee:* {{ $('Process Shipping Data').item.json.consigneeName }}",
+        "otherOptions": {}
+      },
+      "id": "slack-urgent",
+      "name": "Urgent - Arriving Soon",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1340,
+        240
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=📦 *New Shipping Document Processed*\n\n*Shipment:* {{ $('Process Shipping Data').item.json.shipmentId }}\n*Type:* {{ $('Process Shipping Data').item.json.documentType }}\n\n🚢 *Route:* {{ $('Process Shipping Data').item.json.route }}\n*Vessel:* {{ $('Process Shipping Data').item.json.vessel }}\n*ETA:* {{ $('Process Shipping Data').item.json.eta }} ({{ $('Process Shipping Data').item.json.daysToArrival }} days)\n\n📊 *Details:*\n• Containers: {{ $('Process Shipping Data').item.json.containerCount }}\n• Weight: {{ $('Process Shipping Data').item.json.totalWeight }} kg\n• Incoterms: {{ $('Process Shipping Data').item.json.incoterms }}\n\n*Shipper:* {{ $('Process Shipping Data').item.json.shipperName }}\n*Consignee:* {{ $('Process Shipping Data').item.json.consigneeName }}",
+        "otherOptions": {}
+      },
+      "id": "slack-normal",
+      "name": "Notify Logistics Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1340,
+        440
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Shipping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Shipping": {
+      "main": [
+        [
+          {
+            "node": "Process Shipping Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Shipping Data": {
+      "main": [
+        [
+          {
+            "node": "Log to Shipment Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Shipment Tracker": {
+      "main": [
+        [
+          {
+            "node": "Arriving Soon?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Arriving Soon?": {
+      "main": [
+        [
+          {
+            "node": "Urgent - Arriving Soon",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Logistics Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "Logistics"
+    },
+    {
+      "name": "Shipping"
+    },
+    {
+      "name": "Bill of Lading"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
