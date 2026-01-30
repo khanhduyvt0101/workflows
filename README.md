@@ -1,6 +1,6 @@
 # Awesome PDF Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-21_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-22_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 21 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 22 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1259,6 +1259,108 @@ Automatically extract Bill of Lading data from email attachments, log to trackin
 - Add delivery confirmation workflows
 - Connect to your TMS (Transportation Management System)
 - Create customer-facing tracking portal
+
+</details>
+
+<details>
+<summary><strong>🚢 Shipping Document & Bill of Lading Processor</strong> - Process shipping docs with ETA tracking and alerts | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/shipping-document-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/shipping-document-processor.json">📋 Open</a></summary>
+
+Comprehensive shipping document processor that extracts data from Bills of Lading, packing lists, commercial invoices, and customs documents. Features ETA monitoring with urgent arrival alerts and multi-carrier support.
+
+#### Who is this for?
+- Logistics and freight forwarding companies
+- Import/export businesses
+- Supply chain managers
+- Shipping departments tracking multiple carriers
+
+#### How it works
+1. **Gmail Trigger** monitors inbox for emails with shipping document attachments every minute
+2. **Get a message** downloads the email with PDF attachment
+3. **PDF Vector - Extract Shipping** uses AI to extract comprehensive shipping data:
+   - Document type (Bill of Lading, Packing List, Commercial Invoice, etc.)
+   - B/L number and booking reference
+   - Shipper and consignee details with addresses
+   - Container numbers, types, and seal numbers
+   - Vessel name and voyage number
+   - Ports of loading and discharge
+   - ETD/ETA dates
+   - Cargo descriptions with HS codes
+   - Weight, volume, and package counts
+   - Freight terms and Incoterms
+4. **Process Shipping Data** enriches extracted data:
+   - Generates shipment ID from B/L or booking number
+   - Calculates days to arrival from ETA
+   - Determines ETA status (Arrived/Overdue, Arriving Soon, In Transit)
+   - Formats container and cargo lists
+   - Creates route summary (Port A → Port B)
+5. **Log to Shipment Tracker** appends all data to Google Sheets
+6. **Arriving Soon?** checks if shipment arrives within 3 days
+7. **Urgent - Arriving Soon** (if ≤3 days) sends urgent Slack alert
+8. **Notify Logistics Team** (standard path) sends normal notification
+
+#### Services used
+- Gmail (email monitoring)
+- PDF Vector (AI extraction)
+- Google Sheets (shipment tracking)
+- Slack (notifications & urgent alerts)
+
+#### Document types supported
+- Bills of Lading (B/L)
+- Packing Lists
+- Commercial Invoices
+- Customs Declarations
+- Shipping Manifests
+- Arrival Notices
+- Delivery Orders
+
+#### ETA status indicators
+| Status | Days to Arrival | Alert Level |
+|--------|-----------------|-------------|
+| Arrived/Overdue | ≤ 0 days | 🔴 |
+| Arriving Soon | 1-3 days | 🟠 Urgent alert |
+| In Transit | > 3 days | 🟢 Normal |
+
+#### Data fields extracted
+| Category | Fields |
+|----------|--------|
+| Document | Type, B/L number, booking number |
+| Parties | Shipper name/address/country, consignee name/address/country, notify party |
+| Containers | Container numbers, types (20GP, 40GP, 40HC), seal numbers |
+| Voyage | Vessel, voyage number, port of loading, port of discharge, place of delivery |
+| Dates | ETD, ETA, days to arrival |
+| Cargo | Description, HS codes, packages, gross weight, volume/CBM |
+| Terms | Freight terms (Prepaid/Collect), Incoterms (FOB, CIF, EXW, etc.) |
+
+#### Google Sheets structure
+| Shipment ID | Document Type | B/L Number | Shipper | Consignee | Route | Vessel | ETD | ETA | Days to Arrival | Containers | Container Count | Total Weight (kg) | HS Codes | Incoterms | Received Date |
+|-------------|---------------|------------|---------|-----------|-------|--------|-----|-----|-----------------|------------|-----------------|-------------------|----------|-----------|---------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Configure Gmail OAuth credentials for your shipping documents inbox
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and set the spreadsheet ID
+6. Set up Slack OAuth credentials and select your logistics channel
+7. Activate the workflow
+
+#### Key features
+- Multi-document type support (B/L, packing lists, invoices, customs docs)
+- Automatic shipment ID generation from B/L or booking number
+- ETA monitoring with days-to-arrival calculation
+- Urgent alerts for shipments arriving within 3 days
+- Container tracking with type identification
+- HS code extraction for customs compliance
+- Incoterms recognition
+
+#### Customizing this workflow
+- Adjust the "Arriving Soon" threshold (currently 3 days) in the IF node
+- Add carrier API integration for real-time tracking updates
+- Connect to your TMS (Transportation Management System)
+- Add SMS notifications for critical shipments via Twilio
+- Create customer-facing tracking portal with shipment status
+- Add customs clearance status tracking
+- Include freight rate validation against quotes
 
 </details>
 
