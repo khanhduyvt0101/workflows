@@ -1,0 +1,296 @@
+{
+  "name": "W12 - Insurance Claim Document Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🏥 Insurance Claim Document Processor\n\n### What this workflow does\n1. Watches Gmail for claim emails with attachments\n2. Downloads and extracts claim details with PDF Vector\n3. Calculates estimated reimbursement\n4. Routes claims based on amount thresholds\n5. Flags missing pre-authorization or documents\n6. Logs to Google Sheets and notifies team via Slack\n\n### Setup steps\n1. Connect Gmail account (OAuth2)\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns: Claim ID, Claim Type, Policy Number, Claimant, Incident Date, Provider, Diagnosis, Total Amount, Deductible, Est. Reimbursement, Route To, Flags, Status, Received Date\n4. Update spreadsheet ID in the Log Claim node\n5. Connect Slack and select your claims team channel\n\n### Routing thresholds\n- ≤$1,000: Auto-Approve\n- $1,001-$5,000: Claims Adjuster\n- >$5,000: Senior Adjuster\n\n### Perfect for\n- Insurance companies processing claims\n- Healthcare billing departments\n- Claims adjusters and reviewers",
+        "height": 560,
+        "width": 360,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Claim Types Supported\n\n- Medical/Health\n- Auto/Vehicle\n- Property/Home\n- Life Insurance\n- Disability\n- Travel Insurance",
+        "height": 200,
+        "width": 200
+      },
+      "id": "sticky-types",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        440,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⚠️ Auto-Flagged Issues\n\n- Missing Pre-Authorization (if amount >$500)\n- No Supporting Documents attached",
+        "height": 120,
+        "width": 240
+      },
+      "id": "sticky-flags",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        660,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false
+        }
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        140,
+        340
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-get",
+      "name": "Get a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        340,
+        340
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "attachment_0",
+        "prompt": "Extract all insurance claim information: claim type, policy number, claimant info, date of incident, description, itemized costs, supporting documents, policy coverage details, and any pre-authorization references.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"claimType\":{\"type\":\"string\",\"enum\":[\"Medical\",\"Auto\",\"Property\",\"Life\",\"Disability\",\"Travel\",\"Other\"]},\"policyNumber\":{\"type\":\"string\"},\"claimNumber\":{\"type\":\"string\"},\"claimant\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"policyHolder\":{\"type\":\"string\"},\"relationship\":{\"type\":\"string\"},\"dob\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"}}},\"incidentDate\":{\"type\":\"string\"},\"incidentDescription\":{\"type\":\"string\"},\"incidentLocation\":{\"type\":\"string\"},\"provider\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"npi\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"}}},\"diagnosis\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"code\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"}}}},\"procedures\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"code\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"}}}},\"totalAmount\":{\"type\":\"number\"},\"deductible\":{\"type\":\"number\"},\"coPayment\":{\"type\":\"number\"},\"amountRequested\":{\"type\":\"number\"},\"preAuthNumber\":{\"type\":\"string\"},\"supportingDocs\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"claimType\",\"policyNumber\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Claim",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        540,
+        340
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const claim = $input.first().json.data;\n\n// Generate claim ID if not present\nconst claimId = claim.claimNumber || `CLM-${Date.now().toString(36).toUpperCase()}`;\n\n// Calculate reimbursement estimate\nconst totalAmount = claim.totalAmount || 0;\nconst deductible = claim.deductible || 0;\nconst copay = claim.coPayment || 0;\nconst estimatedReimbursement = Math.max(0, totalAmount - deductible - copay);\n\n// Format procedures/items\nconst procedures = claim.procedures || [];\nconst procedureList = procedures.map(p => `${p.code}: ${p.description} - $${p.amount}`).join('\\n') || 'N/A';\n\n// Format diagnosis\nconst diagnosis = claim.diagnosis || [];\nconst diagnosisList = diagnosis.map(d => `${d.code}: ${d.description}`).join('; ') || 'N/A';\n\n// Determine routing based on amount\nlet routeTo = 'Auto-Approve';\nif (totalAmount > 5000) routeTo = 'Senior Adjuster';\nelse if (totalAmount > 1000) routeTo = 'Claims Adjuster';\n\n// Check for flags\nlet flags = [];\nif (!claim.preAuthNumber && totalAmount > 500) flags.push('Missing Pre-Authorization');\nif (claim.supportingDocs && claim.supportingDocs.length === 0) flags.push('No Supporting Documents');\n\nreturn [{\n  json: {\n    claimId: claimId,\n    ...claim,\n    totalAmount: totalAmount,\n    estimatedReimbursement: estimatedReimbursement,\n    procedureList: procedureList,\n    diagnosisList: diagnosisList,\n    routeTo: routeTo,\n    flags: flags,\n    flagCount: flags.length,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-claim",
+      "name": "Process Claim",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Claim ID": "={{ $json.claimId }}",
+            "Claim Type": "={{ $json.claimType }}",
+            "Policy Number": "={{ $json.policyNumber }}",
+            "Claimant": "={{ $json.claimant ? $json.claimant.name : 'N/A' }}",
+            "Incident Date": "={{ $json.incidentDate || 'N/A' }}",
+            "Provider": "={{ $json.provider ? $json.provider.name : 'N/A' }}",
+            "Diagnosis": "={{ $json.diagnosisList }}",
+            "Total Amount": "={{ $json.totalAmount }}",
+            "Deductible": "={{ $json.deductible || 0 }}",
+            "Est. Reimbursement": "={{ $json.estimatedReimbursement }}",
+            "Route To": "={{ $json.routeTo }}",
+            "Flags": "={{ $json.flags.join(', ') || 'None' }}",
+            "Status": "=Pending Review",
+            "Received Date": "={{ $json.processedAt.split('T')[0] }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log Claim",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        940,
+        340
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=📋 *New Insurance Claim*\n\n*Claim ID:* {{ $('Process Claim').item.json.claimId }}\n*Type:* {{ $('Process Claim').item.json.claimType }}\n*Policy:* {{ $('Process Claim').item.json.policyNumber }}\n\n👤 *Claimant:* {{ $('Process Claim').item.json.claimant ? $('Process Claim').item.json.claimant.name : 'N/A' }}\n📅 *Incident Date:* {{ $('Process Claim').item.json.incidentDate || 'N/A' }}\n\n💰 *Financial Summary:*\n• Total Claimed: ${{ $('Process Claim').item.json.totalAmount }}\n• Deductible: ${{ $('Process Claim').item.json.deductible || 0 }}\n• Est. Reimbursement: ${{ $('Process Claim').item.json.estimatedReimbursement }}\n\n📤 *Route To:* {{ $('Process Claim').item.json.routeTo }}\n{{ $('Process Claim').item.json.flagCount > 0 ? '\\n⚠️ *Flags:* ' + $('Process Claim').item.json.flags.join(', ') : '' }}",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Notify Claims Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1140,
+        340
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Claim": {
+      "main": [
+        [
+          {
+            "node": "Process Claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Claim": {
+      "main": [
+        [
+          {
+            "node": "Log Claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Claim": {
+      "main": [
+        [
+          {
+            "node": "Notify Claims Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "Insurance"
+    },
+    {
+      "name": "Claims"
+    },
+    {
+      "name": "Healthcare"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
