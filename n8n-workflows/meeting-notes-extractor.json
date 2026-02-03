@@ -1,0 +1,291 @@
+{
+  "name": "W11 - Meeting Notes & Action Item Extractor",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📝 Meeting Notes & Action Item Extractor\n\n### What this workflow does\n1. Watches Google Drive folder for meeting notes\n2. Downloads and reads the document\n3. Extracts attendees, decisions, and action items\n4. Logs summary to Google Sheets\n5. Posts formatted summary to Slack with task assignments\n\n### Setup steps\n1. Connect Google Drive account (OAuth2)\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns: Meeting Title, Date, Duration, Attendees, Attendee Count, Decisions Made, Action Items, High Priority, Follow-up Date, Notes Link, Processed\n4. Update folder ID and spreadsheet ID in the nodes\n5. Connect Slack and select your team channel\n\n### Perfect for\n- Project managers tracking action items\n- Team leads distributing meeting summaries\n- Executive assistants organizing follow-ups",
+        "height": 480,
+        "width": 340,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ✅ Extracted Fields\n\n- Meeting title & date\n- Attendees (names, roles, emails)\n- Key discussion points\n- Decisions made + rationale\n- Action items + owners + due dates\n- Priority levels (High/Medium/Low)\n- Follow-up meeting details\n- Parking lot items",
+        "height": 240,
+        "width": 240
+      },
+      "id": "sticky-fields",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        420,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Google Sheets Columns\n\nMeeting Title | Date | Duration | Attendees | Attendee Count | Decisions Made | Action Items | High Priority | Follow-up Date | Notes Link | Processed",
+        "height": 100,
+        "width": 520
+      },
+      "id": "sticky-sheets",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        340
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Notes",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        380,
+        340
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract meeting information from these notes or transcript: meeting title, date, attendees, agenda items, key discussion points, decisions made, action items with assigned owners and due dates, and any follow-up meetings scheduled.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"meetingTitle\":{\"type\":\"string\"},\"meetingDate\":{\"type\":\"string\"},\"meetingDuration\":{\"type\":\"string\"},\"attendees\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"role\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"}}}},\"agendaItems\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"keyDiscussionPoints\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"topic\":{\"type\":\"string\"},\"summary\":{\"type\":\"string\"}}}},\"decisionsMade\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"decision\":{\"type\":\"string\"},\"rationale\":{\"type\":\"string\"},\"decisionMaker\":{\"type\":\"string\"}}}},\"actionItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"task\":{\"type\":\"string\"},\"owner\":{\"type\":\"string\"},\"dueDate\":{\"type\":\"string\"},\"priority\":{\"type\":\"string\",\"enum\":[\"High\",\"Medium\",\"Low\"]}}}},\"followUpMeeting\":{\"type\":\"object\",\"properties\":{\"date\":{\"type\":\"string\"},\"purpose\":{\"type\":\"string\"}}},\"parkingLotItems\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"meetingTitle\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Meeting Info",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        580,
+        340
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const meeting = $input.first().json.data;\nconst fileName = $('Google Drive Trigger')?.item?.json?.name || 'Unknown';\nconst fileId = $('Google Drive Trigger')?.item?.json?.id || '';\n\n// Format attendees\nconst attendees = meeting.attendees || [];\nconst attendeeList = attendees.map(a => a.name).join(', ') || 'Not specified';\nconst attendeeCount = attendees.length;\n\n// Format discussion points\nconst discussions = meeting.keyDiscussionPoints || [];\nconst discussionList = discussions.map(d => `• **${d.topic}**: ${d.summary}`).join('\\n') || 'None recorded';\n\n// Format decisions\nconst decisions = meeting.decisionsMade || [];\nconst decisionList = decisions.map(d => `✓ ${d.decision}`).join('\\n') || 'None recorded';\n\n// Format action items\nconst actions = meeting.actionItems || [];\nconst actionList = actions.map(a => \n  `□ ${a.task} → ${a.owner} (Due: ${a.dueDate || 'TBD'}) [${a.priority || 'Medium'}]`\n).join('\\n') || 'None assigned';\n\n// Count items\nconst actionCount = actions.length;\nconst decisionCount = decisions.length;\nconst highPriorityCount = actions.filter(a => a.priority === 'High').length;\n\nreturn [{\n  json: {\n    ...meeting,\n    fileName: fileName,\n    fileId: fileId,\n    attendeeList: attendeeList,\n    attendeeCount: attendeeCount,\n    discussionList: discussionList,\n    decisionList: decisionList,\n    decisionCount: decisionCount,\n    actionList: actionList,\n    actionCount: actionCount,\n    highPriorityCount: highPriorityCount,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-meeting",
+      "name": "Format Meeting Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Meeting Title": "={{ $json.meetingTitle }}",
+            "Date": "={{ $json.meetingDate || 'N/A' }}",
+            "Duration": "={{ $json.meetingDuration || 'N/A' }}",
+            "Attendees": "={{ $json.attendeeList }}",
+            "Attendee Count": "={{ $json.attendeeCount }}",
+            "Decisions Made": "={{ $json.decisionCount }}",
+            "Action Items": "={{ $json.actionCount }}",
+            "High Priority": "={{ $json.highPriorityCount }}",
+            "Follow-up Date": "={{ $json.followUpMeeting ? $json.followUpMeeting.date : 'N/A' }}",
+            "Notes Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Processed": "={{ $json.processedAt.split('T')[0] }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log Meeting Summary",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        980,
+        340
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=📋 *Meeting Summary: {{ $('Format Meeting Data').item.json.meetingTitle }}*\n\n📅 *Date:* {{ $('Format Meeting Data').item.json.meetingDate || 'N/A' }}\n👥 *Attendees:* {{ $('Format Meeting Data').item.json.attendeeList }}\n\n---\n\n✅ *Decisions Made ({{ $('Format Meeting Data').item.json.decisionCount }}):*\n{{ $('Format Meeting Data').item.json.decisionList }}\n\n---\n\n📌 *Action Items ({{ $('Format Meeting Data').item.json.actionCount }}):*\n{{ $('Format Meeting Data').item.json.actionList }}\n\n---\n\n{{ $('Format Meeting Data').item.json.followUpMeeting ? '📆 *Next Meeting:* ' + $('Format Meeting Data').item.json.followUpMeeting.date + ' - ' + $('Format Meeting Data').item.json.followUpMeeting.purpose : '' }}\n\n<https://drive.google.com/file/d/{{ $('Format Meeting Data').item.json.fileId }}/view|📄 View Full Notes>",
+        "otherOptions": {}
+      },
+      "id": "slack-summary",
+      "name": "Post Summary to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1180,
+        340
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Notes": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Meeting Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Meeting Info": {
+      "main": [
+        [
+          {
+            "node": "Format Meeting Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Meeting Data": {
+      "main": [
+        [
+          {
+            "node": "Log Meeting Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Meeting Summary": {
+      "main": [
+        [
+          {
+            "node": "Post Summary to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "Meetings"
+    },
+    {
+      "name": "Productivity"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
