@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-22_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-23_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 22 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 23 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1537,6 +1537,106 @@ Automatically analyze residential lease agreements with AI-powered extraction of
 - Add comparison against standard lease templates
 - Include rent-to-income ratio calculations
 - Create renewal reminder workflows based on lease end dates
+
+</details>
+
+<details>
+<summary><strong>📝 Meeting Notes & Action Item Extractor</strong> - Extract action items and decisions from meeting notes | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/meeting-notes-extractor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/meeting-notes-extractor.json">📋 Open</a></summary>
+
+Automatically process meeting notes and transcripts with AI-powered extraction of attendees, discussion points, decisions, and action items. Logs comprehensive summaries to Google Sheets and posts formatted updates to Slack with task assignments and due dates.
+
+#### Who is this for?
+- Project managers tracking action items across multiple meetings
+- Team leads distributing meeting summaries to stakeholders
+- Executive assistants organizing follow-ups and next steps
+- Scrum masters documenting sprint planning and retrospectives
+
+#### How it works
+1. **Google Drive Trigger** monitors your meeting notes folder for new documents
+2. **Download Notes** retrieves the PDF or document from Google Drive
+3. **PDF Vector - Extract Meeting Info** uses AI to extract comprehensive meeting data:
+   - Meeting title, date, and duration
+   - Attendees with names, roles, and emails
+   - Agenda items discussed
+   - Key discussion points with topic summaries
+   - Decisions made with rationale and decision makers
+   - Action items with task descriptions, assigned owners, due dates, and priority levels (High/Medium/Low)
+   - Follow-up meeting details (date and purpose)
+   - Parking lot items for future discussion
+4. **Format Meeting Data** processes extracted data:
+   - Creates formatted attendee list
+   - Counts total attendees
+   - Formats discussion points with bullet points
+   - Formats decisions with checkmarks
+   - Formats action items with task owners and due dates
+   - Counts total decisions and action items
+   - Identifies high-priority action items
+5. **Log Meeting Summary** appends summary to Google Sheets with:
+   - Meeting title, date, duration
+   - Attendee list and count
+   - Number of decisions made
+   - Number of action items
+   - High-priority action item count
+   - Follow-up meeting date
+   - Direct link to meeting notes
+   - Processing timestamp
+6. **Post Summary to Slack** sends formatted message with:
+   - Meeting title and date
+   - Attendee list
+   - All decisions made with counts
+   - All action items with owners, due dates, and priorities
+   - Next meeting information (if scheduled)
+   - Link to full notes in Google Drive
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI extraction)
+- Google Sheets (meeting summary tracking)
+- Slack (team notifications)
+
+#### Extracted fields
+| Category | Fields |
+|----------|--------|
+| Meeting Info | Title, date, duration |
+| Attendees | Name, role, email |
+| Discussion | Agenda items, key discussion points with topics and summaries |
+| Decisions | Decision text, rationale, decision maker |
+| Action Items | Task description, assigned owner, due date, priority (High/Medium/Low) |
+| Follow-up | Next meeting date and purpose |
+| Parking Lot | Items deferred for future discussion |
+
+#### Google Sheets structure
+| Meeting Title | Date | Duration | Attendees | Attendee Count | Decisions Made | Action Items | High Priority | Follow-up Date | Notes Link | Processed |
+|---------------|------|----------|-----------|----------------|----------------|--------------|---------------|----------------|------------|-----------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Meeting Notes" folder in Google Drive and configure the trigger with the folder ID
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and spreadsheet ID
+6. Set up Slack OAuth credentials and select your team notification channel
+7. Activate the workflow
+
+#### Key features
+- Comprehensive meeting data extraction (9 categories)
+- Automatic action item prioritization (High/Medium/Low)
+- Owner assignment tracking for accountability
+- Due date extraction for deadline management
+- Decision documentation with rationale
+- Follow-up meeting scheduling
+- Direct links to original meeting notes
+- Formatted Slack notifications with task assignments
+
+#### Customizing this workflow
+- Add email notifications to action item owners
+- Create calendar events for action item due dates
+- Integrate with project management tools (Asana, Jira, Monday.com)
+- Add reminders for overdue action items
+- Filter high-priority items to separate Slack channel
+- Connect to your team wiki or knowledge base
+- Add participant attendance tracking
+- Create weekly action item digest reports
 
 </details>
 
