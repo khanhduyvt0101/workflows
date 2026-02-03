@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-23_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-24_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 23 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 24 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -650,6 +650,109 @@ Automate insurance prior authorization processing with emergency triage, coverag
 - Adjust cost thresholds for different plan types
 - Add integration with your authorization management system
 - Configure additional validation rules for your payers
+
+</details>
+
+<details>
+<summary><strong>🏥 Insurance Claim Document Processor</strong> - Automate insurance claim processing with routing and reimbursement estimates | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/insurance-claim-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/insurance-claim-processor.json">📋 Open</a></summary>
+
+Comprehensive insurance claim processing workflow that extracts claim data from email attachments, calculates estimated reimbursement, routes claims based on amount thresholds, and flags missing pre-authorizations or documentation. Perfect for insurance companies automating claims intake.
+
+#### Who is this for?
+- Insurance companies processing claims
+- Healthcare billing departments
+- Claims adjusters and reviewers
+- Medical billing professionals
+
+#### How it works
+1. **Gmail Trigger** monitors inbox for new claim emails with attachments every minute
+2. **Get a message** downloads the email with claim PDF attachment
+3. **PDF Vector - Extract Claim** uses AI to extract comprehensive claim data:
+   - Claim type (Medical, Auto, Property, Life, Disability, Travel)
+   - Policy number and claim number
+   - Claimant information (name, policy holder, relationship, DOB, contact)
+   - Incident date, description, and location
+   - Provider details (name, NPI, address)
+   - Diagnosis codes and descriptions
+   - Procedures with codes, descriptions, and amounts
+   - Total amount, deductible, co-payment
+   - Pre-authorization number
+   - Supporting documents list
+4. **Process Claim** enriches and validates claim data:
+   - Generates unique claim ID if not present (CLM-XXXXX format)
+   - Calculates estimated reimbursement (Total - Deductible - Copay)
+   - Formats procedure and diagnosis lists
+   - Routes claims based on amount:
+     - ≤$1,000: Auto-Approve
+     - $1,001-$5,000: Claims Adjuster
+     - >$5,000: Senior Adjuster
+   - Flags claims for:
+     - Missing Pre-Authorization (if amount >$500)
+     - No Supporting Documents attached
+5. **Log Claim** appends all claim details to Google Sheets tracking database
+6. **Notify Claims Team** sends formatted Slack notification with:
+   - Claim ID, type, and policy number
+   - Claimant name and incident date
+   - Financial summary (total claimed, deductible, estimated reimbursement)
+   - Routing recommendation
+   - Any flags requiring attention
+
+#### Services used
+- Gmail (email monitoring)
+- PDF Vector (AI extraction)
+- Google Sheets (claim tracking)
+- Slack (team notifications)
+
+#### Claim types supported
+- Medical/Health
+- Auto/Vehicle
+- Property/Home
+- Life Insurance
+- Disability
+- Travel Insurance
+
+#### Routing thresholds
+| Amount Range | Routed To | Approval Level |
+|--------------|-----------|----------------|
+| ≤ $1,000 | Auto-Approve | Automatic |
+| $1,001 - $5,000 | Claims Adjuster | Standard Review |
+| > $5,000 | Senior Adjuster | Senior Review |
+
+#### Auto-flagged issues
+- **Missing Pre-Authorization** - Flagged when amount >$500 and no pre-auth number present
+- **No Supporting Documents** - Flagged when no supporting documents attached
+
+#### Google Sheets structure
+| Claim ID | Claim Type | Policy Number | Claimant | Incident Date | Provider | Diagnosis | Total Amount | Deductible | Est. Reimbursement | Route To | Flags | Status | Received Date |
+|----------|------------|---------------|----------|---------------|----------|-----------|--------------|------------|-------------------|----------|-------|--------|---------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Configure Gmail OAuth credentials for your claims inbox
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and set the spreadsheet ID in the "Log Claim" node
+6. Set up Slack OAuth credentials and select your claims team channel
+7. Activate the workflow
+
+#### Key features
+- Automatic claim ID generation (CLM-XXXXX format)
+- Reimbursement estimation (Total - Deductible - Copay)
+- Intelligent routing based on claim amount
+- Pre-authorization validation for high-value claims
+- Supporting documentation checks
+- Formatted diagnosis and procedure lists
+- Complete audit trail in Google Sheets
+
+#### Customizing this workflow
+- Adjust routing thresholds in the "Process Claim" node (currently $1K and $5K)
+- Modify pre-authorization threshold (currently $500) for your organization's policies
+- Add additional claim types to the extraction schema
+- Connect to your claims management system instead of Google Sheets
+- Add email auto-replies to claimants confirming receipt
+- Include duplicate claim detection based on claim number or policy
+- Add approval workflow integration for flagged claims
+- Create separate Slack channels for different claim types or routing levels
 
 </details>
 
