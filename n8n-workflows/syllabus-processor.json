@@ -1,0 +1,393 @@
+{
+  "name": "Course Syllabus Processor for Students",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📚 Course Syllabus Processor\n\n### How it works\n1. Watches Google Drive folder for syllabus uploads\n2. Downloads and extracts course info, instructor details, schedule\n3. Parses assignments, exams, grading breakdown, required materials\n4. Formats deadlines chronologically for easy tracking\n5. Logs all course data to Google Sheets tracker\n6. Sends Slack summary with key dates and requirements\n\n### Setup steps\n1. Create Google Drive folder for syllabus documents\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns: Course Code, Course Name, Credits, Semester, Instructor, Email, Office Hours, Schedule, Grading, Assignments, Exams, Required Materials, Added Date\n4. Connect Google Drive, Sheets, and Slack credentials\n5. Update folder ID and spreadsheet ID in nodes\n\n### Perfect for\n- Students organizing multiple courses\n- Academic advisors tracking student schedules\n- Course coordinators managing curriculum\n- Study groups sharing course information",
+        "height": 560,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📅 Extracted Data\n\n- Course name, code, credits\n- Instructor contact info\n- Class schedule and location\n- All assignment deadlines\n- Exam dates and weights\n- Grading breakdown\n- Required textbooks\n- Course policies",
+        "height": 240,
+        "width": 220
+      },
+      "id": "sticky-info",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Syllabus Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        280,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract course syllabus information: course name, course code, credits, semester, instructor name and contact, office hours, class meeting times and location, course description, learning objectives, required textbooks and materials, grading breakdown by category, all assignments with due dates, exam dates, and course policies.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"course\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"code\":{\"type\":\"string\"},\"credits\":{\"type\":\"number\"},\"semester\":{\"type\":\"string\"},\"department\":{\"type\":\"string\"}}},\"instructor\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"office\":{\"type\":\"string\"},\"officeHours\":{\"type\":\"string\"}}},\"schedule\":{\"type\":\"object\",\"properties\":{\"days\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"time\":{\"type\":\"string\"},\"location\":{\"type\":\"string\"},\"startDate\":{\"type\":\"string\"},\"endDate\":{\"type\":\"string\"}}},\"description\":{\"type\":\"string\"},\"learningObjectives\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"materials\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"author\":{\"type\":\"string\"},\"isbn\":{\"type\":\"string\"},\"required\":{\"type\":\"boolean\"}}}},\"grading\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"category\":{\"type\":\"string\"},\"weight\":{\"type\":\"number\"}}}},\"assignments\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"type\":{\"type\":\"string\"},\"dueDate\":{\"type\":\"string\"},\"weight\":{\"type\":\"number\"},\"description\":{\"type\":\"string\"}}}},\"exams\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"date\":{\"type\":\"string\"},\"time\":{\"type\":\"string\"},\"location\":{\"type\":\"string\"},\"weight\":{\"type\":\"number\"}}}},\"policies\":{\"type\":\"object\",\"properties\":{\"attendance\":{\"type\":\"string\"},\"lateWork\":{\"type\":\"string\"},\"academicIntegrity\":{\"type\":\"string\"}}}},\"required\":[\"course\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Syllabus",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        680,
+        280
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const syllabus = $input.first().json.data;\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId = $('Google Drive Trigger').item.json.id;\n\nconst course = syllabus.course || {};\nconst instructor = syllabus.instructor || {};\nconst schedule = syllabus.schedule || {};\n\n// Format schedule\nconst scheduleText = schedule.days \n  ? `${schedule.days.join(', ')} at ${schedule.time} in ${schedule.location}`\n  : 'Not specified';\n\n// Format grading breakdown\nconst grading = syllabus.grading || [];\nconst gradingText = grading.map(g => `${g.category}: ${g.weight}%`).join(' | ') || 'Not specified';\n\n// Format required materials\nconst materials = syllabus.materials || [];\nconst requiredMaterials = materials.filter(m => m.required !== false);\nconst materialsList = requiredMaterials.map(m => `📖 ${m.title} by ${m.author || 'N/A'}`).join('\\n') || 'None listed';\n\n// Count and format assignments\nconst assignments = syllabus.assignments || [];\nconst exams = syllabus.exams || [];\nconst upcomingDeadlines = [...assignments, ...exams]\n  .filter(a => a.dueDate || a.date)\n  .sort((a, b) => new Date(a.dueDate || a.date) - new Date(b.dueDate || b.date))\n  .slice(0, 10)\n  .map(a => `📌 ${a.name}: ${a.dueDate || a.date}`)\n  .join('\\n') || 'None listed';\n\n// Format learning objectives\nconst objectives = syllabus.learningObjectives || [];\nconst objectivesList = objectives.slice(0, 5).map((o, i) => `${i+1}. ${o}`).join('\\n') || 'Not specified';\n\nreturn [{\n  json: {\n    ...syllabus,\n    fileName: fileName,\n    fileId: fileId,\n    courseName: course.name || 'Unknown Course',\n    courseCode: course.code || 'N/A',\n    credits: course.credits,\n    semester: course.semester,\n    department: course.department,\n    instructorName: instructor.name || 'TBD',\n    instructorEmail: instructor.email,\n    instructorOffice: instructor.office,\n    officeHours: instructor.officeHours,\n    scheduleText: scheduleText,\n    scheduleDays: schedule.days,\n    scheduleTime: schedule.time,\n    scheduleLocation: schedule.location,\n    gradingText: gradingText,\n    materialsList: materialsList,\n    materialCount: requiredMaterials.length,\n    assignmentCount: assignments.length,\n    examCount: exams.length,\n    upcomingDeadlines: upcomingDeadlines,\n    objectivesList: objectivesList,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-syllabus",
+      "name": "Process Syllabus",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Course Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Courses"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Course Code": "={{ $json.courseCode }}",
+            "Course Name": "={{ $json.courseName }}",
+            "Credits": "={{ $json.credits || 'N/A' }}",
+            "Semester": "={{ $json.semester || 'N/A' }}",
+            "Instructor": "={{ $json.instructorName }}",
+            "Email": "={{ $json.instructorEmail || 'N/A' }}",
+            "Office Hours": "={{ $json.officeHours || 'N/A' }}",
+            "Schedule": "={{ $json.scheduleText }}",
+            "Grading": "={{ $json.gradingText }}",
+            "Assignments": "={{ $json.assignmentCount }}",
+            "Exams": "={{ $json.examCount }}",
+            "Required Materials": "={{ $json.materialCount }}",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Course Code",
+              "displayName": "Course Code",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Course Name",
+              "displayName": "Course Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Credits",
+              "displayName": "Credits",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Semester",
+              "displayName": "Semester",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Instructor",
+              "displayName": "Instructor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Office Hours",
+              "displayName": "Office Hours",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Schedule",
+              "displayName": "Schedule",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Grading",
+              "displayName": "Grading",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Assignments",
+              "displayName": "Assignments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Exams",
+              "displayName": "Exams",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Required Materials",
+              "displayName": "Required Materials",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Added Date",
+              "displayName": "Added Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log Course Info",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1080,
+        280
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "course-updates"
+        },
+        "text": "=📚 *New Course Syllabus Processed*\n\n*{{ $('Process Syllabus').item.json.courseCode }}* - {{ $('Process Syllabus').item.json.courseName }}\n\n👨‍🏫 *Instructor:* {{ $('Process Syllabus').item.json.instructorName }}\n📧 *Email:* {{ $('Process Syllabus').item.json.instructorEmail || 'N/A' }}\n🕐 *Office Hours:* {{ $('Process Syllabus').item.json.officeHours || 'N/A' }}\n\n📅 *Schedule:* {{ $('Process Syllabus').item.json.scheduleText }}\n\n📊 *Grading:* {{ $('Process Syllabus').item.json.gradingText }}\n\n📝 *Assignments:* {{ $('Process Syllabus').item.json.assignmentCount }} | *Exams:* {{ $('Process Syllabus').item.json.examCount }}\n📖 *Required Materials:* {{ $('Process Syllabus').item.json.materialCount }}\n\n*Upcoming Deadlines:*\n{{ $('Process Syllabus').item.json.upcomingDeadlines }}\n\n<https://drive.google.com/file/d/{{ $('Process Syllabus').item.json.fileId }}/view|📄 View Syllabus>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Notify Student",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1280,
+        280
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Syllabus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Syllabus": {
+      "main": [
+        [
+          {
+            "node": "Process Syllabus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Syllabus": {
+      "main": [
+        [
+          {
+            "node": "Log Course Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Course Info": {
+      "main": [
+        [
+          {
+            "node": "Notify Student",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

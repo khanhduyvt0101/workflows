@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-29_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-30_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 29 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 30 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1232,6 +1232,70 @@ Extract and analyze academic transcripts with GPA calculation, academic standing
 - Add specific degree program requirements
 - Connect to your student information system
 - Add duplicate detection for re-submissions
+
+</details>
+
+<details>
+<summary><strong>📚 Course Syllabus Processor for Students</strong> - Organize course syllabi with deadline tracking | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/syllabus-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/syllabus-processor.json">📋 Open</a></summary>
+
+Automatically process course syllabi to extract all important information: instructor contacts, class schedules, assignment deadlines, exam dates, grading breakdowns, and required materials. Perfect for students managing multiple courses.
+
+#### Who is this for?
+- Students organizing multiple courses each semester
+- Academic advisors tracking student schedules
+- Course coordinators managing curriculum information
+- Study groups sharing course information
+
+#### How it works
+1. **Google Drive Trigger** watches your syllabus folder for new documents
+2. **Download Document** retrieves the syllabus PDF from Google Drive
+3. **PDF Vector Extract** uses AI to extract:
+   - Course name, code, credits, semester, department
+   - Instructor name, email, phone, office location, office hours
+   - Class meeting days, times, and location
+   - Course description and learning objectives
+   - Required textbooks and materials (with ISBN)
+   - Grading breakdown by category (exams, assignments, participation, etc.)
+   - All assignments with due dates, types, and weights
+   - Exam dates, times, locations, and weights
+   - Course policies (attendance, late work, academic integrity)
+4. **Process Syllabus** formats the extracted data:
+   - Creates readable schedule text
+   - Formats grading breakdown
+   - Lists required materials with authors
+   - Sorts and formats upcoming deadlines chronologically
+   - Counts assignments and exams
+5. **Log Course Info** saves all data to Google Sheets course tracker with columns for course code, name, credits, semester, instructor info, schedule, grading, and counts
+6. **Notify Student** sends formatted Slack message with:
+   - Course and instructor info
+   - Class schedule
+   - Grading breakdown
+   - Assignment and exam counts
+   - Top 10 upcoming deadlines
+   - Direct link to view syllabus
+
+#### Services used
+- Google Drive (syllabus monitoring and storage)
+- PDF Vector (AI-powered data extraction)
+- Google Sheets (course tracker database)
+- Slack (deadline notifications)
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a Google Drive folder for syllabus documents
+3. Get PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with columns: Course Code, Course Name, Credits, Semester, Instructor, Email, Office Hours, Schedule, Grading, Assignments, Exams, Required Materials, Added Date
+5. Configure Google Drive trigger with your folder ID
+6. Configure Google Sheets node with your spreadsheet ID
+7. Set up Slack credentials and channel for notifications
+8. Activate the workflow
+
+#### Customizing this workflow
+- Add calendar integration to automatically create events for deadlines
+- Connect to note-taking apps like Notion or Evernote
+- Add email notifications for upcoming assignment deadlines
+- Integrate with task management tools like Todoist or Asana
+- Create separate sheets for different semesters or academic years
 
 </details>
 
