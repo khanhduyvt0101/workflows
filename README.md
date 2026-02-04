@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-30_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-31_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 30 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 31 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1111,6 +1111,107 @@ Automatically review contracts with AI-powered extraction of key terms, risk ide
 - Integrate with your CLM (Contract Lifecycle Management) system
 - Add expiration date reminders and renewal tracking
 - Include contract comparison against your standard templates
+
+</details>
+
+<details>
+<summary><strong>🔒 GDPR & Privacy Policy Compliance Scanner</strong> - Audit privacy policies for GDPR compliance | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/gdpr-compliance-scanner.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/gdpr-compliance-scanner.json">📋 Open</a></summary>
+
+Automatically scan and audit privacy policies for GDPR compliance. Extract data controller information, DPO contacts, legal bases, user rights, and identify compliance gaps. Perfect for legal teams, compliance officers, and DPOs who need to review vendor privacy policies or ensure organizational compliance.
+
+#### Who is this for?
+- Legal teams reviewing vendor privacy policies
+- Compliance officers auditing data practices
+- Data protection officers (DPOs) managing privacy compliance
+- Business owners ensuring GDPR compliance
+- Privacy consultants conducting audits
+
+#### How it works
+1. **Google Drive Trigger** monitors your privacy policies folder for new uploads
+2. **Download Document** retrieves the privacy policy PDF from Google Drive
+3. **PDF Vector - Analyze Policy** uses AI to extract comprehensive GDPR data:
+   - Company name, last updated date, jurisdiction
+   - Data controller information (name, address, email)
+   - DPO contact details (name, email)
+   - Types of data collected with purposes
+   - Legal bases for processing (consent, contract, legitimate interest, etc.)
+   - Data retention periods
+   - Third parties data is shared with (names, purposes, locations)
+   - User rights mentioned (access, rectification, erasure, portability, objection, restrict processing, withdraw consent)
+   - Consent mechanisms
+   - International transfer safeguards
+   - Breach notification policies
+   - Compliance gaps and missing elements
+4. **Analyze Compliance** processes the extracted data:
+   - Calculates user rights coverage score (out of 6 required rights)
+   - Identifies missing user rights
+   - Detects compliance gaps (missing DPO, no legal basis, missing breach policy, unsafe international transfers, etc.)
+   - Calculates overall compliance score (100 - 10 points per gap)
+   - Determines compliance status (Compliant, Needs Attention, Non-Compliant)
+   - Formats data for reporting
+5. **Log Compliance Scan** appends complete audit results to Google Sheets tracker
+6. **Has Issues?** checks if status is not "Compliant"
+7. **Alert Compliance Team** (if issues found) sends detailed Slack notification with:
+   - Company name and policy update date
+   - Overall compliance score and status
+   - User rights coverage with covered/missing rights
+   - List of all compliance gaps
+   - Third party count and DPO status
+   - International transfer indicator
+   - Direct link to policy document
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI extraction & analysis)
+- Google Sheets (compliance tracking)
+- Slack (compliance alerts)
+
+#### Compliance checks performed
+- **Lawful basis for processing** - Consent, contract, legal obligation, legitimate interest
+- **DPO contact information** - Name and email provided
+- **Right to access** - Users can request their data
+- **Right to rectification** - Users can correct inaccurate data
+- **Right to erasure** ("right to be forgotten")
+- **Right to data portability** - Export data in machine-readable format
+- **Right to object** - Object to processing
+- **Right to restrict processing**
+- **Right to withdraw consent**
+- **Breach notification policy** - Process for reporting data breaches
+- **International transfer safeguards** - Standard contractual clauses, adequacy decisions, etc.
+- **Data retention periods** - How long data is kept
+- **Third party disclosure** - Who data is shared with
+
+#### Google Sheets structure
+| Company | Last Updated | Compliance Score | Status | User Rights Score | Missing Rights | Gaps Found | Third Parties | Has DPO | International Transfers | Scanned Date |
+|---------|--------------|------------------|--------|-------------------|----------------|------------|---------------|---------|-------------------------|--------------|
+
+#### Compliance scoring logic
+- Starts at 100 points
+- Deduct 10 points per compliance gap
+- **Compliant** (80-100 points) - Minor or no issues
+- **Needs Attention** (50-79 points) - Multiple gaps requiring review
+- **Non-Compliant** (<50 points) - Major compliance issues
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Privacy Policies" folder in Google Drive for policy document uploads
+3. Configure the Google Drive trigger with your folder ID
+4. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+5. Create a Google Sheet with the columns: Company, Last Updated, Compliance Score, Status, User Rights Score, Missing Rights, Gaps Found, Third Parties, Has DPO, International Transfers, Scanned Date
+6. Configure Google Sheets credentials and set the spreadsheet ID
+7. Set up Slack OAuth credentials and select your #compliance-alerts channel
+8. Activate the workflow
+
+#### Customizing this workflow
+- Adjust compliance scoring thresholds based on your organization's risk tolerance
+- Add additional GDPR requirements to check (e.g., cookie consent, marketing opt-in)
+- Include CCPA/CPRA compliance checks for California data
+- Route non-compliant vendors to legal review workflow
+- Add email notifications to specific DPO contacts
+- Create separate channels for different severity levels
+- Integrate with vendor management or GRC (Governance, Risk, Compliance) systems
+- Add periodic re-scanning of existing policies to track updates
+- Generate PDF compliance reports with detailed findings
 
 </details>
 
