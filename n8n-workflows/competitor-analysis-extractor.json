@@ -1,0 +1,450 @@
+{
+  "name": "Competitor Analysis from Reports & Documents",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📊 Competitor Analysis Extractor\n\n### How it works\n1. Watches Google Drive folder for competitor docs\n2. Downloads and extracts company info, financials, products, initiatives\n3. Generates AI strategic analysis with recommendations\n4. Logs structured data to Google Sheets\n5. Sends detailed Slack alert to strategy team\n\n### Setup steps\n1. Create Google Drive folder for competitor documents\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns: Competitor, Document Type, Report Period, Financials, New Products, Partnerships, Acquisitions, Threats Identified, Opportunities, Source Document, Analysis Date\n4. Connect Google Drive, Sheets, and Slack credentials\n5. Update folder ID and spreadsheet ID in nodes\n\n### Perfect for\n- Market research teams\n- Business analysts\n- Product managers\n- Strategic planners",
+        "height": 520,
+        "width": 340,
+        "color": 5
+      },
+      "id": "f3441603-275a-408d-8f8c-a6c717d8227e",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🎯 Intelligence Extracted\n\n- Key financials\n- Product mentions\n- Strategic initiatives\n- Market positioning\n- Growth areas\n- Potential threats",
+        "height": 200
+      },
+      "id": "08767877-653c-42ff-8a98-15b3060b6cbd",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Competitor Documents",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/YOUR_FOLDER_ID"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "d2e5db61-a87f-4efa-b94e-0997fd394428",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        176,
+        288
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      },
+      "notes": "Watch for competitor documents"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "05a3886b-f9f4-47b7-9b23-faa2f26d5be3",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        400,
+        288
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract competitive intelligence from this document: company name, document type, key financial metrics (revenue, growth rate, market share), product announcements, strategic initiatives, partnerships, acquisitions, market expansion plans, technology investments, and any threats or opportunities mentioned.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"companyName\":{\"type\":\"string\"},\"documentType\":{\"type\":\"string\",\"enum\":[\"Annual Report\",\"Earnings Call\",\"Press Release\",\"Industry Report\",\"Marketing Material\",\"SEC Filing\",\"Other\"]},\"reportPeriod\":{\"type\":\"string\"},\"financials\":{\"type\":\"object\",\"properties\":{\"revenue\":{\"type\":\"number\"},\"revenueGrowth\":{\"type\":\"number\"},\"netIncome\":{\"type\":\"number\"},\"marketShare\":{\"type\":\"number\"},\"employees\":{\"type\":\"number\"}}},\"products\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"status\":{\"type\":\"string\",\"enum\":[\"New\",\"Updated\",\"Existing\",\"Discontinued\"]}}}},\"strategicInitiatives\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"initiative\":{\"type\":\"string\"},\"priority\":{\"type\":\"string\"},\"timeline\":{\"type\":\"string\"}}}},\"partnerships\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"acquisitions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"marketExpansion\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"technologyInvestments\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"threats\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"opportunities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"keyQuotes\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"companyName\"],\"additionalProperties\":false}"
+      },
+      "id": "c5b05f18-dbba-4aaa-adb5-4ac4d1510545",
+      "name": "PDF Vector - Extract Intel",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        592,
+        128
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "e35c2269-eb38-4fb0-89f3-464f24a5c906",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "prompt": "Based on this document, provide: 1) A 2-3 sentence executive summary of the competitor's current position, 2) The top 3 strategic moves we should watch, 3) How this might impact our business, and 4) Recommended actions for our team."
+      },
+      "id": "2dfde235-53e9-40ca-96cc-abffdf995ba2",
+      "name": "PDF Vector - Strategic Insights",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        976,
+        272
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const intel = $('PDF Vector - Extract Intel').item.json.data;\nconst insights = $input.first().json.markdown;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Format products\nconst products = intel.products || [];\nconst newProducts = products.filter(p => p.status === 'New').map(p => p.name).join(', ') || 'None';\n\n// Format initiatives\nconst initiatives = intel.strategicInitiatives || [];\nconst initiativesList = initiatives.map(i => `• ${i.initiative}`).join('\\n') || 'None identified';\n\n// Format threats & opportunities\nconst threats = intel.threats || [];\nconst opportunities = intel.opportunities || [];\n\n// Financial summary\nconst fin = intel.financials || {};\nconst financialSummary = fin.revenue \n  ? `Revenue: $${(fin.revenue / 1000000).toFixed(1)}M | Growth: ${fin.revenueGrowth || 'N/A'}% | Market Share: ${fin.marketShare || 'N/A'}%`\n  : 'Financial data not available';\n\nreturn [{\n  json: {\n    ...intel,\n    strategicInsights: insights,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    newProducts: newProducts,\n    initiativesList: initiativesList,\n    threatCount: threats.length,\n    opportunityCount: opportunities.length,\n    financialSummary: financialSummary,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "b76cd1f5-00e1-4b57-82ea-ed86b2096359",
+      "name": "Compile Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Competitor Intel Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Intel Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Competitor": "={{ $json.companyName }}",
+            "Document Type": "={{ $json.documentType }}",
+            "Report Period": "={{ $json.reportPeriod || 'N/A' }}",
+            "Financials": "={{ $json.financialSummary }}",
+            "New Products": "={{ $json.newProducts }}",
+            "Partnerships": "={{ $json.partnerships ? $json.partnerships.join(', ') : 'None' }}",
+            "Acquisitions": "={{ $json.acquisitions ? $json.acquisitions.join(', ') : 'None' }}",
+            "Threats Identified": "={{ $json.threatCount }}",
+            "Opportunities": "={{ $json.opportunityCount }}",
+            "Source Document": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Analysis Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Competitor",
+              "displayName": "Competitor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document Type",
+              "displayName": "Document Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Report Period",
+              "displayName": "Report Period",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Financials",
+              "displayName": "Financials",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "New Products",
+              "displayName": "New Products",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Partnerships",
+              "displayName": "Partnerships",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Acquisitions",
+              "displayName": "Acquisitions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Threats Identified",
+              "displayName": "Threats Identified",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Opportunities",
+              "displayName": "Opportunities",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source Document",
+              "displayName": "Source Document",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Analysis Date",
+              "displayName": "Analysis Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "be2937bb-1ec7-4b98-9470-8caa5ff5388a",
+      "name": "Log to Intel Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1376,
+        272
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "strategy-team"
+        },
+        "text": "=🎯 *Competitor Intelligence Update*\n\n*Company:* {{ $('Compile Intelligence').item.json.companyName }}\n*Document:* {{ $('Compile Intelligence').item.json.documentType }}\n*Period:* {{ $('Compile Intelligence').item.json.reportPeriod || 'N/A' }}\n\n📊 *Financials:* {{ $('Compile Intelligence').item.json.financialSummary }}\n\n🚀 *New Products:* {{ $('Compile Intelligence').item.json.newProducts }}\n\n📋 *Strategic Initiatives:*\n{{ $('Compile Intelligence').item.json.initiativesList }}\n\n⚠️ *Threats:* {{ $('Compile Intelligence').item.json.threatCount }} | 💡 *Opportunities:* {{ $('Compile Intelligence').item.json.opportunityCount }}\n\n---\n\n🧠 *Strategic Analysis:*\n{{ $('Compile Intelligence').item.json.strategicInsights }}\n\n<https://drive.google.com/file/d/{{ $('Compile Intelligence').item.json.fileId }}/view|📄 View Source Document>",
+        "otherOptions": {}
+      },
+      "id": "b137913d-3c99-4b39-b115-c583ab1be5a2",
+      "name": "Share with Strategy Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1584,
+        272
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Intel",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Intel": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Strategic Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Strategic Insights": {
+      "main": [
+        [
+          {
+            "node": "Compile Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Intelligence": {
+      "main": [
+        [
+          {
+            "node": "Log to Intel Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Intel Database": {
+      "main": [
+        [
+          {
+            "node": "Share with Strategy Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "Business Intelligence"
+    },
+    {
+      "name": "Market Research"
+    }
+  ]
+}

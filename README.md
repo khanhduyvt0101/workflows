@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-26_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-27_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 26 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 27 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1910,6 +1910,130 @@ A PhD student researching "neural networks for medical image segmentation" adds 
 - Add abstract summaries to the results for quick paper evaluation
 - Include journal impact factors alongside citation counts
 - Add links to full-text PDFs when available from the databases
+
+</details>
+
+<details>
+<summary><strong>📊 Competitor Analysis from Reports & Documents</strong> - Extract intelligence from competitor docs with strategic insights | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/competitor-analysis-extractor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/competitor-analysis-extractor.json">📋 Open</a></summary>
+
+Automatically monitor competitor documents (annual reports, earnings calls, SEC filings, press releases) and extract competitive intelligence with AI-powered strategic analysis. Captures financials, products, initiatives, partnerships, and generates actionable business insights for your strategy team.
+
+#### Who is this for?
+- Market research teams tracking competitor moves and market positioning
+- Business analysts building competitive intelligence databases
+- Product managers monitoring competitor product launches and features
+- Strategic planners identifying market threats and opportunities
+- Venture capital firms analyzing portfolio companies and competitors
+
+#### How it works
+1. **Google Drive Trigger** monitors your designated "Competitor Documents" folder for new files
+2. **Download Document** retrieves the PDF from Google Drive
+3. **PDF Vector - Extract Intel** uses AI to extract structured competitive intelligence:
+   - Company name and document type (Annual Report, Earnings Call, Press Release, SEC Filing, etc.)
+   - Report period for temporal tracking
+   - Financial metrics: revenue, revenue growth rate, net income, market share, employee count
+   - Product announcements with names, descriptions, and status (New/Updated/Existing/Discontinued)
+   - Strategic initiatives with priority levels and timelines
+   - Partnerships, acquisitions, and market expansion plans
+   - Technology investments and R&D focus areas
+   - Identified threats to their business
+   - Opportunities they're pursuing
+   - Key quotes from executives for context
+4. **Merge Data** combines extracted intelligence with document metadata
+5. **PDF Vector - Strategic Insights** generates AI-powered strategic analysis:
+   - 2-3 sentence executive summary of competitor's current market position
+   - Top 3 strategic moves to watch closely
+   - Impact assessment on your business
+   - Recommended actions for your team
+6. **Compile Intelligence** processes and formats all data:
+   - Creates financial summary string for easy reading
+   - Lists new product launches
+   - Formats strategic initiatives as bullet points
+   - Counts threats and opportunities
+   - Combines structured data with strategic insights
+7. **Log to Intel Database** appends comprehensive data to Google Sheets:
+   - Competitor name, document type, report period
+   - Financial summary (revenue, growth, market share)
+   - New products, partnerships, acquisitions
+   - Threat and opportunity counts
+   - Direct link to source document
+   - Analysis date for tracking intelligence freshness
+8. **Share with Strategy Team** posts detailed Slack alert with:
+   - Company and document overview
+   - Financial highlights
+   - New product announcements
+   - Strategic initiatives list
+   - Threat/opportunity counts
+   - AI-generated strategic analysis and recommendations
+   - Link to full source document
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI extraction & strategic analysis)
+- Google Sheets (intelligence database)
+- Slack (team notifications)
+
+#### Extracted fields
+| Category | Fields |
+|----------|--------|
+| Company Info | Company name, document type, report period |
+| Financials | Revenue, revenue growth %, net income, market share %, employees |
+| Products | Product name, description, status (New/Updated/Existing/Discontinued) |
+| Strategy | Initiatives with priority and timeline |
+| Partnerships | Partnership announcements |
+| M&A | Acquisition targets and completed deals |
+| Expansion | Market expansion plans and regions |
+| Technology | Technology investments and R&D focus |
+| Analysis | Threats identified, opportunities spotted, key executive quotes |
+
+#### Google Sheets structure
+| Competitor | Document Type | Report Period | Financials | New Products | Partnerships | Acquisitions | Threats Identified | Opportunities | Source Document | Analysis Date |
+|------------|---------------|---------------|------------|--------------|--------------|--------------|-------------------|---------------|-----------------|---------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Competitor Documents" folder in Google Drive for dropping annual reports, earnings transcripts, etc.
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the 11 columns listed above
+5. Configure Google Drive OAuth credentials and set the folder ID in the trigger
+6. Configure Google Sheets OAuth credentials and set your spreadsheet ID
+7. Set up Slack OAuth credentials and select your #strategy-team or #competitor-intel channel
+8. Activate the workflow
+
+#### Key features
+- Comprehensive competitive intelligence extraction (11 data categories)
+- AI-generated strategic analysis with business impact assessment
+- Recommended actions for your team based on competitor moves
+- Financial metrics tracking over time
+- Product launch monitoring
+- M&A activity tracking
+- Market expansion identification
+- Threat and opportunity scoring
+- Direct links to source documents for reference
+- Real-time Slack alerts to keep strategy team informed
+
+#### Real-world use case
+A product manager at a SaaS company drops a competitor's Q4 earnings call transcript into Google Drive. Within minutes, the workflow:
+- Extracts that the competitor has $180M revenue with 65% YoY growth
+- Identifies 3 new product features they're launching (AI assistant, mobile app, SSO)
+- Captures their partnership with Microsoft and acquisition of a smaller analytics startup
+- Detects 2 threats they mentioned (increasing customer acquisition costs, macroeconomic headwinds)
+- Spots 3 opportunities (enterprise market expansion, international growth, usage-based pricing)
+- Generates AI analysis: "Competitor is aggressively expanding upmarket with enterprise features while maintaining SMB base. Watch their AI assistant launch closely as it directly competes with our roadmap. Recommend accelerating our own AI feature development and emphasizing our superior pricing model."
+- Logs everything to Google Sheets for quarterly competitive analysis reports
+- Posts detailed summary to #strategy-team Slack channel for immediate visibility
+
+#### Customizing this workflow
+- Add email notifications to specific stakeholders for high-priority threats
+- Create separate Google Sheets tabs for different competitors
+- Add sentiment analysis of executive tone in earnings calls
+- Connect to your CRM to correlate competitor moves with your win/loss data
+- Build trend dashboards in Google Sheets using the logged data
+- Add automatic follow-up tasks in Asana/Jira when specific keywords are detected
+- Filter alerts by competitor priority (Tier 1 vs Tier 2 competitors)
+- Add comparison against your own company metrics
+- Create monthly competitive intelligence summary reports
+- Set up keyword alerts for specific technologies or market segments
 
 </details>
 
