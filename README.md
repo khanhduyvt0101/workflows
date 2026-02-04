@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-24_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-25_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 24 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 25 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1740,6 +1740,105 @@ Automatically process meeting notes and transcripts with AI-powered extraction o
 - Connect to your team wiki or knowledge base
 - Add participant attendance tracking
 - Create weekly action item digest reports
+
+</details>
+
+<details>
+<summary><strong>🎓 Academic Paper Finder & Citation Generator</strong> - Search academic databases and generate citations | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/academic-paper-finder.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/academic-paper-finder.json">📋 Open</a></summary>
+
+Automatically search Semantic Scholar, PubMed, and ArXiv for academic papers based on research queries. Ranks results by citation count, retrieves the top 10 most-cited papers, and generates both APA and BibTeX citations ready for use in your manuscripts.
+
+#### Who is this for?
+- PhD students conducting comprehensive literature reviews
+- Researchers exploring new research areas and finding related work
+- Academic writers needing properly formatted citations quickly
+- Literature review authors tracking citation metrics for papers
+
+#### How it works
+1. **Every Minute** checks for new research queries to process
+2. **Read Queries** fetches rows from Google Sheets where Status = "Pending"
+3. **Status = Pending?** filters for rows with valid search queries and Pending status
+4. **PDF Vector - Search Papers** searches three academic databases simultaneously:
+   - Semantic Scholar (comprehensive multi-disciplinary coverage)
+   - PubMed (medical and life sciences papers)
+   - ArXiv (physics, mathematics, computer science preprints)
+5. **Process & Format Results** analyzes up to 20 results and:
+   - Sorts all papers by citation count (most influential papers first)
+   - Selects top 10 most-cited papers
+   - Generates APA format citations with authors, year, title, venue, and DOI
+   - Generates BibTeX entries with auto-generated citation keys
+   - Creates paper list with titles, years, and citation counts
+   - Calculates total citations across all top papers
+   - Identifies the most cited paper as the key reference
+6. **Update Results** writes comprehensive data back to Google Sheets:
+   - Top papers list with citation counts
+   - Total results found across all databases
+   - APA formatted citations (copy-paste ready)
+   - BibTeX entries (ready for LaTeX documents)
+   - Most cited paper highlight
+   - Search date for tracking when results were retrieved
+   - Status changed to "Completed"
+
+#### Services used
+- Google Sheets (query management & results storage)
+- PDF Vector (academic database search with Semantic Scholar, PubMed, ArXiv)
+- Schedule Trigger (automated processing)
+
+#### Google Sheets structure
+| Search Query | Status | Results Found | Top Papers | Total Citations | Most Cited | APA Citations | BibTeX Citations | Search Date |
+|--------------|--------|---------------|------------|-----------------|------------|---------------|------------------|-------------|
+
+**Required columns:**
+- **Search Query** (Column A): Your research query (e.g., "machine learning in healthcare")
+- **Status** (Column B): Set to "Pending" to trigger search, automatically becomes "Completed" when done
+
+**Auto-populated columns:**
+- **Results Found**: Total number of papers found across all three databases
+- **Top Papers**: List of top 10 papers with titles, years, and citation counts
+- **Total Citations**: Sum of all citations for the top 10 papers
+- **Most Cited**: The highest-impact paper from your search results
+- **APA Citations**: Ready-to-use APA format citations for all top 10 papers
+- **BibTeX Citations**: LaTeX-ready BibTeX entries for bibliography files
+- **Search Date**: When the search was performed (useful for tracking result freshness)
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+3. Create a Google Sheet with the columns listed above (9 columns total)
+4. Configure Google Sheets OAuth credentials in both "Read Queries" and "Update Results" nodes
+5. Update the spreadsheet ID in both Google Sheets nodes
+6. Activate the workflow (it will check for pending queries every minute)
+
+#### Key features
+- Multi-database search across Semantic Scholar, PubMed, and ArXiv in one query
+- Automatic ranking by citation count to surface the most influential papers
+- Dual citation format generation (APA and BibTeX) for different writing workflows
+- Citation metrics tracking (total citations, most cited paper)
+- Status-based processing (only searches "Pending" rows)
+- Re-searchable queries (change Status back to "Pending" to refresh results)
+- Automated processing every minute for hands-free operation
+- Comprehensive paper metadata (authors, year, venue, DOI)
+
+#### Real-world use case
+A PhD student researching "neural networks for medical image segmentation" adds this query to their Google Sheet with Status="Pending". Within a minute, the workflow:
+- Finds 47 papers across Semantic Scholar, PubMed, and ArXiv
+- Returns top 10 most-cited papers (ranging from 89 to 2,847 citations)
+- Generates 10 APA citations ready to paste into their dissertation
+- Creates 10 BibTeX entries for their LaTeX bibliography
+- Shows the most cited paper is "U-Net: Convolutional Networks..." with 2,847 citations
+- Total 8,234 citations across top papers, validating this is a well-established research area
+
+#### Customizing this workflow
+- Adjust search frequency by changing the Schedule Trigger interval (currently every minute)
+- Increase the limit parameter in "PDF Vector - Search Papers" to get more than 20 initial results
+- Modify the top papers count in the Code node (currently top 10, can increase to 15 or 20)
+- Add additional citation formats (MLA, Chicago) in the formatting logic
+- Filter by publication year to focus on recent papers only
+- Add email notifications when searches complete for important queries
+- Create separate sheets for different research topics
+- Add abstract summaries to the results for quick paper evaluation
+- Include journal impact factors alongside citation counts
+- Add links to full-text PDFs when available from the databases
 
 </details>
 

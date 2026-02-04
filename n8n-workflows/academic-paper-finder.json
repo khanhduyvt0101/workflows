@@ -1,0 +1,309 @@
+{
+  "name": "Academic Paper Finder & Citation Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🎓 Academic Paper Finder & Citation Generator\n\n### What this workflow does\n1. Checks Google Sheet for queries with Status = \"Pending\"\n2. Searches Semantic Scholar, PubMed, and ArXiv\n3. Ranks results by citation count\n4. Generates APA and BibTeX citations\n5. Updates row with results and Status = \"Completed\"\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Sheet with columns: Search Query, Status, Results Found, Top Papers, Total Citations, Most Cited, APA Citations, BibTeX Citations, Search Date\n3. Connect Google Sheets in both Read and Update nodes\n4. Update spreadsheet ID in both nodes\n\n### How to use\n1. Add search queries to column A\n2. Set Status to \"Pending\" for queries to search\n3. Workflow runs every minute and processes pending rows\n4. Status changes to \"Completed\" when done\n5. To re-search: change Status back to \"Pending\"\n\n### Perfect for\n- Researchers doing literature reviews\n- PhD students finding related work\n- Academic writers needing citations",
+        "height": 580,
+        "width": 360,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📚 Databases Searched\n\n- Semantic Scholar\n- PubMed (medical/life sciences)\n- ArXiv (physics, math, CS)\n\nTop 10 most-cited papers returned",
+        "height": 180,
+        "width": 220
+      },
+      "id": "sticky-databases",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        224,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📝 Status Values\n\n- Pending = Will be searched\n- Completed = Done\n- (empty) = Ignored\n\nChange to \"Pending\" to re-run",
+        "height": 180,
+        "width": 220
+      },
+      "id": "sticky-status",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        464,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every Minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -32,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "options": {}
+      },
+      "id": "sheets-read",
+      "name": "Read Queries",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        160,
+        656
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-pending",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "Pending",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "condition-query",
+              "leftValue": "={{ $json['Search Query'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-pending",
+      "name": "Status = Pending?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        368,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "query": "={{ $json['Search Query'] }}",
+        "providers": [
+          "semantic-scholar",
+          "pubmed",
+          "arxiv"
+        ],
+        "limit": 20,
+        "additionalFields": {}
+      },
+      "id": "pdfvector-search",
+      "name": "PDF Vector - Search Papers",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        560,
+        656
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const results = $input.item.json.results || [];\nconst query = $('Status = Pending?').item.json['Search Query'] || 'Unknown';\n\n// Sort by citations (descending)\nconst sortedResults = results.sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0));\n\n// Take top 10 most cited\nconst topPapers = sortedResults.slice(0, 10);\n\n// Generate formatted lists\nconst apaCitations = [];\nconst bibtexCitations = [];\nconst paperList = [];\n\ntopPapers.forEach((paper, index) => {\n  const authors = paper.authors ? paper.authors.map(a => a.name).join(', ') : 'Unknown';\n  const firstAuthor = paper.authors && paper.authors[0] ? paper.authors[0].name.split(' ').pop() : 'Unknown';\n  const year = paper.year || 'n.d.';\n  const title = paper.title || 'Untitled';\n  const venue = paper.venue || paper.journal || 'N/A';\n  const citations = paper.citationCount || 0;\n  \n  // Paper list entry\n  paperList.push(`${index + 1}. ${title} (${year}) - ${citations} citations`);\n  \n  // APA format\n  const apa = `${authors} (${year}). ${title}. ${venue}${paper.doi ? `. https://doi.org/${paper.doi}` : ''}`;\n  apaCitations.push(apa);\n  \n  // BibTeX format\n  const bibtexKey = `${firstAuthor.toLowerCase().replace(/[^a-z]/g, '')}${year}${title.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '')}`;\n  const bibtex = `@article{${bibtexKey},\\n  title={${title}},\\n  author={${authors}},\\n  year={${year}},\\n  journal={${venue}}${paper.doi ? `,\\n  doi={${paper.doi}}` : ''}\\n}`;\n  bibtexCitations.push(bibtex);\n});\n\n// Summary stats\nconst totalCitations = topPapers.reduce((sum, p) => sum + (p.citationCount || 0), 0);\n\nreturn {\n  json: {\n    query: query,\n    totalResults: results.length,\n    topPapersList: paperList.join('\\n'),\n    totalCitations: totalCitations,\n    mostCited: topPapers[0] ? `${topPapers[0].title} (${topPapers[0].citationCount} citations)` : 'N/A',\n    apaCitations: apaCitations.join('\\n\\n'),\n    bibtexCitations: bibtexCitations.join('\\n\\n'),\n    searchDate: new Date().toISOString().split('T')[0]\n  }\n};"
+      },
+      "id": "process-results",
+      "name": "Process & Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Search Query": "={{ $json.query }}",
+            "Status": "=Completed",
+            "Results Found": "={{ $json.totalResults }}",
+            "Top Papers": "={{ $json.topPapersList }}",
+            "Total Citations": "={{ $json.totalCitations }}",
+            "Most Cited": "={{ $json.mostCited }}",
+            "APA Citations": "={{ $json.apaCitations }}",
+            "BibTeX Citations": "={{ $json.bibtexCitations }}",
+            "Search Date": "={{ $json.searchDate }}"
+          },
+          "matchingColumns": [
+            "Search Query"
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-update",
+      "name": "Update Results",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        656
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every Minute": {
+      "main": [
+        [
+          {
+            "node": "Read Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Queries": {
+      "main": [
+        [
+          {
+            "node": "Status = Pending?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status = Pending?": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Search Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Search Papers": {
+      "main": [
+        [
+          {
+            "node": "Process & Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process & Format Results": {
+      "main": [
+        [
+          {
+            "node": "Update Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "Academic"
+    },
+    {
+      "name": "Research"
+    },
+    {
+      "name": "Citations"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
