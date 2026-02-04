@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-28_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-29_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 28 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 29 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2142,6 +2142,119 @@ A product manager at a SaaS company drops a competitor's Q4 earnings call transc
 - Add comparison against your own company metrics
 - Create monthly competitive intelligence summary reports
 - Set up keyword alerts for specific technologies or market segments
+
+</details>
+
+<details>
+<summary><strong>🛡️ Warranty Document & Claim Tracker</strong> - Track product warranties and get expiration alerts | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/warranty-document-tracker.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/warranty-document-tracker.json">📋 Open</a></summary>
+
+Never miss a warranty expiration again! Automatically extract warranty information from product documentation, track coverage periods, calculate expiration dates, and receive Slack alerts when warranties are expiring soon. Perfect for consumers, customer service teams, and businesses managing product inventories.
+
+#### Who is this for?
+- Consumers tracking warranties on personal electronics, appliances, and purchases
+- Customer service teams managing product warranty claims
+- Retail businesses tracking inventory warranties
+- Electronics companies managing warranty coverage
+- IT departments tracking equipment warranties
+
+#### How it works
+1. **Google Drive Trigger** watches designated folder for new warranty documents (receipts, warranty cards, product manuals)
+2. **Download Document** retrieves the warranty PDF from Google Drive
+3. **PDF Vector - Extract Warranty** uses AI to extract comprehensive warranty data:
+   - Product information (name, brand, model, serial number, category)
+   - Purchase details (date, retailer, price, receipt number)
+   - Warranty terms (type, duration in months, start date, end date)
+   - Coverage details (what's covered, exclusions)
+   - Claim process and contact information
+4. **Process Warranty** calculates warranty status:
+   - Computes warranty end date if not explicitly stated (purchase date + duration)
+   - Calculates days remaining until expiration
+   - Assigns status: "Active", "Active - Expires in 3 months", "Expiring Soon" (≤30 days), or "Expired"
+   - Formats coverage and exclusions lists for easy reference
+5. **Log to Warranty Tracker** appends complete warranty record to Google Sheets with:
+   - Product details and serial number
+   - Purchase information and retailer
+   - Warranty type and expiration date
+   - Days remaining and current status
+   - Coverage summary
+   - Direct link to warranty document
+6. **Expiring Soon?** checks if warranty is expiring within 30 days
+7. **Alert Expiring** (if expiring soon) sends Slack notification with:
+   - Product name, brand, and model
+   - Expiration date and days remaining
+   - Coverage summary
+   - Reminder to file claims before expiration
+
+#### Services used
+- Google Drive (document monitoring & storage)
+- PDF Vector (AI extraction)
+- Google Sheets (warranty tracker database)
+- Slack (expiration alerts)
+
+#### Warranty types supported
+- Limited warranties
+- Full warranties
+- Extended warranties
+- Lifetime warranties
+- Manufacturer warranties
+
+#### Extracted data fields
+- **Product**: Name, brand, model, serial number, category
+- **Purchase**: Date, retailer, price, receipt number
+- **Warranty**: Type, duration, start date, end date
+- **Coverage**: What's covered (parts, labor, defects)
+- **Exclusions**: What's not covered (misuse, water damage, etc.)
+- **Claims**: Claim process steps and contact information (phone, email, website, address)
+
+#### Google Sheets structure
+| Product | Brand | Model | Serial Number | Purchase Date | Purchase Price | Retailer | Warranty Type | Expires | Days Remaining | Status | Coverage | Document Link | Added Date |
+|---------|-------|-------|---------------|---------------|----------------|----------|---------------|---------|----------------|--------|----------|---------------|------------|
+
+#### Status categories
+- **Active**: More than 90 days remaining
+- **Active - Expires in 3 months**: 31-90 days remaining
+- **Expiring Soon**: 30 days or less remaining (triggers Slack alert)
+- **Expired**: Warranty period has ended
+- **Unknown**: Unable to determine expiration date
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Warranty Documents" folder in Google Drive
+3. Configure Google Drive credentials and set the folder ID in the trigger node
+4. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+5. Create a Google Sheet with the columns listed above
+6. Configure Google Sheets credentials and set the spreadsheet ID
+7. Set up Slack OAuth credentials and select your notifications channel (e.g., #warranty-alerts)
+8. Activate the workflow
+
+#### Key features
+- Automatic warranty expiration calculation
+- Smart status detection (Active, Expiring Soon, Expired)
+- 30-day advance warning alerts via Slack
+- Complete coverage and exclusions tracking
+- Serial number logging for claim filing
+- Direct links to warranty documents
+- Purchase history tracking with receipts
+- Multi-warranty type support
+
+#### Real-world use cases
+- **Consumer**: Track warranties on all home electronics, appliances, and major purchases. Get reminded 30 days before warranty expires so you can file claims for any issues.
+- **Customer Service**: Maintain a database of product warranties to quickly verify coverage when customers call. Know exactly what's covered and how to file claims.
+- **Retail Store**: Track warranties on inventory and demo units. Know which products are still under manufacturer warranty for returns or repairs.
+- **IT Department**: Manage warranties on laptops, monitors, servers, and network equipment. Plan equipment replacements based on warranty expiration.
+- **Electronics Repair Shop**: Keep records of customer product warranties to advise on coverage before starting repairs.
+
+#### Customizing this workflow
+- Adjust the "Expiring Soon" threshold (currently 30 days) to match your preferences
+- Add email notifications alongside Slack alerts
+- Create separate Slack channels for different product categories
+- Add calendar events for warranty expirations
+- Set up automated reminders at multiple intervals (90 days, 60 days, 30 days)
+- Connect to asset management systems instead of Google Sheets
+- Add QR code generation for quick warranty lookup
+- Include warranty renewal tracking for extended warranties
+- Add cost-benefit analysis for extended warranty purchases
+- Create reports on warranty utilization and claim frequency
 
 </details>
 
