@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-31_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-32_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 31 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 32 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1891,6 +1891,87 @@ Automatically analyze research papers with AI-powered extraction of metadata, fi
 - Add duplicate paper detection
 - Create weekly literature digest reports
 - Tag papers by research theme or project
+
+</details>
+
+<details>
+<summary><strong>📄 Whitepaper & Report Summarizer</strong> - Extract insights and generate executive summaries | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/whitepaper-report-summarizer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/whitepaper-report-summarizer.json">📋 Open</a></summary>
+
+Automatically process whitepapers and industry reports with AI-powered extraction of key data and executive summaries. Builds a research library with metadata tracking and shares formatted summaries to your team.
+
+#### Who is this for?
+- Analysts processing industry reports
+- Researchers tracking publications
+- Content marketers curating insights
+- Executives needing quick document summaries
+
+#### How it works
+1. **Google Drive Trigger** watches your designated folder for new whitepapers/reports
+2. **Download Document** retrieves the PDF from Google Drive
+3. **PDF Vector - Extract Info** uses AI to extract structured data:
+   - Title, author, and organization
+   - Document type (Whitepaper, Research Report, Industry Report, etc.)
+   - Publication date, page count, and industry
+   - Main thesis and methodology
+   - Key statistics with sources
+   - Main findings and conclusions
+   - Recommendations and data sources
+   - Relevant keywords
+4. **Merge Data** combines extracted metadata with file information
+5. **PDF Vector - Generate Summary** creates actionable insights:
+   - 3-4 sentence executive summary
+   - Single most important takeaway for business leaders
+   - Three actionable next steps
+   - Target audience recommendations
+6. **Compile Summary** formats all data for sharing and logging
+7. **Add to Research Library** logs comprehensive document metadata to Google Sheets
+8. **Share Summary** posts formatted summary to Slack with direct link to document
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI extraction & summarization)
+- Google Sheets (research library)
+- Slack (team notifications)
+
+#### Document types detected
+- Whitepaper
+- Research Report
+- Industry Report
+- Case Study
+- Technical Document
+- Annual Report
+- Market Analysis
+- Other
+
+#### Google Sheets structure
+| Title | Author | Organization | Type | Industry | Published | Pages | Key Statistics | Findings | Recommendations | Keywords | Document Link | Added Date |
+|-------|--------|--------------|------|----------|-----------|-------|----------------|----------|-----------------|----------|---------------|------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Whitepapers & Reports" folder in Google Drive and configure the trigger with the folder ID
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and spreadsheet ID
+6. Set up Slack credentials and select the channel for research updates
+7. Activate the workflow
+
+#### Key features
+- Comprehensive metadata extraction (title, author, statistics, findings, recommendations)
+- Executive summary generation tailored for business leaders
+- Actionable insights and next steps
+- Research library with searchable metadata
+- Formatted Slack notifications with statistics and recommendations
+- Direct links to full documents in Google Drive
+
+#### Customizing this workflow
+- Add email notifications for specific document types
+- Create weekly digest reports of all processed documents
+- Integrate with Notion or Airtable for richer database features
+- Add duplicate detection to prevent reprocessing
+- Filter by industry or document type for targeted routing
+- Create automated follow-up tasks based on recommendations
+- Add sentiment analysis for competitive intelligence reports
 
 </details>
 
