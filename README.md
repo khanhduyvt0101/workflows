@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-25_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-26_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 25 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 26 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -439,6 +439,77 @@ Automatically process expense receipts with AI-powered data extraction, smart ca
 - Add email notifications alongside Slack
 - Connect to your expense management system (Expensify, Concur, etc.)
 - Add manager-specific approval routing based on department
+
+</details>
+
+<details>
+<summary><strong>📦 Purchase Order Processor & Approval Workflow</strong> - Automate PO intake with smart approval routing | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/purchase-order-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/purchase-order-processor.json">📋 Open</a></summary>
+
+Intelligent purchase order processing system that extracts PO data from email attachments, calculates approval levels based on amount thresholds, tracks urgency by delivery dates, and routes orders to appropriate approvers. Perfect for procurement and finance teams managing vendor orders.
+
+#### Who is this for?
+- Procurement teams managing vendor purchase orders
+- Finance departments needing approval workflows
+- Operations managers tracking order fulfillment
+- Small to mid-size businesses automating PO processing
+
+#### How it works
+1. **Gmail Trigger** monitors inbox every minute for new PO emails
+2. **Get a message** downloads the email with PDF attachment
+3. **PDF Vector - Extract PO** uses AI to extract complete purchase order data:
+   - PO number, order date, required delivery date
+   - Vendor details (name, address, contact, email, phone)
+   - Ship-to and bill-to addresses
+   - Line items with item numbers, descriptions, quantities, unit prices, totals
+   - Subtotal, shipping cost, tax, grand total
+   - Payment terms and shipping method
+4. **Process PO** calculates:
+   - Internal tracking ID for reference
+   - Line item count and formatted summary
+   - Approval level based on amount thresholds
+   - Urgency based on delivery date (Urgent: ≤3 days, High: ≤7 days, Normal: >7 days)
+5. **Log to PO Tracker** appends all data to Google Sheets with status tracking
+6. **Notify Procurement** sends Slack notification with PO details and approval requirements
+
+#### Services used
+- Gmail (email monitoring)
+- PDF Vector (AI extraction)
+- Google Sheets (PO tracking database)
+- Slack (procurement notifications)
+
+#### Approval thresholds
+- **< $1,000**: Auto-approve (System)
+- **$1,000 - $4,999**: Manager Approval
+- **$5,000 - $24,999**: Director Approval
+- **≥ $25,000**: VP/CFO Approval
+
+#### Urgency levels
+- **Urgent**: Required delivery in ≤3 days
+- **High**: Required delivery in 4-7 days
+- **Normal**: Required delivery in >7 days
+
+#### Google Sheets structure
+| Tracking ID | PO Number | Vendor | Order Date | Required Date | Line Items | Subtotal | Shipping | Tax | Grand Total | Approval Level | Urgency | Status | Received Date |
+|-------------|-----------|--------|------------|---------------|------------|----------|----------|-----|-------------|----------------|---------|--------|---------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Configure Gmail OAuth credentials for your PO inbox
+3. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with the columns listed above
+5. Configure Google Sheets credentials and set the spreadsheet ID
+6. Set up Slack credentials and select your procurement notification channel
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust approval thresholds to match your organization's policies
+- Add additional approval tiers or custom routing logic
+- Include vendor validation against approved vendor list
+- Add budget tracking and spend analytics
+- Route to specific approvers based on department or category
+- Send email notifications to approvers instead of Slack
+- Integrate with ERP or procurement systems
+- Add duplicate PO detection
 
 </details>
 

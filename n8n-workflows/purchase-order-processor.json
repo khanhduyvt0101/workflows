@@ -1,0 +1,295 @@
+{
+  "name": "W14 - Purchase Order Processor & Approval Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📦 Purchase Order Processor\n\n### What this workflow does\n1. Watches Gmail for PO attachments\n2. Extracts vendor, line items, totals\n3. Calculates approval level by amount\n4. Logs to Google Sheets tracker\n5. Sends Slack notification with details\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Connect Gmail account\n3. Create Google Sheet with columns (see template)\n4. Connect Slack and set channel\n\n### Approval Thresholds\n- < $1,000: Auto-approve\n- $1,000-$4,999: Manager\n- $5,000-$24,999: Director\n- ≥ $25,000: VP/CFO\n\n### Perfect for\n- Procurement teams\n- Finance departments\n- Operations managers",
+        "height": 480,
+        "width": 340,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ✅ Auto Validation\n\n- Approval level by amount\n- Urgency by delivery date\n- Line item totals\n- Missing field handling",
+        "height": 160,
+        "width": 220
+      },
+      "id": "sticky-validation",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        528,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📋 Extracted Fields\n\n- PO Number\n- Vendor details\n- Ship-to address\n- Line items array\n- Subtotal, tax, shipping\n- Grand total\n- Payment terms",
+        "height": 200,
+        "width": 220
+      },
+      "id": "sticky-fields",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        280,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false
+        }
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-get",
+      "name": "Get a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        280,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "attachment_0",
+        "prompt": "Extract all purchase order information: PO number, vendor details, ship-to address, order date, required delivery date, line items with item numbers, descriptions, quantities, unit prices, and totals, subtotal, shipping, tax, and grand total.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"poNumber\":{\"type\":\"string\"},\"orderDate\":{\"type\":\"string\"},\"requiredDate\":{\"type\":\"string\"},\"vendor\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"contact\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"}}},\"shipTo\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"attention\":{\"type\":\"string\"}}},\"billTo\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"}}},\"lineItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"lineNumber\":{\"type\":\"number\"},\"itemNumber\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unit\":{\"type\":\"string\"},\"unitPrice\":{\"type\":\"number\"},\"total\":{\"type\":\"number\"}}}},\"subtotal\":{\"type\":\"number\"},\"shippingCost\":{\"type\":\"number\"},\"tax\":{\"type\":\"number\"},\"grandTotal\":{\"type\":\"number\"},\"paymentTerms\":{\"type\":\"string\"},\"shippingMethod\":{\"type\":\"string\"},\"notes\":{\"type\":\"string\"}},\"required\":[\"poNumber\",\"vendor\",\"grandTotal\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract PO",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const po = $input.first().json.data;\n\n// Generate internal tracking number\nconst trackingId = `PO-${Date.now().toString(36).toUpperCase()}`;\n\n// Count and format line items\nconst lineItems = po.lineItems || [];\nconst lineItemCount = lineItems.length;\nconst lineItemsList = lineItems.map(item => \n  `${item.quantity} x ${item.description} @ $${item.unitPrice} = $${item.total}`\n).join('\\n');\n\n// Calculate values\nconst subtotal = po.subtotal || lineItems.reduce((sum, item) => sum + (item.total || 0), 0);\nconst grandTotal = po.grandTotal || subtotal;\n\n// Format grand total with commas\nconst grandTotalFormatted = grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\n// Determine approval level\nlet approvalLevel = 'Auto-Approve';\nlet approver = 'System';\nif (grandTotal >= 25000) {\n  approvalLevel = 'VP/CFO Approval';\n  approver = 'finance-leadership';\n} else if (grandTotal >= 5000) {\n  approvalLevel = 'Director Approval';\n  approver = 'department-director';\n} else if (grandTotal >= 1000) {\n  approvalLevel = 'Manager Approval';\n  approver = 'department-manager';\n}\n\n// Check urgency based on delivery date\nlet urgency = 'Normal';\nlet daysUntilRequired = null;\nif (po.requiredDate) {\n  const required = new Date(po.requiredDate);\n  const today = new Date();\n  daysUntilRequired = Math.ceil((required - today) / (1000 * 60 * 60 * 24));\n  if (daysUntilRequired <= 3) urgency = 'Urgent';\n  else if (daysUntilRequired <= 7) urgency = 'High';\n}\n\nreturn [{\n  json: {\n    trackingId: trackingId,\n    ...po,\n    lineItemCount: lineItemCount,\n    lineItemsList: lineItemsList,\n    subtotal: subtotal,\n    grandTotal: grandTotal,\n    grandTotalFormatted: grandTotalFormatted,\n    approvalLevel: approvalLevel,\n    approver: approver,\n    urgency: urgency,\n    daysUntilRequired: daysUntilRequired,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-po",
+      "name": "Process PO",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Tracking ID": "={{ $json.trackingId }}",
+            "PO Number": "={{ $json.poNumber }}",
+            "Vendor": "={{ $json.vendor.name }}",
+            "Order Date": "={{ $json.orderDate || 'N/A' }}",
+            "Required Date": "={{ $json.requiredDate || 'N/A' }}",
+            "Line Items": "={{ $json.lineItemCount }}",
+            "Subtotal": "={{ $json.subtotal }}",
+            "Shipping": "={{ $json.shippingCost || 0 }}",
+            "Tax": "={{ $json.tax || 0 }}",
+            "Grand Total": "={{ $json.grandTotal }}",
+            "Approval Level": "={{ $json.approvalLevel }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Status": "=Pending Approval",
+            "Received Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to PO Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=📦 *New Purchase Order Received*\n\n*Tracking:* {{ $('Process PO').item.json.trackingId }}\n*PO Number:* {{ $('Process PO').item.json.poNumber }}\n*Vendor:* {{ $('Process PO').item.json.vendor.name }}\n\n📋 *Line Items:* {{ $('Process PO').item.json.lineItemCount }}\n{{ $('Process PO').item.json.lineItemsList }}\n\n💰 *Total:* ${{ $('Process PO').item.json.grandTotalFormatted }}\n📅 *Required By:* {{ $('Process PO').item.json.requiredDate || 'N/A' }}\n\n🔐 *Approval Required:* {{ $('Process PO').item.json.approvalLevel }}\n⚡ *Urgency:* {{ $('Process PO').item.json.urgency }}",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Notify Procurement",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1080,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract PO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract PO": {
+      "main": [
+        [
+          {
+            "node": "Process PO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process PO": {
+      "main": [
+        [
+          {
+            "node": "Log to PO Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to PO Tracker": {
+      "main": [
+        [
+          {
+            "node": "Notify Procurement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "Procurement"
+    },
+    {
+      "name": "Finance"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
