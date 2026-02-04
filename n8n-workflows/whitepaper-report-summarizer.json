@@ -1,0 +1,318 @@
+{
+  "name": "Whitepaper & Report Summarizer",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📄 Whitepaper & Report Summarizer\n\n### How it works\n1. Watches Google Drive folder for new whitepapers/reports\n2. Downloads and extracts structured data (title, author, stats, findings)\n3. Generates AI executive summary with actionable insights\n4. Compiles and formats all extracted information\n5. Logs document metadata to Google Sheets research library\n6. Shares formatted summary to Slack channel\n\n### Setup steps\n1. Create Google Drive folder for whitepapers and reports\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns:\n   Title, Author, Organization, Type, Industry, Published, Pages, Key Statistics, Findings, Recommendations, Keywords, Document Link, Added Date\n4. Connect Google Drive, Sheets, and Slack credentials\n5. Update folder ID and spreadsheet ID in nodes\n\n### Perfect for\n- Analysts processing industry reports\n- Researchers tracking publications\n- Content marketers curating insights\n- Executives needing quick document summaries",
+        "height": 560,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🎯 Extracted Data\n\n- Title and author\n- Organization\n- Document type\n- Main thesis\n- Key statistics\n- Methodology\n- Main findings\n- Conclusions\n- Recommendations\n- Data sources\n- Keywords",
+        "height": 280,
+        "width": 220
+      },
+      "id": "sticky-extract",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        528,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Whitepapers & Reports"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        176,
+        224
+      ],
+      "notes": "Watch for new whitepapers/reports"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        384,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract key information from this whitepaper or report: title, author/organization, publication date, document type, main thesis/argument, key statistics and data points, methodology used, main findings, conclusions, recommendations, and data sources cited.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"author\":{\"type\":\"string\"},\"organization\":{\"type\":\"string\"},\"publicationDate\":{\"type\":\"string\"},\"documentType\":{\"type\":\"string\",\"enum\":[\"Whitepaper\",\"Research Report\",\"Industry Report\",\"Case Study\",\"Technical Document\",\"Annual Report\",\"Market Analysis\",\"Other\"]},\"pageCount\":{\"type\":\"number\"},\"industry\":{\"type\":\"string\"},\"mainThesis\":{\"type\":\"string\"},\"keyStatistics\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"statistic\":{\"type\":\"string\"},\"source\":{\"type\":\"string\"}}}},\"methodology\":{\"type\":\"string\"},\"mainFindings\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"conclusions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"recommendations\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"dataSources\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"keywords\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"title\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Info",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        576,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "prompt": "Based on this document, provide: 1) A 3-4 sentence executive summary, 2) The single most important takeaway for business leaders, 3) Three actionable next steps based on the findings, and 4) Who should read this document and why."
+      },
+      "id": "pdfvector-summary",
+      "name": "PDF Vector - Generate Summary",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        976,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const doc = $('PDF Vector - Extract Info').item.json.data;\nconst summary = $input.first().json.markdown;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Format key statistics\nconst stats = doc.keyStatistics || [];\nconst statsList = stats.map(s => `📊 ${s.statistic}`).join('\\n') || 'None extracted';\n\n// Format findings\nconst findings = doc.mainFindings || [];\nconst findingsList = findings.map((f, i) => `${i + 1}. ${f}`).join('\\n') || 'None listed';\n\n// Format recommendations\nconst recommendations = doc.recommendations || [];\nconst recsList = recommendations.map(r => `✓ ${r}`).join('\\n') || 'None provided';\n\n// Format keywords\nconst keywords = doc.keywords || [];\nconst keywordsList = keywords.join(', ') || 'None';\n\nreturn [{\n  json: {\n    ...doc,\n    executiveSummary: summary,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    statsList: statsList,\n    statsCount: stats.length,\n    findingsList: findingsList,\n    findingsCount: findings.length,\n    recsList: recsList,\n    recsCount: recommendations.length,\n    keywordsList: keywordsList,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "compile-summary",
+      "name": "Compile Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Research Library"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Title": "={{ $json.title }}",
+            "Author": "={{ $json.author || 'N/A' }}",
+            "Organization": "={{ $json.organization || 'N/A' }}",
+            "Type": "={{ $json.documentType }}",
+            "Industry": "={{ $json.industry || 'N/A' }}",
+            "Published": "={{ $json.publicationDate || 'N/A' }}",
+            "Pages": "={{ $json.pageCount || 'N/A' }}",
+            "Key Statistics": "={{ $json.statsCount }}",
+            "Findings": "={{ $json.findingsCount }}",
+            "Recommendations": "={{ $json.recsCount }}",
+            "Keywords": "={{ $json.keywordsList }}",
+            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            { "id": "Title", "displayName": "Title", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Author", "displayName": "Author", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Organization", "displayName": "Organization", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Type", "displayName": "Type", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Industry", "displayName": "Industry", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Published", "displayName": "Published", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Pages", "displayName": "Pages", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Key Statistics", "displayName": "Key Statistics", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Findings", "displayName": "Findings", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Recommendations", "displayName": "Recommendations", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Keywords", "displayName": "Keywords", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Document Link", "displayName": "Document Link", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Added Date", "displayName": "Added Date", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Add to Research Library",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1376,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "research-updates"
+        },
+        "text": "=📄 *New Whitepaper Summarized*\n\n*Title:* {{ $('Compile Summary').item.json.title }}\n*Author:* {{ $('Compile Summary').item.json.author || 'N/A' }}\n*Type:* {{ $('Compile Summary').item.json.documentType }}\n*Industry:* {{ $('Compile Summary').item.json.industry || 'N/A' }}\n\n---\n\n📋 *Executive Summary:*\n{{ $('Compile Summary').item.json.executiveSummary }}\n\n---\n\n📊 *Key Statistics ({{ $('Compile Summary').item.json.statsCount }}):*\n{{ $('Compile Summary').item.json.statsList }}\n\n---\n\n🔍 *Key Findings ({{ $('Compile Summary').item.json.findingsCount }}):*\n{{ $('Compile Summary').item.json.findingsList }}\n\n---\n\n✅ *Recommendations ({{ $('Compile Summary').item.json.recsCount }}):*\n{{ $('Compile Summary').item.json.recsList }}\n\n<https://drive.google.com/file/d/{{ $('Compile Summary').item.json.fileId }}/view|📄 Read Full Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-share",
+      "name": "Share Summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1584,
+        192
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Info",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Info": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Generate Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Generate Summary": {
+      "main": [
+        [
+          {
+            "node": "Compile Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Summary": {
+      "main": [
+        [
+          {
+            "node": "Add to Research Library",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Research Library": {
+      "main": [
+        [
+          {
+            "node": "Share Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
