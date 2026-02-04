@@ -1,0 +1,386 @@
+{
+  "name": "Employee Onboarding Document Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 👋 Employee Onboarding Processor\n\n### How it works\n1. Watches Google Drive folder for new HR documents\n2. Downloads and extracts employee data (name, ID, department, etc.)\n3. Identifies missing fields and compliance issues\n4. Logs to Google Sheets onboarding tracker\n5. Sends Slack alert to HR team with status\n\n### Setup steps\n1. Create Google Drive folder for onboarding documents\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns: Employee Name, Employee ID, Email, Document Type, Department, Position, Start Date, Status, Issues, Emergency Contacts, Document Link, Processed Date\n4. Connect Google Drive, Sheets, and Slack credentials\n5. Update folder ID, spreadsheet ID, and channel ID in nodes\n\n### Perfect for\n- HR departments\n- Onboarding coordinators\n- Compliance teams\n- People operations",
+        "height": 560,
+        "width": 340,
+        "color": 5
+      },
+      "id": "5d7ccc1c-a338-4e09-8c0c-b6b52b5a1f7a",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ✅ Compliance Checks\n\n- I-9 expiration dates\n- Missing signatures\n- Incomplete fields\n- Policy acknowledgments\n- Benefits enrollment deadline",
+        "height": 180
+      },
+      "id": "bb23522f-7652-4d23-a1df-5ee7ab7e91ef",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        624,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Onboarding Documents",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/YOUR_FOLDER_ID"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "5ad053b9-9f10-41c7-93c0-4304bbcc79e4",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        272,
+        192
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      },
+      "notes": "Watch for new onboarding documents"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "d6a0deae-ea14-4db5-870c-4ce5f9aa08ab",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        192
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract employee onboarding information from this HR document: document type, employee name, employee ID, start date, department, position, manager, salary/compensation, tax withholding info, direct deposit details (bank name only, no account numbers), emergency contacts, and any signatures with dates.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\",\"enum\":[\"Offer Letter\",\"I-9 Form\",\"W-4 Form\",\"Direct Deposit\",\"Emergency Contact\",\"Policy Acknowledgment\",\"Benefits Enrollment\",\"NDA\",\"Other\"]},\"employee\":{\"type\":\"object\",\"properties\":{\"fullName\":{\"type\":\"string\"},\"employeeId\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"ssn\":{\"type\":\"string\"},\"dateOfBirth\":{\"type\":\"string\"}}},\"employment\":{\"type\":\"object\",\"properties\":{\"startDate\":{\"type\":\"string\"},\"department\":{\"type\":\"string\"},\"position\":{\"type\":\"string\"},\"manager\":{\"type\":\"string\"},\"employmentType\":{\"type\":\"string\"},\"salary\":{\"type\":\"number\"},\"payFrequency\":{\"type\":\"string\"}}},\"taxInfo\":{\"type\":\"object\",\"properties\":{\"filingStatus\":{\"type\":\"string\"},\"allowances\":{\"type\":\"number\"},\"additionalWithholding\":{\"type\":\"number\"}}},\"directDeposit\":{\"type\":\"object\",\"properties\":{\"bankName\":{\"type\":\"string\"},\"accountType\":{\"type\":\"string\"}}},\"emergencyContacts\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"relationship\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"}}}},\"signatures\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"signer\":{\"type\":\"string\"},\"role\":{\"type\":\"string\"},\"date\":{\"type\":\"string\"}}}},\"isComplete\":{\"type\":\"boolean\"},\"missingFields\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"documentType\",\"employee\"],\"additionalProperties\":false}"
+      },
+      "id": "ee9fead9-31bc-4ce1-9b2e-14ca09d5c095",
+      "name": "PDF Vector - Extract HR Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        672,
+        192
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const doc = $input.first().json.data;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\nconst employee = doc.employee || {};\nconst employment = doc.employment || {};\n\n// Check completeness\nlet issues = doc.missingFields || [];\nif (!doc.signatures || doc.signatures.length === 0) issues.push('Missing signatures');\n\n// Format emergency contacts\nconst contacts = doc.emergencyContacts || [];\nconst contactsList = contacts.map(c => `${c.name} (${c.relationship}): ${c.phone}`).join('; ') || 'Not provided';\n\n// Check I-9 specifics if applicable\nlet i9Status = 'N/A';\nif (doc.documentType === 'I-9 Form') {\n  if (doc.isComplete) i9Status = 'Complete';\n  else i9Status = 'Incomplete - Action Required';\n}\n\n// Determine document status\nlet status = 'Complete';\nif (issues.length > 0) status = 'Incomplete';\nif (!doc.isComplete) status = 'Needs Review';\n\nreturn [{\n  json: {\n    ...doc,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    employeeName: employee.fullName || 'Unknown',\n    employeeId: employee.employeeId || 'TBD',\n    employeeEmail: employee.email || 'N/A',\n    department: employment.department || 'N/A',\n    position: employment.position || 'N/A',\n    startDate: employment.startDate || 'N/A',\n    salary: employment.salary,\n    contactsList: contactsList,\n    i9Status: i9Status,\n    issueCount: issues.length,\n    issuesList: issues.join(', ') || 'None',\n    status: status,\n    processedAt: new Date().toISOString().split('T')[0]\n  }\n}];"
+      },
+      "id": "ae6e8be3-ab4a-490b-9194-fa34489a1eac",
+      "name": "Process Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Onboarding Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Onboarding Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Employee Name": "={{ $json.employeeName }}",
+            "Employee ID": "={{ $json.employeeId }}",
+            "Email": "={{ $json.employeeEmail }}",
+            "Document Type": "={{ $json.documentType }}",
+            "Department": "={{ $json.department }}",
+            "Position": "={{ $json.position }}",
+            "Start Date": "={{ $json.startDate }}",
+            "Status": "={{ $json.status }}",
+            "Issues": "={{ $json.issuesList }}",
+            "Emergency Contacts": "={{ $json.contactsList }}",
+            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Processed Date": "={{ $json.processedAt }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Employee Name",
+              "displayName": "Employee Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Employee ID",
+              "displayName": "Employee ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document Type",
+              "displayName": "Document Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Position",
+              "displayName": "Position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start Date",
+              "displayName": "Start Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Issues",
+              "displayName": "Issues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Emergency Contacts",
+              "displayName": "Emergency Contacts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document Link",
+              "displayName": "Document Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "4edffaf5-d032-4706-86c6-ffb5b633a0ff",
+      "name": "Log to Onboarding Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1072,
+        192
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "hr-notifications"
+        },
+        "text": "=📋 *Onboarding Document Processed*\n\n*Employee:* {{ $('Process Document').item.json.employeeName }}\n*Document:* {{ $('Process Document').item.json.documentType }}\n*Department:* {{ $('Process Document').item.json.department }}\n*Start Date:* {{ $('Process Document').item.json.startDate }}\n\n*Status:* {{ $('Process Document').item.json.status === 'Complete' ? '✅' : '⚠️' }} {{ $('Process Document').item.json.status }}\n{{ $('Process Document').item.json.issueCount > 0 ? '\\n*Issues:* ' + $('Process Document').item.json.issuesList : '' }}\n\n<https://drive.google.com/file/d/{{ $('Process Document').item.json.fileId }}/view|📄 View Document>",
+        "otherOptions": {}
+      },
+      "id": "807001f9-cbed-4dc5-8645-6cb59bad7fb7",
+      "name": "Notify HR Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1280,
+        192
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract HR Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract HR Data": {
+      "main": [
+        [
+          {
+            "node": "Process Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Document": {
+      "main": [
+        [
+          {
+            "node": "Log to Onboarding Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Onboarding Tracker": {
+      "main": [
+        [
+          {
+            "node": "Notify HR Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

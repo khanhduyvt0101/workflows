@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-27_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-28_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 27 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 28 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1377,6 +1377,114 @@ JavaScript, Python, React, Node.js, SQL, API, Git, AWS, Docker, TypeScript
 - Add conditional routing based on score (e.g., high scorers to fast-track channel)
 - Include LinkedIn profile lookup for additional candidate data
 - Add interview scheduling automation for high-scoring candidates
+
+</details>
+
+<details>
+<summary><strong>👋 Employee Onboarding Document Processor</strong> - Automate HR onboarding with compliance checks | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/employee-onboarding-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/employee-onboarding-processor.json">📋 Open</a></summary>
+
+Streamline employee onboarding by automatically processing HR documents. Extracts employee data, identifies missing fields and compliance issues, logs everything to a tracking sheet, and alerts your HR team via Slack. Perfect for maintaining compliance and ensuring complete onboarding packets.
+
+#### Who is this for?
+- HR departments managing employee onboarding
+- Onboarding coordinators tracking document completion
+- Compliance teams ensuring regulatory requirements
+- People operations teams at growing companies
+
+#### How it works
+1. **Google Drive Trigger** watches designated folder for new onboarding documents (I-9, W-4, offer letters, etc.)
+2. **Download Document** retrieves the HR document from Google Drive
+3. **PDF Vector - Extract HR Data** uses AI to extract:
+   - Document type (Offer Letter, I-9, W-4, Direct Deposit, Emergency Contact, Policy Acknowledgment, Benefits Enrollment, NDA)
+   - Employee information (name, ID, email, phone, address, DOB)
+   - Employment details (start date, department, position, manager, salary, pay frequency)
+   - Tax withholding information (filing status, allowances)
+   - Direct deposit details (bank name, account type - no sensitive account numbers)
+   - Emergency contacts (name, relationship, phone)
+   - Signatures and dates
+4. **Process Document** performs compliance checks:
+   - Validates completeness and identifies missing fields
+   - Checks for required signatures
+   - Formats emergency contacts for tracking
+   - Assigns document status (Complete, Incomplete, Needs Review)
+   - Flags I-9 forms requiring immediate attention
+5. **Log to Onboarding Tracker** appends all data to Google Sheets with:
+   - Employee details and contact information
+   - Document type and status
+   - Issues found and missing fields
+   - Emergency contact information
+   - Direct link to source document
+6. **Notify HR Team** sends Slack alert with:
+   - Employee name and department
+   - Document type and processing status
+   - Visual status indicator (✅ Complete / ⚠️ Needs attention)
+   - List of any compliance issues
+   - Link to view original document
+
+#### Services used
+- Google Drive (document monitoring & storage)
+- PDF Vector (AI extraction)
+- Google Sheets (onboarding tracker)
+- Slack (HR team notifications)
+
+#### Document types supported
+- Offer Letters
+- I-9 Employment Eligibility Verification
+- W-4 Tax Withholding Forms
+- Direct Deposit Authorization
+- Emergency Contact Forms
+- Policy Acknowledgments
+- Benefits Enrollment Forms
+- Non-Disclosure Agreements (NDAs)
+- Other onboarding documents
+
+#### Compliance checks performed
+- **Missing signatures**: Flags documents without required signatures
+- **Incomplete fields**: Identifies missing required information
+- **I-9 status tracking**: Special handling for I-9 forms with completion verification
+- **Emergency contacts**: Ensures emergency contact information is provided
+- **Document completeness**: Overall assessment of document status
+
+#### Google Sheets structure
+| Employee Name | Employee ID | Email | Document Type | Department | Position | Start Date | Status | Issues | Emergency Contacts | Document Link | Processed Date |
+|---------------|-------------|-------|---------------|------------|----------|------------|--------|--------|-------------------|---------------|----------------|
+
+#### Setup instructions
+1. Import the workflow into n8n
+2. Create a "Onboarding Documents" folder in Google Drive
+3. Configure Google Drive credentials and set the folder ID in the trigger node
+4. Get your PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+5. Create a Google Sheet with the columns listed above
+6. Configure Google Sheets credentials and set the spreadsheet ID
+7. Set up Slack OAuth credentials and select your HR notifications channel
+8. Activate the workflow
+
+#### Key features
+- Automatic extraction of sensitive data with privacy controls (no account numbers stored)
+- Multi-document type support for complete onboarding packets
+- I-9 compliance tracking with special status flags
+- Missing field identification for follow-up
+- Emergency contact formatting and tracking
+- Real-time Slack notifications for HR team
+- Complete audit trail with document links
+- Status tracking (Complete, Incomplete, Needs Review)
+
+#### Real-world use cases
+- New employee onboarding packet processing
+- I-9 compliance verification and tracking
+- Benefits enrollment document management
+- Emergency contact information collection
+- Policy acknowledgment tracking
+- W-4 and direct deposit setup automation
+
+#### Customizing this workflow
+- Add additional document types to the extraction schema
+- Modify compliance checks for your organization's requirements
+- Add email notifications to employees for missing documents
+- Connect to your HRIS system instead of Google Sheets
+- Add approval workflows for compensation-related documents
+- Include document retention rules and expiration tracking
+- Set up automated reminders for incomplete documents
 
 </details>
 
