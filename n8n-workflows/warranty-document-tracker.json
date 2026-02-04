@@ -1,0 +1,449 @@
+{
+  "name": "Warranty Document & Claim Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🛡️ Warranty Document Tracker\n\n### How it works\n1. Watches Google Drive folder for warranty documents\n2. Downloads and extracts product info, purchase details, warranty terms\n3. Calculates expiration date and days remaining\n4. Determines status: Active, Expiring Soon, or Expired\n5. Logs all warranty data to Google Sheets tracker\n6. Sends Slack alert when warranty expires within 30 days\n\n### Setup steps\n1. Create Google Drive folder for warranty documents\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns: Product, Brand, Model, Serial Number, Purchase Date, Purchase Price, Retailer, Warranty Type, Expires, Days Remaining, Status, Coverage, Document Link, Added Date\n4. Connect Google Drive, Sheets, and Slack credentials\n5. Update folder ID and spreadsheet ID in nodes\n\n### Perfect for\n- Consumers tracking product warranties\n- Customer service teams managing claims\n- Retail businesses with inventory warranties\n- Electronics companies tracking coverage",
+        "height": 560,
+        "width": 380,
+        "color": 5
+      },
+      "id": "ced06c26-b8a4-49ed-8854-31d0b88c6631",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📅 Extracted Data\n\n- Product name, brand, model\n- Serial number\n- Purchase date and price\n- Retailer information\n- Warranty type and duration\n- Coverage details\n- Exclusions list\n- Claim process\n- Contact information",
+        "height": 280,
+        "width": 220
+      },
+      "id": "d8414874-442d-4ce8-9414-6e755250c728",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        464,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Warranty Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "dba3c47c-76df-49ea-893d-1055eae74433",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        112,
+        176
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      },
+      "notes": "Watch for warranty documents"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "49c993e7-7e54-4e8c-ab32-8cad52d8211c",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        320,
+        176
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract warranty information from this document: product name, model number, serial number, manufacturer, purchase date, purchase location, warranty duration, warranty type (limited, full, extended), what's covered, what's excluded, claim process, and contact information for claims.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"product\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"brand\":{\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"serialNumber\":{\"type\":\"string\"},\"category\":{\"type\":\"string\"}}},\"purchase\":{\"type\":\"object\",\"properties\":{\"date\":{\"type\":\"string\"},\"retailer\":{\"type\":\"string\"},\"price\":{\"type\":\"number\"},\"receiptNumber\":{\"type\":\"string\"}}},\"warranty\":{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"Limited\",\"Full\",\"Extended\",\"Lifetime\",\"Manufacturer\"]},\"durationMonths\":{\"type\":\"number\"},\"startDate\":{\"type\":\"string\"},\"endDate\":{\"type\":\"string\"}}},\"coverage\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"exclusions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"claimProcess\":{\"type\":\"string\"},\"contactInfo\":{\"type\":\"object\",\"properties\":{\"phone\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"website\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"}}}},\"required\":[\"product\"],\"additionalProperties\":false}"
+      },
+      "id": "6fd80a0e-7700-40cd-a511-00934c12ce48",
+      "name": "PDF Vector - Extract Warranty",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        512,
+        176
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const doc = $input.first().json.data;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\nconst product = doc.product || {};\nconst purchase = doc.purchase || {};\nconst warranty = doc.warranty || {};\n\n// Calculate warranty end date if not provided\nlet endDate = warranty.endDate;\nif (!endDate && purchase.date && warranty.durationMonths) {\n  const start = new Date(purchase.date);\n  start.setMonth(start.getMonth() + warranty.durationMonths);\n  endDate = start.toISOString().split('T')[0];\n}\n\n// Calculate days remaining\nlet daysRemaining = 'Unknown';\nlet status = 'Unknown';\nif (endDate) {\n  const end = new Date(endDate);\n  const today = new Date();\n  daysRemaining = Math.ceil((end - today) / (1000 * 60 * 60 * 24));\n  \n  if (daysRemaining < 0) status = 'Expired';\n  else if (daysRemaining <= 30) status = 'Expiring Soon';\n  else if (daysRemaining <= 90) status = 'Active - Expires in 3 months';\n  else status = 'Active';\n}\n\n// Format coverage\nconst coverage = doc.coverage || [];\nconst coverageList = coverage.join(', ') || 'Not specified';\n\n// Format exclusions\nconst exclusions = doc.exclusions || [];\nconst exclusionsList = exclusions.join(', ') || 'None listed';\n\nreturn [{\n  json: {\n    ...doc,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    productName: product.name,\n    productBrand: product.brand,\n    productModel: product.model,\n    serialNumber: product.serialNumber,\n    purchaseDate: purchase.date,\n    purchasePrice: purchase.price,\n    retailer: purchase.retailer,\n    warrantyType: warranty.type,\n    warrantyEndDate: endDate,\n    daysRemaining: daysRemaining,\n    status: status,\n    coverageList: coverageList,\n    exclusionsList: exclusionsList,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "6d3f8c9a-01fc-4a69-a9a8-dc5de261e16f",
+      "name": "Process Warranty",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Warranty Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Warranty Log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Product": "={{ $json.productName }}",
+            "Brand": "={{ $json.productBrand || 'N/A' }}",
+            "Model": "={{ $json.productModel || 'N/A' }}",
+            "Serial Number": "={{ $json.serialNumber || 'N/A' }}",
+            "Purchase Date": "={{ $json.purchaseDate || 'N/A' }}",
+            "Purchase Price": "={{ $json.purchasePrice || 'N/A' }}",
+            "Retailer": "={{ $json.retailer || 'N/A' }}",
+            "Warranty Type": "={{ $json.warrantyType || 'N/A' }}",
+            "Expires": "={{ $json.warrantyEndDate || 'N/A' }}",
+            "Days Remaining": "={{ $json.daysRemaining }}",
+            "Status": "={{ $json.status }}",
+            "Coverage": "={{ $json.coverageList }}",
+            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Product",
+              "displayName": "Product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Brand",
+              "displayName": "Brand",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Model",
+              "displayName": "Model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Serial Number",
+              "displayName": "Serial Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Purchase Date",
+              "displayName": "Purchase Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Purchase Price",
+              "displayName": "Purchase Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Retailer",
+              "displayName": "Retailer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Warranty Type",
+              "displayName": "Warranty Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Expires",
+              "displayName": "Expires",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Days Remaining",
+              "displayName": "Days Remaining",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Coverage",
+              "displayName": "Coverage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document Link",
+              "displayName": "Document Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Added Date",
+              "displayName": "Added Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a8e4ba40-e269-4cbf-99c1-0493c5c7de76",
+      "name": "Log to Warranty Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        912,
+        176
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "fd3dfb7e-40fc-49c0-bee4-c6f640645347",
+              "leftValue": "={{ $('Process Warranty').item.json.status }}",
+              "rightValue": "Expiring Soon",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "95988fe1-cade-4e05-b22f-0efa6bef5e2f",
+      "name": "Expiring Soon?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "warranty-alerts"
+        },
+        "text": "=⚠️ *Warranty Expiring Soon!*\n\n*Product:* {{ $('Process Warranty').item.json.productName }}\n*Brand:* {{ $('Process Warranty').item.json.productBrand || 'N/A' }}\n*Model:* {{ $('Process Warranty').item.json.productModel || 'N/A' }}\n\n📅 *Expires:* {{ $('Process Warranty').item.json.warrantyEndDate }}\n⏰ *Days Remaining:* {{ $('Process Warranty').item.json.daysRemaining }}\n\n*Coverage:* {{ $('Process Warranty').item.json.coverageList }}\n\nConsider filing any claims before warranty expires!",
+        "otherOptions": {}
+      },
+      "id": "787b5e0e-25f7-48e3-8b89-9a3c6d1e8cef",
+      "name": "Alert Expiring",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1312,
+        64
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Warranty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Warranty": {
+      "main": [
+        [
+          {
+            "node": "Process Warranty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Warranty": {
+      "main": [
+        [
+          {
+            "node": "Log to Warranty Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Warranty Tracker": {
+      "main": [
+        [
+          {
+            "node": "Expiring Soon?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expiring Soon?": {
+      "main": [
+        [
+          {
+            "node": "Alert Expiring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
