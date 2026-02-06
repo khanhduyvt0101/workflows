@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-32_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-33_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 32 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 33 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2501,6 +2501,56 @@ Never miss a warranty expiration again! Automatically extract warranty informati
 - Include warranty renewal tracking for extended warranties
 - Add cost-benefit analysis for extended warranty purchases
 - Create reports on warranty utilization and claim frequency
+
+</details>
+
+<details>
+<summary><strong>📋 RFP/RFQ Proposal Generator</strong> - Intelligent RFP analysis with deadline tracking & sales alerts | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/rfp-rfq-proposal-generator.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/rfp-rfq-proposal-generator.json">📋 Open</a></summary>
+
+Automate your RFP/RFQ response process with AI-powered document analysis. This workflow monitors incoming RFP emails, extracts all critical requirements and evaluation criteria, calculates deadline urgency, and alerts your sales team instantly. Perfect for organizations that need to respond quickly to government contracts, enterprise RFPs, and consulting opportunities.
+
+#### Who is this for?
+- Sales teams responding to RFPs and RFQs
+- Consulting firms and professional services companies
+- Government contractors tracking procurement opportunities
+- B2B service providers managing proposal pipelines
+- Business development teams qualifying opportunities
+
+#### How it works
+1. **Gmail Trigger** monitors your inbox for incoming RFP/RFQ emails with attachments
+2. **Get a message** retrieves the full email with PDF attachment
+3. **PDF Vector - Extract RFP** uses AI to extract comprehensive RFP data: issuing organization, project title, RFP number, submission deadline, project scope, detailed requirements (categorized by priority: Required/Preferred/Optional), evaluation criteria with weights, budget range, project timeline, required qualifications, questions that need answers, and compliance requirements
+4. **Analyze RFP** processes the extracted data to calculate days remaining until deadline, determine urgency level (Urgent ≤7 days, High 8-14 days, Normal >14 days), count requirements by priority, format evaluation criteria, and prepare summary statistics
+5. **Log to RFP Tracker** appends all data to Google Sheets with columns: RFP Number, Project Title, Organization, Deadline, Days Remaining, Urgency, Budget Min/Max, Required Items count, Total Requirements, Questions to Answer count, Source Email, Received Date, and Status
+6. **Alert Sales Team** sends formatted Slack notification with project details, deadline urgency, budget information, requirements breakdown, and evaluation criteria
+
+#### Services used
+- Gmail (email monitoring & attachment retrieval)
+- PDF Vector (AI-powered RFP document extraction)
+- Google Sheets (RFP tracking database)
+- Slack (team notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Configure Gmail OAuth2 credentials for inbox monitoring
+3. Get a PDF Vector API key from [pdfvector.com/api-keys](https://pdfvector.com/api-keys)
+4. Create a Google Sheet with columns: RFP Number, Project Title, Organization, Deadline, Days Remaining, Urgency, Budget Min, Budget Max, Required Items, Total Requirements, Questions to Answer, Source Email, Received Date, Status
+5. Configure Google Sheets credentials and enter your spreadsheet ID
+6. Set up Slack OAuth2 credentials and select your sales channel
+7. Update credential IDs in all nodes (Gmail Trigger, Get a message, PDF Vector, Google Sheets, Slack)
+8. Activate the workflow
+
+#### Customizing this workflow
+- Adjust urgency thresholds (currently Urgent ≤7 days, High ≤14 days) to match your response timeline
+- Add filters to only process emails from specific senders or domains
+- Create separate Slack channels for different urgency levels
+- Add automatic calendar events for RFP deadlines
+- Route high-value opportunities (based on budget) to a priority queue
+- Integrate with CRM systems (Salesforce, HubSpot) instead of Google Sheets
+- Add automated go/no-go decision logic based on requirements match
+- Generate proposal outline documents based on requirements
+- Set up follow-up reminders at intervals (e.g., 7 days before, 3 days before deadline)
+- Add email notifications to proposal writers alongside Slack alerts
 
 </details>
 
