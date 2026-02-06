@@ -1,0 +1,278 @@
+{
+  "name": "RFP/RFQ Proposal Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📝 RFP/RFQ Analyzer\n\n### What this workflow does\n1. Watches Gmail for RFP emails\n2. Extracts requirements & criteria\n3. Calculates deadline urgency\n4. Logs to RFP tracker\n5. Alerts sales team via Slack\n\n### Setup steps\n1. Connect Gmail OAuth2 credentials\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns below\n4. Connect Slack and pick your sales channel\n5. Update credential IDs in the nodes\n\n### Sheet columns\nRFP Number, Project Title, Organization, Deadline, Days Remaining, Urgency, Budget Min, Budget Max, Required Items, Total Requirements, Questions to Answer, Source Email, Received Date, Status\n\n### Perfect for\n- Sales teams\n- Consulting firms\n- Government contractors\n- B2B service providers",
+        "height": 480,
+        "width": 320,
+        "color": 5
+      },
+      "id": "7a3a86c8-7dba-4f4f-b18c-9e1cb19c7323",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🎯 Extraction Points\n\n- Client requirements\n- Evaluation criteria\n- Submission deadline\n- Budget range\n- Scope of work\n- Compliance requirements\n- Questions to answer\n\n### Urgency Levels\n- Urgent: ≤7 days\n- High: 8-14 days\n- Normal: >14 days",
+        "height": 260,
+        "width": 260
+      },
+      "id": "134f3de1-2596-4c99-a299-5c77e51a18ce",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        208,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false
+        }
+      },
+      "id": "1a9e76e7-a59b-4feb-81f2-2c14b9678227",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        288
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "Monitor for incoming RFPs"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        288
+      ],
+      "id": "bd836c3c-199e-47c8-9680-a969d679eae1",
+      "name": "Get a message",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "attachment_0",
+        "prompt": "Analyze this RFP/RFQ document and extract: issuing organization, project title, submission deadline, project scope, requirements list, evaluation criteria with weights, budget information, timeline, required qualifications, questions that need answers, and any compliance requirements.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"issuingOrganization\":{\"type\":\"string\"},\"projectTitle\":{\"type\":\"string\"},\"rfpNumber\":{\"type\":\"string\"},\"submissionDeadline\":{\"type\":\"string\"},\"submissionMethod\":{\"type\":\"string\"},\"projectScope\":{\"type\":\"string\"},\"requirements\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"requirement\":{\"type\":\"string\"},\"priority\":{\"type\":\"string\",\"enum\":[\"Required\",\"Preferred\",\"Optional\"]},\"category\":{\"type\":\"string\"}}}},\"evaluationCriteria\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"criterion\":{\"type\":\"string\"},\"weight\":{\"type\":\"number\"},\"description\":{\"type\":\"string\"}}}},\"budgetRange\":{\"type\":\"object\",\"properties\":{\"min\":{\"type\":\"number\"},\"max\":{\"type\":\"number\"},\"currency\":{\"type\":\"string\"}}},\"projectTimeline\":{\"type\":\"object\",\"properties\":{\"startDate\":{\"type\":\"string\"},\"endDate\":{\"type\":\"string\"},\"milestones\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}},\"qualifications\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"questionsToAnswer\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"complianceRequirements\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"projectTitle\",\"submissionDeadline\"],\"additionalProperties\":false}"
+      },
+      "id": "37015305-f9ac-410f-a7ea-146c58ff9215",
+      "name": "PDF Vector - Extract RFP",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        384,
+        288
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rfp = $input.first().json.data;\n\n// Get email data from 'Get a message' node (not Gmail Trigger)\nconst emailData = $('Get a message')?.item?.json || {};\n\n// Get email info with optional chaining for manual testing\nconst senderEmail = emailData?.from?.value?.[0]?.address || 'manual-test@example.com';\nconst receivedDate = emailData?.date || new Date().toISOString();\n\n// Parse deadline with better date handling\nfunction parseDeadline(deadlineStr) {\n  if (!deadlineStr) return null;\n  \n  // Try direct parsing first\n  let date = new Date(deadlineStr);\n  if (!isNaN(date.getTime())) return date;\n  \n  // Handle \"March 15, 2024 at 5:00 PM EST\" format\n  const cleanedStr = deadlineStr\n    .replace(/\\s+at\\s+/i, ' ')\n    .replace(/\\s+(EST|CST|MST|PST|EDT|CDT|MDT|PDT)$/i, '');\n  \n  date = new Date(cleanedStr);\n  if (!isNaN(date.getTime())) return date;\n  \n  // Try extracting just the date part (e.g., \"March 15, 2024\")\n  const dateMatch = deadlineStr.match(/([A-Za-z]+\\s+\\d{1,2},?\\s+\\d{4})/);\n  if (dateMatch) {\n    date = new Date(dateMatch[1]);\n    if (!isNaN(date.getTime())) return date;\n  }\n  \n  return null;\n}\n\n// Calculate days until deadline\nlet daysRemaining = 'N/A';\nconst deadlineDate = parseDeadline(rfp.submissionDeadline);\nif (deadlineDate) {\n  const today = new Date();\n  today.setHours(0, 0, 0, 0);\n  deadlineDate.setHours(0, 0, 0, 0);\n  daysRemaining = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));\n}\n\n// Count requirements by priority\nconst reqs = rfp.requirements || [];\nconst requiredCount = reqs.filter(r => r.priority === 'Required').length;\nconst preferredCount = reqs.filter(r => r.priority === 'Preferred').length;\nconst optionalCount = reqs.filter(r => r.priority === 'Optional').length;\n\n// Format requirements list\nconst reqsList = reqs.map(r => `[${r.priority}] ${r.requirement}`).join('\\n');\n\n// Format evaluation criteria\nconst criteria = rfp.evaluationCriteria || [];\nconst criteriaList = criteria.map(c => `${c.criterion}: ${c.weight}%`).join('\\n');\n\n// Format questions\nconst questions = rfp.questionsToAnswer || [];\nconst questionsList = questions.map((q, i) => `Q${i + 1}: ${q}`).join('\\n');\n\n// Determine urgency based on days remaining\nlet urgency = 'Normal';\nif (typeof daysRemaining === 'number') {\n  if (daysRemaining <= 0) urgency = 'OVERDUE';\n  else if (daysRemaining <= 7) urgency = 'Urgent';\n  else if (daysRemaining <= 14) urgency = 'High';\n}\n\n// Format budget display\nlet budgetDisplay = 'Not specified';\nif (rfp.budgetRange) {\n  const min = rfp.budgetRange.min;\n  const max = rfp.budgetRange.max;\n  if (min && max) {\n    budgetDisplay = `$${min.toLocaleString()} - $${max.toLocaleString()}`;\n  } else if (max) {\n    budgetDisplay = `Up to $${max.toLocaleString()}`;\n  } else if (min) {\n    budgetDisplay = `Minimum $${min.toLocaleString()}`;\n  }\n}\n\nreturn [{\n  json: {\n    ...rfp,\n    senderEmail: senderEmail,\n    receivedDate: receivedDate,\n    daysRemaining: daysRemaining,\n    urgency: urgency,\n    requiredCount: requiredCount,\n    preferredCount: preferredCount,\n    optionalCount: optionalCount,\n    totalRequirements: reqs.length,\n    reqsList: reqsList,\n    criteriaList: criteriaList,\n    questionCount: questions.length,\n    questionsList: questionsList,\n    budgetDisplay: budgetDisplay,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "ab9c83d3-f815-4587-8782-f86ed9d95f03",
+      "name": "Analyze RFP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "RFP Number": "={{ $json.rfpNumber || 'N/A' }}",
+            "Project Title": "={{ $json.projectTitle }}",
+            "Organization": "={{ $json.issuingOrganization || 'N/A' }}",
+            "Deadline": "={{ $json.submissionDeadline }}",
+            "Days Remaining": "={{ $json.daysRemaining }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Budget Min": "={{ $json.budgetRange ? $json.budgetRange.min : 'N/A' }}",
+            "Budget Max": "={{ $json.budgetRange ? $json.budgetRange.max : 'N/A' }}",
+            "Required Items": "={{ $json.requiredCount }}",
+            "Total Requirements": "={{ $json.totalRequirements }}",
+            "Questions to Answer": "={{ $json.questionCount }}",
+            "Source Email": "={{ $json.senderEmail }}",
+            "Received Date": "={{ $json.receivedDate }}",
+            "Status": "=New"
+          }
+        },
+        "options": {}
+      },
+      "id": "1a7e784b-851f-4f39-b8bc-89d45beba443",
+      "name": "Log to RFP Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        784,
+        288
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=📋 *New RFP Received*\n\n*Project:* {{ $('Analyze RFP').item.json.projectTitle }}\n*Organization:* {{ $('Analyze RFP').item.json.issuingOrganization || 'N/A' }}\n*RFP #:* {{ $('Analyze RFP').item.json.rfpNumber || 'N/A' }}\n\n⏰ *Deadline:* {{ $('Analyze RFP').item.json.submissionDeadline }}\n*Days Remaining:* {{ $('Analyze RFP').item.json.daysRemaining }} ({{ $('Analyze RFP').item.json.urgency }})\n\n💰 *Budget:* {{ $('Analyze RFP').item.json.budgetDisplay }}\n\n📝 *Requirements:*\n• Required: {{ $('Analyze RFP').item.json.requiredCount }}\n• Preferred: {{ $('Analyze RFP').item.json.preferredCount }}\n• Questions: {{ $('Analyze RFP').item.json.questionCount }}\n\n*Evaluation Criteria:*\n{{ $('Analyze RFP').item.json.criteriaList || 'Not specified' }}",
+        "otherOptions": {}
+      },
+      "id": "8eb1851f-e358-4e35-b5a1-8ea4a9d5cc04",
+      "name": "Alert Sales Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        976,
+        288
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract RFP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract RFP": {
+      "main": [
+        [
+          {
+            "node": "Analyze RFP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze RFP": {
+      "main": [
+        [
+          {
+            "node": "Log to RFP Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to RFP Tracker": {
+      "main": [
+        [
+          {
+            "node": "Alert Sales Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "PDF Vector"
+    },
+    {
+      "name": "Sales"
+    },
+    {
+      "name": "RFP"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
