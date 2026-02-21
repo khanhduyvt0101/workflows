@@ -1,0 +1,407 @@
+{
+  "name": "Lab Results Extractor & Health Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🔬 Lab Results Extractor & Health Tracker\n\n### What this workflow does\n1. Watches Google Drive folder for new lab result PDFs\n2. Downloads and extracts all test results with values and ranges\n3. Flags abnormal values (high, low, critical)\n4. Calculates overall health status\n5. Logs results to Google Sheets health tracker\n6. Sends Slack alert if any abnormal results found\n\n### Setup steps\n1. Create Google Drive folder for lab results\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns:\n   Patient, Test Date, Lab, Category, Total Tests, Normal, High, Low, Critical, Overall Status, Physician, Document Link, Processed Date\n4. Update folder ID and spreadsheet ID in nodes\n5. Connect Slack and set channel for health alerts\n\n### ⚠️ Privacy note\nThis processes PHI (Protected Health Information).\nEnsure HIPAA compliance if used in healthcare.\nSelf-host n8n securely!\n\n### Perfect for\n- Patients tracking personal health trends\n- Wellness coaches monitoring client labs\n- Healthcare providers organizing results",
+        "height": 620,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🎯 Extracted Data\n\n- Patient name & DOB\n- Test date\n- Lab name\n- Ordering physician\n- All test results:\n  - Test name\n  - Value & unit\n  - Reference range\n  - Status (Normal/High/Low/Critical)",
+        "height": 260,
+        "width": 220
+      },
+      "id": "sticky-extract",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Lab Results"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        280,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract lab test results from this document: patient name, date of birth, patient ID, test date, report date, ordering physician, lab name and address, test category, and all individual test results with test name, numeric value, unit, reference range (low and high values), and status (Normal, High, Low, Critical High, Critical Low).",
+        "schema": "{\"type\":\"object\",\"properties\":{\"patient\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"dob\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"}}},\"testDate\":{\"type\":\"string\"},\"reportDate\":{\"type\":\"string\"},\"orderingPhysician\":{\"type\":\"string\"},\"labName\":{\"type\":\"string\"},\"labAddress\":{\"type\":\"string\"},\"testCategory\":{\"type\":\"string\"},\"results\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"testName\":{\"type\":\"string\"},\"value\":{\"type\":\"number\"},\"unit\":{\"type\":\"string\"},\"referenceRangeLow\":{\"type\":\"number\"},\"referenceRangeHigh\":{\"type\":\"number\"},\"referenceRange\":{\"type\":\"string\"},\"status\":{\"type\":\"string\",\"enum\":[\"Normal\",\"High\",\"Low\",\"Critical High\",\"Critical Low\",\"Abnormal\"]}}}}},\"required\":[\"results\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Results",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        680,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lab = $input.first().json.data;\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId = $('Google Drive Trigger').item.json.id;\n\nconst patient = lab.patient || {};\nconst results = lab.results || [];\n\n// Count by status\nconst normal = results.filter(r => r.status === 'Normal').length;\nconst high = results.filter(r => r.status === 'High' || r.status === 'Critical High').length;\nconst low = results.filter(r => r.status === 'Low' || r.status === 'Critical Low').length;\nconst critical = results.filter(r => r.status && r.status.includes('Critical')).length;\n\n// Flag abnormal results\nconst abnormalResults = results.filter(r => r.status !== 'Normal');\nconst abnormalList = abnormalResults.map(r => {\n  const range = r.referenceRange || `${r.referenceRangeLow || '?'}-${r.referenceRangeHigh || '?'}`;\n  return `⚠️ ${r.testName}: ${r.value} ${r.unit || ''} (${r.status}) [Ref: ${range}]`;\n}).join('\\n') || '✅ All results within normal range';\n\n// Format all results for display\nconst allResultsList = results.map(r => {\n  const icon = r.status === 'Normal' ? '✅' : '⚠️';\n  return `${icon} ${r.testName}: ${r.value} ${r.unit || ''} - ${r.status}`;\n}).join('\\n');\n\n// Determine overall status\nlet overallStatus = 'Normal';\nlet statusEmoji = '✅';\nif (critical > 0) {\n  overallStatus = 'Critical - Action Required';\n  statusEmoji = '🚨';\n} else if (high + low > 3) {\n  overallStatus = 'Multiple Abnormal - Review Needed';\n  statusEmoji = '⚠️';\n} else if (high + low > 0) {\n  overallStatus = 'Some Abnormal Values';\n  statusEmoji = '⚠️';\n}\n\nconst hasAbnormal = abnormalResults.length > 0;\n\nreturn [{\n  json: {\n    ...lab,\n    fileName: fileName,\n    fileId: fileId,\n    patientName: patient.name || 'Unknown',\n    patientDob: patient.dob || 'N/A',\n    totalTests: results.length,\n    normalCount: normal,\n    highCount: high,\n    lowCount: low,\n    criticalCount: critical,\n    abnormalCount: abnormalResults.length,\n    abnormalList: abnormalList,\n    allResultsList: allResultsList,\n    overallStatus: overallStatus,\n    statusEmoji: statusEmoji,\n    hasAbnormal: hasAbnormal,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "analyze-results",
+      "name": "Analyze Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Health Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Lab Results"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Patient": "={{ $json.patientName }}",
+            "Test Date": "={{ $json.testDate || 'N/A' }}",
+            "Lab": "={{ $json.labName || 'N/A' }}",
+            "Category": "={{ $json.testCategory || 'General' }}",
+            "Total Tests": "={{ $json.totalTests }}",
+            "Normal": "={{ $json.normalCount }}",
+            "High": "={{ $json.highCount }}",
+            "Low": "={{ $json.lowCount }}",
+            "Critical": "={{ $json.criticalCount }}",
+            "Overall Status": "={{ $json.overallStatus }}",
+            "Physician": "={{ $json.orderingPhysician || 'N/A' }}",
+            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Patient",
+              "displayName": "Patient",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Test Date",
+              "displayName": "Test Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lab",
+              "displayName": "Lab",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Tests",
+              "displayName": "Total Tests",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Normal",
+              "displayName": "Normal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "High",
+              "displayName": "High",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Low",
+              "displayName": "Low",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Critical",
+              "displayName": "Critical",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Overall Status",
+              "displayName": "Overall Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Physician",
+              "displayName": "Physician",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document Link",
+              "displayName": "Document Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Health Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1080,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-abnormal",
+              "leftValue": "={{ $('Analyze Results').item.json.hasAbnormal }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-abnormal",
+      "name": "Has Abnormal Results?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "health-alerts"
+        },
+        "text": "={{ $('Analyze Results').item.json.statusEmoji }} *Lab Results Alert*\n\n*Patient:* {{ $('Analyze Results').item.json.patientName }}\n*Test Date:* {{ $('Analyze Results').item.json.testDate || 'N/A' }}\n*Lab:* {{ $('Analyze Results').item.json.labName || 'N/A' }}\n*Physician:* {{ $('Analyze Results').item.json.orderingPhysician || 'N/A' }}\n\n📊 *Results Summary:*\n• Total Tests: {{ $('Analyze Results').item.json.totalTests }}\n• Normal: {{ $('Analyze Results').item.json.normalCount }}\n• High: {{ $('Analyze Results').item.json.highCount }}\n• Low: {{ $('Analyze Results').item.json.lowCount }}\n• Critical: {{ $('Analyze Results').item.json.criticalCount }}\n\n⚠️ *Overall Status:* {{ $('Analyze Results').item.json.overallStatus }}\n\n*Abnormal Results:*\n{{ $('Analyze Results').item.json.abnormalList }}\n\n<https://drive.google.com/file/d/{{ $('Analyze Results').item.json.fileId }}/view|📄 View Lab Report>",
+        "otherOptions": {}
+      },
+      "id": "slack-alert",
+      "name": "Alert - Abnormal Results",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1480,
+        120
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Results": {
+      "main": [
+        [
+          {
+            "node": "Analyze Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Results": {
+      "main": [
+        [
+          {
+            "node": "Log to Health Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Health Tracker": {
+      "main": [
+        [
+          {
+            "node": "Has Abnormal Results?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Abnormal Results?": {
+      "main": [
+        [
+          {
+            "node": "Alert - Abnormal Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
