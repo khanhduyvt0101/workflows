@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-33_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-34_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 33 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 34 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2551,6 +2551,56 @@ Automate your RFP/RFQ response process with AI-powered document analysis. This w
 - Generate proposal outline documents based on requirements
 - Set up follow-up reminders at intervals (e.g., 7 days before, 3 days before deadline)
 - Add email notifications to proposal writers alongside Slack alerts
+
+</details>
+
+<details>
+<summary><strong>💰 Quote Comparison & Vendor Selection Tool</strong> - Compare vendor quotes with automated extraction and tracking | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/quote-comparison-vendor-selection-tool.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/quote-comparison-vendor-selection-tool.json">📋 Open</a></summary>
+
+Streamline your procurement process by automatically extracting and comparing vendor quotes side by side. Drop quote PDFs into a Google Drive folder and get instant structured data with pricing breakdowns, validity tracking, and team notifications — no more manual spreadsheet entry or missed expiration dates.
+
+#### Who is this for?
+- Procurement teams comparing bids from multiple vendors
+- Project managers evaluating contractor proposals
+- Business owners selecting the best vendor for purchases
+- Freelancers and consultants comparing service quotes
+
+#### How it works
+1. **Google Drive Trigger** monitors a designated folder for new vendor quote PDF uploads
+2. **Download Quote** retrieves the PDF file from Google Drive
+3. **PDF Vector - Extract Quote** uses AI to extract structured data including vendor details, quote number, dates, line items with pricing, discounts, tax, shipping, payment terms, delivery timeline, and warranty information
+4. **Process Quote** calculates effective per-unit pricing, checks quote validity status (valid, expiring soon, or expired), formats line items, discounts, and warranty details for display
+5. **Add to Quote Comparison** appends all extracted data to a Google Sheets spreadsheet for side-by-side vendor comparison with columns for pricing, terms, and contact info
+6. **Notify Team** sends a detailed Slack message to the procurement channel with the full quote summary including line items, pricing breakdown, validity status, delivery, payment terms, and a link to the original document
+
+#### Services used
+- Google Drive (quote file monitoring & download)
+- PDF Vector (AI-powered quote data extraction)
+- Code / JavaScript (pricing calculation, validity checking & data formatting)
+- Google Sheets (quote comparison logging)
+- Slack (team notifications)
+
+#### Google Sheets structure
+Create a spreadsheet with these columns:
+| Vendor | Quote # | Quote Date | Valid Until | Status | Items | Subtotal | Discount | Shipping | Tax | Grand Total | Currency | Delivery Days | Payment Terms | Warranty | Contact | Quote Link | Added Date |
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Create a Google Drive folder for vendor quotes and update the folder ID in the Google Drive Trigger node
+3. Configure Google Drive credentials (OAuth2)
+4. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+5. Create a Google Sheet with the columns listed above and update the spreadsheet ID in the Google Sheets node
+6. Configure Google Sheets credentials (OAuth2)
+7. Set up Slack credentials (OAuth2) and update the channel ID to your procurement channel
+8. Activate the workflow
+
+#### Customizing this workflow
+- Add currency conversion for international vendor comparison
+- Set up automatic alerts when quotes are about to expire (e.g., 3 days before)
+- Add a scoring system to weight factors like price, delivery time, and warranty
+- Route high-value quotes above a threshold to a manager approval workflow
+- Integrate with an ERP or procurement system instead of Google Sheets
+- Add duplicate quote detection to prevent logging the same vendor quote twice
 
 </details>
 
