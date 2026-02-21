@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-33_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-34_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 33 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 34 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2551,6 +2551,50 @@ Automate your RFP/RFQ response process with AI-powered document analysis. This w
 - Generate proposal outline documents based on requirements
 - Set up follow-up reminders at intervals (e.g., 7 days before, 3 days before deadline)
 - Add email notifications to proposal writers alongside Slack alerts
+
+</details>
+
+<details>
+<summary><strong>🏥 Lab Results Extractor & Health Tracker</strong> - Extract lab test results and track health trends | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/lab-results-extractor-health-tracker.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/lab-results-extractor-health-tracker.json">📋 Open</a></summary>
+
+Automate the extraction and tracking of lab test results from PDF reports. Upload lab result PDFs to Google Drive and get structured data with abnormal value flagging, health status calculation, and instant Slack alerts for out-of-range results.
+
+#### Who is this for?
+- Patients tracking personal health trends over time
+- Wellness coaches monitoring client lab results
+- Healthcare providers organizing and reviewing test results
+
+#### How it works
+1. **Google Drive Trigger** watches a designated folder for new lab result PDFs
+2. **Download Document** retrieves the PDF file from Google Drive
+3. **PDF Vector - Extract Results** uses AI to extract structured data: patient info, test date, ordering physician, lab name, and all individual test results with values, units, reference ranges, and status
+4. **Analyze Results** counts normal/high/low/critical values, flags abnormal results, and calculates overall health status
+5. **Log to Health Tracker** appends a summary row to Google Sheets with test counts, status, physician, and document link
+6. **Has Abnormal Results?** checks if any test values are outside normal range
+7. **Alert - Abnormal Results** sends a detailed Slack notification listing all abnormal values with reference ranges
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI-powered lab result extraction)
+- Code / JavaScript (result analysis & health status calculation)
+- Google Sheets (health tracking database)
+- Slack (abnormal results alerts)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Create a Google Drive folder for lab result PDFs and update the folder ID in the Google Drive Trigger node
+3. Get a PDF Vector API key from pdfvector.com/api-keys and configure it in n8n credentials
+4. Create a Google Sheet with columns: Patient, Test Date, Lab, Category, Total Tests, Normal, High, Low, Critical, Overall Status, Physician, Document Link, Processed Date
+5. Update the spreadsheet ID in the "Log to Health Tracker" node
+6. Configure Slack credentials and set the channel ID in the "Alert - Abnormal Results" node
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the abnormal threshold in the Analyze Results code (currently alerts when any value is out of range)
+- Add trend analysis by comparing current results against previous entries in Google Sheets
+- Send email notifications instead of or alongside Slack alerts
+- Add separate sheets or tabs for different test categories (blood panel, metabolic, etc.)
+- Integrate with health apps or patient portals via HTTP Request nodes
 
 </details>
 
