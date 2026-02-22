@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-35_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-36_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 35 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 36 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2653,6 +2653,51 @@ Create a spreadsheet with these columns:
 - Add email notifications alongside Slack for stakeholders without Slack access
 - Connect to a vendor database to auto-match and track historical pricing
 - Add a summary node that compares the new quote against existing quotes in the sheet
+
+</details>
+
+<details>
+<summary><strong>📧 Newsletter PDF Extractor & Curator</strong> - Auto-extract and curate insights from PDF newsletters | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/newsletter-pdf-extractor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/newsletter-pdf-extractor.json">📋 Open</a></summary>
+
+Automatically process PDF newsletters arriving in your Gmail inbox, extract key insights using AI, and distribute structured digests to your team. Stop manually reading through lengthy PDF newsletters and let this workflow surface the topics, stories, statistics, and trends that matter most.
+
+#### Who is this for?
+- Content teams tracking industry newsletters and reports
+- Researchers monitoring publications and whitepapers
+- Marketing teams curating competitive intelligence from PDF digests
+- Anyone subscribed to PDF newsletters who wants automated summaries
+
+#### How it works
+1. **Gmail Trigger** polls your inbox hourly for new emails with attachments
+2. **Has PDF Attachment?** filters emails to only process those containing PDF files
+3. **Extract PDF Attachment** isolates the PDF binary data and captures sender metadata (name, email, subject, date)
+4. **PDF Vector - Analyze Content** uses AI to analyze the full PDF and extract document info, main topics, key stories, statistics, and emerging trends
+5. **Format Analysis** parses the AI response into structured fields (topics, key stories, stats, trends) and prepares data for logging
+6. **Log Newsletter** appends the extracted data to a Google Sheets spreadsheet for searchable record-keeping
+7. **Share Digest** posts a formatted summary to a Slack channel so your team gets the highlights instantly
+
+#### Services used
+- Gmail (email monitoring & PDF download)
+- PDF Vector (AI-powered PDF analysis & content extraction)
+- Google Sheets (newsletter log & searchable archive)
+- Slack (team digest notifications)
+- Code / JavaScript (PDF extraction & analysis formatting)
+- Conditional Logic (PDF attachment filtering)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Configure Gmail OAuth2 credentials for the Gmail Trigger node
+3. Get a PDF Vector API key from pdfvector.com/api-keys and configure credentials
+4. Create a Google Sheet with columns: Newsletter, Subject, Sender, Received Date, Topics, Key Stories, Stats & Data, Trends, Full Analysis, Processed Date
+5. Update the Google Sheets node with your spreadsheet ID
+6. Configure Slack OAuth2 credentials and set your target channel ID
+7. Activate the workflow
+
+#### Customizing this workflow
+- Edit the Gmail trigger filter to target specific senders (e.g., `from:(company.com) has:attachment filename:pdf`)
+- Adjust the PDF Vector prompt to extract domain-specific information
+- Add additional output channels (email, Discord, Microsoft Teams) alongside Slack
+- Create separate Slack channels per newsletter source for better organization
 
 </details>
 

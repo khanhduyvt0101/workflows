@@ -1,0 +1,382 @@
+{
+  "name": "Newsletter PDF Extractor & Curator",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📰 Newsletter PDF Extractor & Curator\n\n### What this workflow does\n1. Watches Gmail for emails with PDF attachments\n2. Downloads the PDF attachment\n3. Uses PDF Vector to analyze the content\n4. Extracts topics, stories, stats, and trends\n5. Logs summary to Google Sheets\n6. Shares digest to Slack\n\n### Setup steps\n1. Connect Gmail account (OAuth2)\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns:\n   Newsletter, Subject, Sender, Received Date, Topics, Key Stories, Stats & Data, Trends, Full Analysis, Processed Date\n4. Update spreadsheet ID in Google Sheets node\n5. Connect Slack and set content channel\n\n### Customize the Gmail filter\nEdit the search query to match your newsletters:\n- has:attachment filename:pdf\n- from:(company.com) has:attachment\n\n### Perfect for\n- Industry reports & whitepapers\n- PDF newsletters & digests\n- Research publications",
+        "height": 580,
+        "width": 380,
+        "color": 5
+      },
+      "id": "4b72a33e-1fdf-4865-a925-6534f1d050b8",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Extracted Info\n\n- Newsletter name\n- Main topics covered\n- Key stories & summaries\n- Statistics & data points\n- Emerging trends",
+        "height": 180,
+        "width": 200
+      },
+      "id": "c35a3db8-93c5-49e8-92ac-f71f44332db1",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "includeSpamTrash": false
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "6e5601e9-34df-4c5e-8865-6f0e870519b9",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -400,
+        1200
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GFPq3crPajyoq1jG",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-pdf",
+              "leftValue": "={{ $binary && Object.keys($binary).length > 0 && Object.values($binary).some(att => att.mimeType === 'application/pdf') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3e26ca13-8e5d-496a-bd80-c44bffa31c1b",
+      "name": "Has PDF Attachment?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $input.first().json;\nconst binary = $input.first().binary || {};\n\n// Find the first PDF attachment (handles various naming patterns)\nlet pdfKey = null;\nlet pdfFileName = 'attachment.pdf';\n\nfor (const key of Object.keys(binary)) {\n  if (binary[key] && binary[key].mimeType === 'application/pdf') {\n    pdfKey = key;\n    pdfFileName = binary[key].fileName || 'attachment.pdf';\n    break;\n  }\n}\n\nif (!pdfKey) {\n  throw new Error('No PDF attachment found in email');\n}\n\n// Get sender info\nlet senderName = 'Unknown';\nlet senderEmail = 'unknown@email.com';\n\nif (email.from) {\n  if (email.from.value && email.from.value[0]) {\n    senderName = email.from.value[0].name || email.from.value[0].address;\n    senderEmail = email.from.value[0].address;\n  } else if (typeof email.from === 'string') {\n    senderEmail = email.from;\n    senderName = email.from.split('@')[0];\n  }\n}\n\nreturn [{\n  json: {\n    emailId: email.id,\n    subject: email.subject || 'No Subject',\n    senderName: senderName,\n    senderEmail: senderEmail,\n    receivedDate: email.date || new Date().toISOString(),\n    pdfFileName: pdfFileName,\n    pdfKey: pdfKey\n  },\n  binary: {\n    data: binary[pdfKey]\n  }\n}];"
+      },
+      "id": "0be04adf-599c-4e1f-ad1f-527440a23f4c",
+      "name": "Extract PDF Attachment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "prompt": "Analyze this newsletter/document and provide a structured summary:\n\n1. DOCUMENT INFO: What is this document? Who published it?\n\n2. MAIN TOPICS (list 3-5): What are the primary subjects covered?\n\n3. KEY STORIES: Summarize the 2-3 most important stories or sections in 1-2 sentences each.\n\n4. STATS & DATA: List any specific numbers, statistics, or data points mentioned.\n\n5. TRENDS: What emerging trends or themes does this document highlight?\n\nFormat your response with clear section headers."
+      },
+      "id": "abcbe0d0-56d3-4b23-a7a8-a01d4e5d2c04",
+      "name": "PDF Vector - Analyze Content",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        208,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const emailData = $('Extract PDF Attachment').item.json;\nconst analysis = $input.first().json.markdown || $input.first().json.answer || '';\n\n// Parse sections from analysis\nfunction extractSection(text, patterns) {\n  for (const pattern of patterns) {\n    const regex = new RegExp(pattern + '[:\\\\s]*([\\\\s\\\\S]*?)(?=\\\\n\\\\d\\\\.|\\\\n[A-Z]{2,}[:\\s]|$)', 'i');\n    const match = text.match(regex);\n    if (match && match[1]) {\n      return match[1].trim().substring(0, 500);\n    }\n  }\n  return 'N/A';\n}\n\nconst topics = extractSection(analysis, ['MAIN TOPICS', 'TOPICS', '2\\\\.']);\nconst keyStories = extractSection(analysis, ['KEY STORIES', 'STORIES', '3\\\\.']);\nconst stats = extractSection(analysis, ['STATS', 'DATA', 'STATISTICS', '4\\\\.']);\nconst trends = extractSection(analysis, ['TRENDS', 'EMERGING', '5\\\\.']);\n\n// Truncate full analysis for Sheets\nconst shortAnalysis = analysis.substring(0, 1000);\n\nreturn [{\n  json: {\n    newsletterName: emailData.senderName,\n    subject: emailData.subject,\n    senderEmail: emailData.senderEmail,\n    receivedDate: emailData.receivedDate,\n    pdfFileName: emailData.pdfFileName,\n    topics: topics,\n    keyStories: keyStories,\n    stats: stats,\n    trends: trends,\n    fullAnalysis: shortAnalysis,\n    analysisComplete: analysis,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "8675204a-eb91-4982-9b3b-11ee2d280468",
+      "name": "Format Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Newsletter Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Newsletters"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Newsletter": "={{ $json.newsletterName }}",
+            "Subject": "={{ $json.subject }}",
+            "Sender": "={{ $json.senderEmail }}",
+            "Received Date": "={{ $json.receivedDate }}",
+            "Topics": "={{ $json.topics }}",
+            "Key Stories": "={{ $json.keyStories }}",
+            "Stats & Data": "={{ $json.stats }}",
+            "Trends": "={{ $json.trends }}",
+            "Full Analysis": "={{ $json.fullAnalysis }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Newsletter",
+              "displayName": "Newsletter",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sender",
+              "displayName": "Sender",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Received Date",
+              "displayName": "Received Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Topics",
+              "displayName": "Topics",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Key Stories",
+              "displayName": "Key Stories",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Stats & Data",
+              "displayName": "Stats & Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Trends",
+              "displayName": "Trends",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Full Analysis",
+              "displayName": "Full Analysis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "04aea0fa-e4cf-4501-aeaf-d9c993fcd1f6",
+      "name": "Log Newsletter",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        608,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "content-digest"
+        },
+        "text": "=📰 *Newsletter PDF Digest*\n\n*From:* {{ $('Format Analysis').item.json.newsletterName }}\n*Subject:* {{ $('Format Analysis').item.json.subject }}\n*File:* {{ $('Format Analysis').item.json.pdfFileName }}\n\n---\n\n📋 *Topics Covered:*\n{{ $('Format Analysis').item.json.topics }}\n\n---\n\n📖 *Key Stories:*\n{{ $('Format Analysis').item.json.keyStories }}\n\n---\n\n📊 *Stats & Data:*\n{{ $('Format Analysis').item.json.stats }}\n\n---\n\n📈 *Trends:*\n{{ $('Format Analysis').item.json.trends }}",
+        "otherOptions": {}
+      },
+      "id": "1cfcccbe-d733-4d33-978b-5c23d4377388",
+      "name": "Share Digest",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        1104
+      ],
+      "webhookId": "f82f2840-fc5c-430d-a320-2c5414bd7e3a"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Has PDF Attachment?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has PDF Attachment?": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Attachment": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Analyze Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Analyze Content": {
+      "main": [
+        [
+          {
+            "node": "Format Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Analysis": {
+      "main": [
+        [
+          {
+            "node": "Log Newsletter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Newsletter": {
+      "main": [
+        [
+          {
+            "node": "Share Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "addfa805-f40f-44b8-bc68-7409716c6fca",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7e8b6f52685b44af41a4db7413ae11ea45e1bca0d97fac82a65f08260302d00e"
+  },
+  "id": "HNKezjdVX3mS6RQOVkyYe",
+  "tags": []
+}
