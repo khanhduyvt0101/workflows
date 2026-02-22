@@ -1,0 +1,413 @@
+{
+  "name": "Quote Comparison & Vendor Selection Tool",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 💰 Quote Comparison & Vendor Selection Tool\n\n### What this workflow does\n1. Watches Google Drive folder for new vendor quote PDFs\n2. Downloads and extracts quote details (items, pricing, terms)\n3. Calculates effective pricing and checks quote validity\n4. Logs to Google Sheets for side-by-side comparison\n5. Notifies team on Slack with quote summary\n\n### Setup steps\n1. Create Google Drive folder for vendor quotes\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns:\n   Vendor, Quote #, Quote Date, Valid Until, Status, Items, Subtotal, Discount, Shipping, Tax, Grand Total, Currency, Delivery Days, Payment Terms, Warranty, Contact, Quote Link, Added Date\n4. Update folder ID and spreadsheet ID in nodes\n5. Connect Slack and set procurement channel\n\n### Perfect for\n- Procurement teams comparing bids\n- Project managers evaluating contractors\n- Business owners selecting vendors\n- Freelancers comparing service quotes",
+        "height": 560,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Extracted Fields\n\n- Vendor name & contact\n- Quote number & date\n- Valid until date\n- Line items with prices\n- Subtotal, discounts, tax\n- Shipping cost\n- Grand total\n- Payment terms\n- Delivery timeline\n- Warranty coverage\n- Special conditions",
+        "height": 300,
+        "width": 220
+      },
+      "id": "sticky-fields",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Vendor Quotes"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        280,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Quote",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract vendor quote details: vendor name, address, contact person, email, phone, quote number, quote date, validity period, all line items with description, part number, quantity, unit price, extended price, subtotal, any discounts (type, amount, percentage), tax amount, shipping cost, grand total, currency, payment terms, delivery timeline in days, warranty duration and coverage, and any special conditions or notes.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"vendor\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"contact\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"}}},\"quoteNumber\":{\"type\":\"string\"},\"quoteDate\":{\"type\":\"string\"},\"validUntil\":{\"type\":\"string\"},\"lineItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"partNumber\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unitPrice\":{\"type\":\"number\"},\"extendedPrice\":{\"type\":\"number\"}}}},\"subtotal\":{\"type\":\"number\"},\"discount\":{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"},\"percentage\":{\"type\":\"number\"}}},\"tax\":{\"type\":\"number\"},\"shipping\":{\"type\":\"number\"},\"grandTotal\":{\"type\":\"number\"},\"currency\":{\"type\":\"string\"},\"paymentTerms\":{\"type\":\"string\"},\"deliveryTimeline\":{\"type\":\"string\"},\"deliveryDays\":{\"type\":\"number\"},\"warranty\":{\"type\":\"object\",\"properties\":{\"duration\":{\"type\":\"string\"},\"coverage\":{\"type\":\"string\"}}},\"specialConditions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"vendor\",\"grandTotal\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Quote",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        680,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const quote = $input.first().json.data;\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId = $('Google Drive Trigger').item.json.id;\n\nconst vendor = quote.vendor || {};\nconst lineItems = quote.lineItems || [];\n\n// Format line items\nconst itemsList = lineItems.map(item => \n  `• ${item.quantity || 1}x ${item.description} @ $${(item.unitPrice || 0).toFixed(2)} = $${(item.extendedPrice || 0).toFixed(2)}`\n).join('\\n') || 'No line items';\n\n// Calculate total quantity\nconst totalQuantity = lineItems.reduce((sum, item) => sum + (item.quantity || 0), 0);\n\n// Calculate effective price per unit\nconst grandTotal = quote.grandTotal || 0;\nconst effectivePricePerUnit = totalQuantity > 0 ? (grandTotal / totalQuantity).toFixed(2) : grandTotal.toFixed(2);\n\n// Check quote validity\nlet validityStatus = 'Valid';\nlet validityEmoji = '✅';\nif (quote.validUntil) {\n  try {\n    const validDate = new Date(quote.validUntil);\n    const today = new Date();\n    const daysLeft = Math.ceil((validDate - today) / (1000 * 60 * 60 * 24));\n    \n    if (daysLeft < 0) {\n      validityStatus = 'Expired';\n      validityEmoji = '❌';\n    } else if (daysLeft <= 7) {\n      validityStatus = `Expiring Soon (${daysLeft} days)`;\n      validityEmoji = '⚠️';\n    } else {\n      validityStatus = `Valid (${daysLeft} days left)`;\n    }\n  } catch (e) {\n    validityStatus = 'Unknown';\n    validityEmoji = '❓';\n  }\n}\n\n// Format discount\nlet discountText = 'None';\nif (quote.discount) {\n  if (quote.discount.percentage && quote.discount.amount) {\n    discountText = `${quote.discount.percentage}% (-$${quote.discount.amount.toFixed(2)})`;\n  } else if (quote.discount.percentage) {\n    discountText = `${quote.discount.percentage}%`;\n  } else if (quote.discount.amount) {\n    discountText = `-$${quote.discount.amount.toFixed(2)}`;\n  }\n}\n\n// Format warranty\nconst warrantyText = quote.warranty \n  ? `${quote.warranty.duration || 'N/A'}${quote.warranty.coverage ? ' - ' + quote.warranty.coverage : ''}`\n  : 'Not specified';\n\n// Format special conditions\nconst conditionsList = (quote.specialConditions || []).map(c => `• ${c}`).join('\\n') || 'None';\n\nreturn [{\n  json: {\n    ...quote,\n    fileName: fileName,\n    fileId: fileId,\n    vendorName: vendor.name || 'Unknown Vendor',\n    vendorContact: vendor.contact || 'N/A',\n    vendorEmail: vendor.email || 'N/A',\n    vendorPhone: vendor.phone || 'N/A',\n    itemCount: lineItems.length,\n    itemsList: itemsList,\n    totalQuantity: totalQuantity,\n    effectivePricePerUnit: effectivePricePerUnit,\n    discountText: discountText,\n    warrantyText: warrantyText,\n    conditionsList: conditionsList,\n    validityStatus: validityStatus,\n    validityEmoji: validityEmoji,\n    subtotalFormatted: (quote.subtotal || 0).toFixed(2),\n    shippingFormatted: (quote.shipping || 0).toFixed(2),\n    taxFormatted: (quote.tax || 0).toFixed(2),\n    grandTotalFormatted: grandTotal.toFixed(2),\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-quote",
+      "name": "Process Quote",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Quote Comparison"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Quotes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Vendor": "={{ $json.vendorName }}",
+            "Quote #": "={{ $json.quoteNumber || 'N/A' }}",
+            "Quote Date": "={{ $json.quoteDate || 'N/A' }}",
+            "Valid Until": "={{ $json.validUntil || 'N/A' }}",
+            "Status": "={{ $json.validityStatus }}",
+            "Items": "={{ $json.itemCount }}",
+            "Subtotal": "={{ $json.subtotalFormatted }}",
+            "Discount": "={{ $json.discountText }}",
+            "Shipping": "={{ $json.shippingFormatted }}",
+            "Tax": "={{ $json.taxFormatted }}",
+            "Grand Total": "={{ $json.grandTotalFormatted }}",
+            "Currency": "={{ $json.currency || 'USD' }}",
+            "Delivery Days": "={{ $json.deliveryDays || $json.deliveryTimeline || 'N/A' }}",
+            "Payment Terms": "={{ $json.paymentTerms || 'N/A' }}",
+            "Warranty": "={{ $json.warrantyText }}",
+            "Contact": "={{ $json.vendorEmail }}",
+            "Quote Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quote #",
+              "displayName": "Quote #",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quote Date",
+              "displayName": "Quote Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Valid Until",
+              "displayName": "Valid Until",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Items",
+              "displayName": "Items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Subtotal",
+              "displayName": "Subtotal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Discount",
+              "displayName": "Discount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Shipping",
+              "displayName": "Shipping",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tax",
+              "displayName": "Tax",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Grand Total",
+              "displayName": "Grand Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Currency",
+              "displayName": "Currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Delivery Days",
+              "displayName": "Delivery Days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payment Terms",
+              "displayName": "Payment Terms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Warranty",
+              "displayName": "Warranty",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Contact",
+              "displayName": "Contact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quote Link",
+              "displayName": "Quote Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Added Date",
+              "displayName": "Added Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Add to Quote Comparison",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1080,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "procurement"
+        },
+        "text": "={{ $('Process Quote').item.json.validityEmoji }} *New Vendor Quote Added*\n\n*Vendor:* {{ $('Process Quote').item.json.vendorName }}\n*Quote #:* {{ $('Process Quote').item.json.quoteNumber || 'N/A' }}\n*Quote Date:* {{ $('Process Quote').item.json.quoteDate || 'N/A' }}\n\n📋 *Line Items ({{ $('Process Quote').item.json.itemCount }}):*\n{{ $('Process Quote').item.json.itemsList }}\n\n💵 *Pricing:*\n• Subtotal: ${{ $('Process Quote').item.json.subtotalFormatted }}\n• Discount: {{ $('Process Quote').item.json.discountText }}\n• Shipping: ${{ $('Process Quote').item.json.shippingFormatted }}\n• Tax: ${{ $('Process Quote').item.json.taxFormatted }}\n• *Grand Total: ${{ $('Process Quote').item.json.grandTotalFormatted }} {{ $('Process Quote').item.json.currency || 'USD' }}*\n\n📅 *Validity:* {{ $('Process Quote').item.json.validUntil || 'N/A' }} ({{ $('Process Quote').item.json.validityStatus }})\n🚚 *Delivery:* {{ $('Process Quote').item.json.deliveryTimeline || $('Process Quote').item.json.deliveryDays + ' days' || 'N/A' }}\n💳 *Payment:* {{ $('Process Quote').item.json.paymentTerms || 'N/A' }}\n🛡️ *Warranty:* {{ $('Process Quote').item.json.warrantyText }}\n\n<https://drive.google.com/file/d/{{ $('Process Quote').item.json.fileId }}/view|📄 View Quote>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Notify Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1280,
+        220
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Quote": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Quote": {
+      "main": [
+        [
+          {
+            "node": "Process Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Quote": {
+      "main": [
+        [
+          {
+            "node": "Add to Quote Comparison",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Quote Comparison": {
+      "main": [
+        [
+          {
+            "node": "Notify Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
