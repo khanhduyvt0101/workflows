@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-36_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-37_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 36 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 37 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2698,6 +2698,50 @@ Automatically process PDF newsletters arriving in your Gmail inbox, extract key 
 - Adjust the PDF Vector prompt to extract domain-specific information
 - Add additional output channels (email, Discord, Microsoft Teams) alongside Slack
 - Create separate Slack channels per newsletter source for better organization
+
+</details>
+
+<details>
+<summary><strong>🎓 Thesis & Dissertation Research Assistant</strong> - Automated literature review for academic papers | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/thesis-dissertation-research-assistant.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/thesis-dissertation-research-assistant.json">📋 Open</a></summary>
+
+Streamline your dissertation research by automatically extracting thesis statements, methodology, and key concepts from uploaded chapters, then searching academic databases for related papers. Perfect for graduate students and researchers who need to build comprehensive literature reviews without spending hours manually searching.
+
+#### Who is this for?
+- PhD students writing dissertations
+- Graduate researchers conducting literature reviews
+- Academic writers finding related work and citations
+- Research supervisors tracking student progress
+
+#### How it works
+1. **Google Drive Trigger** watches your thesis folder for new chapter or document uploads
+2. **Download Document** retrieves the uploaded file from Google Drive
+3. **PDF Vector - Extract Content** uses AI to identify the title, author, institution, thesis statement, methodology, theoretical framework, research questions, key concepts, and keywords
+4. **PDF Vector - Find Related Papers** searches Semantic Scholar, PubMed, and ArXiv using extracted keywords and framework
+5. **Compile Research** sorts papers by citation count, generates a formatted reading list, and combines all extracted metadata
+6. **Log Research** appends the research summary to a Google Sheets tracker with thesis statement, methodology, framework, and paper count
+7. **Send Research Summary** posts a detailed Slack notification with the thesis analysis and top related papers
+
+#### Services used
+- Google Drive (thesis folder monitoring & document download)
+- PDF Vector (AI-powered academic content extraction & multi-database paper search)
+- Google Sheets (research log & progress tracking)
+- Slack (research summary notifications)
+- Code / JavaScript (paper sorting, reading list compilation & data formatting)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Configure Google Drive OAuth2 credentials and set your thesis folder ID in the trigger node
+3. Get a PDF Vector API key from pdfvector.com/api-keys and configure credentials
+4. Create a Google Sheet with columns: Title, Chapter, Thesis Statement, Methodology, Framework, Key Concepts, Search Terms, Papers Found, Research Questions, Processed Date
+5. Update the Google Sheets node with your spreadsheet ID
+6. Configure Slack OAuth2 credentials and set your research channel ID
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the PDF Vector extraction prompt to focus on specific academic disciplines or terminology
+- Change the academic search providers (Semantic Scholar, PubMed, ArXiv) based on your research field
+- Modify the paper limit and sorting criteria in the Compile Research code node
+- Add additional notification channels (email, Discord) for research team collaboration
 
 </details>
 
