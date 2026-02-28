@@ -1,0 +1,384 @@
+{
+  "name": "Thesis & Dissertation Research Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📚 Thesis & Dissertation Research Assistant\n\n### What this workflow does\n1. Watches Google Drive folder for thesis/chapter uploads\n2. Downloads and extracts academic content\n3. Identifies thesis statement, methodology, framework\n4. Searches academic databases for related papers\n5. Compiles reading list sorted by citations\n6. Logs research summary to Google Sheets\n7. Sends Slack notification with findings\n\n### Setup steps\n1. Connect Google Drive account (OAuth2)\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns:\n   Title, Chapter, Thesis Statement, Methodology, Framework, Key Concepts, Search Terms, Papers Found, Research Questions, Processed Date\n4. Update spreadsheet ID in Google Sheets node\n5. Set your thesis folder ID in Google Drive Trigger\n6. Connect Slack and set research channel\n\n### Academic databases searched\n- Semantic Scholar\n- PubMed\n- ArXiv\n\n### Perfect for\n- PhD students writing dissertations\n- Graduate researchers doing lit reviews\n- Academic writers finding related work",
+        "height": 620,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Extracted Fields\n\n- Title & Author\n- Institution & Degree\n- Thesis statement\n- Key concepts\n- Methodology\n- Theoretical framework\n- Research questions\n- Keywords for search",
+        "height": 220,
+        "width": 200
+      },
+      "id": "sticky-extract",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔬 Academic Sources\n\n- Semantic Scholar\n- PubMed (medical)\n- ArXiv (preprints)\n\nReturns top 15 papers\nsorted by citation count",
+        "height": 180,
+        "width": 200
+      },
+      "id": "sticky-sources",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_THESIS_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Thesis Chapters"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "drive-trigger",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        280,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "drive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract academic content from this thesis or dissertation chapter. Identify: title, author name, institution, degree type (PhD/Masters/etc), chapter or section title, main thesis statement or argument, key concepts and terms, research methodology, theoretical framework, main findings or claims, research questions, and keywords useful for literature search.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"description\":\"Document or thesis title\"},\"author\":{\"type\":\"string\",\"description\":\"Author name\"},\"institution\":{\"type\":\"string\",\"description\":\"University or institution\"},\"degreeType\":{\"type\":\"string\",\"description\":\"PhD, Masters, etc\"},\"chapterTitle\":{\"type\":\"string\",\"description\":\"Chapter or section title if applicable\"},\"thesisStatement\":{\"type\":\"string\",\"description\":\"Main argument or thesis statement\"},\"keyConcepts\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Key concepts and terms\"},\"methodology\":{\"type\":\"string\",\"description\":\"Research methodology described\"},\"theoreticalFramework\":{\"type\":\"string\",\"description\":\"Theoretical framework or lens\"},\"mainFindings\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Main findings or claims\"},\"researchQuestions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Research questions if stated\"},\"keywords\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Keywords for literature search\"}},\"required\":[\"title\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector - Extract Content",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "academic",
+        "operation": "search",
+        "query": "={{ $json.data && $json.data.keywords ? $json.data.keywords.slice(0, 4).join(' ') + ' ' + ($json.data.theoreticalFramework || '') : ($json.data ? $json.data.title : 'research') }}",
+        "providers": [
+          "semantic-scholar",
+          "pubmed",
+          "arxiv"
+        ],
+        "limit": 15,
+        "additionalFields": {}
+      },
+      "id": "pdfvector-search",
+      "name": "PDF Vector - Find Related Papers",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const extractNode = $('PDF Vector - Extract Content').item.json;\nconst doc = extractNode.data || {};\nconst searchResult = $input.first().json;\nconst papers = searchResult.results || [];\nconst driveFile = $('Google Drive Trigger').item.json;\n\n// Sort papers by citation count (highest first)\nconst topPapers = papers\n  .filter(p => p && p.title)\n  .sort((a, b) => (b.citationCount || b.totalCitations || 0) - (a.citationCount || a.totalCitations || 0))\n  .slice(0, 10);\n\n// Generate formatted reading list\nconst readingList = topPapers.map((p, i) => {\n  const authors = p.authors ? p.authors.slice(0, 2).map(a => a.name || 'Unknown').join(', ') : 'Unknown';\n  const citations = p.citationCount || p.totalCitations || 0;\n  return `${i + 1}. ${p.title} (${p.year || 'N/A'}) - ${authors} - ${citations} citations`;\n}).join('\\n') || 'No papers found';\n\n// Format research questions\nconst questions = doc.researchQuestions || [];\nconst questionsList = questions.length > 0 \n  ? questions.map((q, i) => `RQ${i + 1}: ${q}`).join('\\n') \n  : 'None identified';\n\n// Combine and deduplicate search terms\nconst concepts = doc.keyConcepts || [];\nconst keywords = doc.keywords || [];\nconst searchTerms = [...new Set([...concepts, ...keywords])].slice(0, 10).join(', ') || 'N/A';\n\n// Format main findings\nconst findings = doc.mainFindings || [];\nconst findingsList = findings.length > 0\n  ? findings.map((f, i) => `• ${f}`).join('\\n')\n  : 'None identified';\n\nreturn [{\n  json: {\n    title: doc.title || driveFile.name || 'Untitled',\n    author: doc.author || 'Unknown',\n    institution: doc.institution || 'N/A',\n    degreeType: doc.degreeType || 'N/A',\n    chapterTitle: doc.chapterTitle || 'N/A',\n    thesisStatement: doc.thesisStatement || 'N/A',\n    methodology: doc.methodology || 'N/A',\n    theoreticalFramework: doc.theoreticalFramework || 'N/A',\n    keyConcepts: concepts.join(', ') || 'N/A',\n    searchTerms: searchTerms,\n    researchQuestions: questionsList,\n    mainFindings: findingsList,\n    readingList: readingList,\n    paperCount: topPapers.length,\n    topPapers: topPapers,\n    fileName: driveFile.name || 'document',\n    fileId: driveFile.id || '',\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "compile-research",
+      "name": "Compile Research",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Thesis Research Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Research Log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Title": "={{ $json.title }}",
+            "Chapter": "={{ $json.chapterTitle }}",
+            "Thesis Statement": "={{ $json.thesisStatement }}",
+            "Methodology": "={{ $json.methodology }}",
+            "Framework": "={{ $json.theoreticalFramework }}",
+            "Key Concepts": "={{ $json.keyConcepts }}",
+            "Search Terms": "={{ $json.searchTerms }}",
+            "Papers Found": "={{ $json.paperCount }}",
+            "Research Questions": "={{ $json.researchQuestions }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chapter",
+              "displayName": "Chapter",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Thesis Statement",
+              "displayName": "Thesis Statement",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Methodology",
+              "displayName": "Methodology",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Framework",
+              "displayName": "Framework",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Key Concepts",
+              "displayName": "Key Concepts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Search Terms",
+              "displayName": "Search Terms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Papers Found",
+              "displayName": "Papers Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Research Questions",
+              "displayName": "Research Questions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log Research",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "research-updates"
+        },
+        "text": "=📚 *Thesis Research Summary*\n\n*Document:* {{ $('Compile Research').item.json.fileName }}\n*Title:* {{ $('Compile Research').item.json.title }}\n*Chapter:* {{ $('Compile Research').item.json.chapterTitle }}\n\n---\n\n📝 *Thesis Statement:*\n{{ $('Compile Research').item.json.thesisStatement }}\n\n🔬 *Methodology:* {{ $('Compile Research').item.json.methodology }}\n📐 *Framework:* {{ $('Compile Research').item.json.theoreticalFramework }}\n\n---\n\n🔑 *Key Concepts:*\n{{ $('Compile Research').item.json.keyConcepts }}\n\n❓ *Research Questions:*\n{{ $('Compile Research').item.json.researchQuestions }}\n\n---\n\n📖 *Top Related Papers ({{ $('Compile Research').item.json.paperCount }} found):*\n{{ $('Compile Research').item.json.readingList }}\n\n---\n\n🔗 Document: https://drive.google.com/file/d/{{ $('Compile Research').item.json.fileId }}",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send Research Summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1480,
+        200
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Extract Content": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Find Related Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector - Find Related Papers": {
+      "main": [
+        [
+          {
+            "node": "Compile Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Research": {
+      "main": [
+        [
+          {
+            "node": "Log Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Research": {
+      "main": [
+        [
+          {
+            "node": "Send Research Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
