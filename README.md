@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-39_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-40_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 39 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 40 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2829,6 +2829,53 @@ Streamline your SOP management by automatically processing new Standard Operatin
 - Add conditional routing to flag SOPs with high safety item counts for additional review
 - Extend the Slack message to include safety precaution details alongside the procedure checklist
 - Add email notifications for specific departments based on the extracted department field
+
+</details>
+
+<details>
+<summary><strong>💰 Financial Report Analyzer (10-K, 10-Q)</strong> - AI-powered SEC filing analysis with financial metrics extraction | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/financial-report-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/financial-report-analyzer.json">📋 Open</a></summary>
+
+Automate the analysis of 10-K and 10-Q financial reports with AI-powered data extraction. Drop SEC filings into Google Drive and get comprehensive financial metrics, health assessments, and risk analysis delivered to Slack and logged to a searchable Google Sheets database.
+
+#### Who is this for?
+- Financial analysts reviewing quarterly and annual reports
+- Investors tracking portfolio company fundamentals
+- Portfolio managers monitoring key financial metrics
+- Research teams processing large volumes of SEC filings
+
+#### How it works
+1. **New Financial Report** watches a Google Drive folder for new financial report uploads
+2. **Download Report** retrieves the PDF file from Google Drive
+3. **Store File Info** preserves file metadata (name, ID, type) for downstream nodes
+4. **PDF Vector Extract** uses AI to extract structured financial data: company name, ticker, revenue, net income, EPS, margins, cash, debt, risk factors, and management outlook
+5. **PDF Vector Assessment** generates an AI-powered executive summary with highlights, concerns, and an overall health rating (Strong/Stable/Concerning/Weak)
+6. **Merge Results** combines the structured extraction and qualitative assessment
+7. **Compile Analysis** formats numbers, calculates debt-to-equity ratio, and prepares the final analysis object
+8. **Log to Database** appends all key metrics to a Google Sheets spreadsheet for tracking
+9. **Send to Slack** delivers a formatted analysis summary with financials, AI assessment, and risk factors to your team channel
+
+#### Services used
+- Google Drive (file monitoring and report download)
+- PDF Vector (AI-powered financial data extraction and health assessment)
+- Code (JavaScript) (number formatting, ratio calculation, and data compilation)
+- Merge (combining parallel extraction results)
+- Google Sheets (financial metrics database logging)
+- Slack (team notifications with analysis summary)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credentials
+3. Configure Google Drive credentials and set your reports folder ID in the trigger node
+4. Create a Google Sheet with columns: Company, Ticker, Report Type, Fiscal Period, Revenue, Revenue Growth, Net Income, EPS, Net Margin, Cash, FCF, D/E Ratio, Risk Factors, Report Link, Analyzed Date
+5. Set your spreadsheet ID in the "Log to Database" node
+6. Configure Slack credentials and set your channel ID in the "Send to Slack" node
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the extraction schema in PDF Vector to capture additional metrics like current ratio, ROE, or EBITDA
+- Add conditional routing to flag companies with weak health assessments for priority review
+- Extend the Google Sheets logging to separate tabs by report type (10-K vs 10-Q)
+- Add email notifications for high-priority findings alongside Slack
 
 </details>
 

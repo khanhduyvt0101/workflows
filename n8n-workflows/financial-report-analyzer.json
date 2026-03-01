@@ -1,0 +1,468 @@
+{
+  "name": "Financial Report Analyzer (10-K, 10-Q)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📊 Financial Report Analyzer\n\n### What this workflow does\n1. Watches Google Drive for financial reports\n2. Downloads and extracts key financial data\n3. Parses revenue, income, margins, ratios\n4. Generates AI assessment of financial health\n5. Logs metrics to Google Sheets database\n6. Sends analysis summary to Slack\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Drive folder for reports\n3. Create Google Sheet with columns:\n   Company, Ticker, Report Type, Fiscal Period, Revenue, Revenue Growth, Net Income, EPS, Net Margin, Cash, FCF, D/E Ratio, Risk Factors, Report Link, Analyzed Date\n4. Update folder ID and spreadsheet ID in nodes\n5. Connect Slack for notifications\n\n### Perfect for\n- Financial analysts\n- Investors\n- Portfolio managers\n- Research teams",
+        "height": 580,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 💹 Key Metrics Extracted\n\n- Revenue & Growth YoY\n- Net Income & EPS\n- Gross/Operating/Net Margins\n- Cash & Free Cash Flow\n- Debt-to-Equity Ratio\n- Risk Factors\n- Management Outlook",
+        "height": 240,
+        "width": 220
+      },
+      "id": "sticky-metrics",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_REPORTS_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Financial Reports"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Financial Report",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Report",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Store file metadata and pass through binary data\nconst triggerData = $('New Financial Report').item.json;\n\nreturn [{\n  json: {\n    fileName: triggerData.name || 'unknown.pdf',\n    fileId: triggerData.id || '',\n    mimeType: triggerData.mimeType || ''\n  },\n  binary: $input.first().binary\n}];"
+      },
+      "id": "store-metadata",
+      "name": "Store File Info",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract key financial data from this report: company name, ticker symbol, report type (10-K, 10-Q, etc.), fiscal period, revenue, revenue growth YoY, net income, EPS, gross margin, operating margin, net margin, total assets, total liabilities, cash and equivalents, long-term debt, free cash flow, key risk factors mentioned, and management's outlook or guidance.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"company\":{\"type\":\"string\"},\"ticker\":{\"type\":\"string\"},\"reportType\":{\"type\":\"string\"},\"fiscalPeriod\":{\"type\":\"string\"},\"fiscalYear\":{\"type\":\"number\"},\"revenue\":{\"type\":\"number\"},\"revenueGrowthYoY\":{\"type\":\"number\"},\"netIncome\":{\"type\":\"number\"},\"eps\":{\"type\":\"number\"},\"grossMargin\":{\"type\":\"number\"},\"operatingMargin\":{\"type\":\"number\"},\"netMargin\":{\"type\":\"number\"},\"totalAssets\":{\"type\":\"number\"},\"totalLiabilities\":{\"type\":\"number\"},\"shareholderEquity\":{\"type\":\"number\"},\"cash\":{\"type\":\"number\"},\"longTermDebt\":{\"type\":\"number\"},\"freeCashFlow\":{\"type\":\"number\"},\"riskFactors\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"managementOutlook\":{\"type\":\"string\"}},\"required\":[\"company\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector Extract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        920,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Based on this financial report, provide: 1) A brief executive summary (2-3 sentences), 2) The top 3 positive highlights, 3) The top 3 concerns or risks, and 4) An overall assessment of the company's financial health (Strong/Stable/Concerning/Weak) with brief justification."
+      },
+      "id": "pdfvector-assess",
+      "name": "PDF Vector Assessment",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        920,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "merge-results",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1140,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get extraction data from first input (PDF Vector Extract)\nconst extractItem = $input.all()[0];\nconst extractData = extractItem.json.data || extractItem.json;\n\n// Get assessment data from second input (PDF Vector Assessment)\nconst assessItem = $input.all()[1] || $input.all()[0];\nconst assessmentData = assessItem.json;\n\n// Get file info from Store File Info node\nconst fileInfo = $('Store File Info').item.json;\n\nconst report = extractData;\nconst assessment = assessmentData.markdown || assessmentData.answer || 'No assessment generated';\nconst fileName = fileInfo.fileName || 'unknown';\nconst fileId = fileInfo.fileId || '';\n\n// Format large numbers\nconst formatLargeNumber = (num) => {\n  if (!num && num !== 0) return 'N/A';\n  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;\n  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;\n  if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;\n  return `$${num.toLocaleString()}`;\n};\n\n// Calculate debt-to-equity ratio\nconst debtToEquity = report.shareholderEquity && report.longTermDebt \n  ? (report.longTermDebt / report.shareholderEquity).toFixed(2)\n  : 'N/A';\n\n// Format risk factors\nconst risks = report.riskFactors || [];\nconst topRisks = risks.slice(0, 5).map((r, i) => `${i + 1}. ${r}`).join('\\n') || 'None listed';\n\nreturn [{\n  json: {\n    company: report.company || 'Unknown',\n    ticker: report.ticker || 'N/A',\n    reportType: report.reportType || 'N/A',\n    fiscalPeriod: report.fiscalPeriod || 'N/A',\n    revenue: report.revenue,\n    revenueGrowthYoY: report.revenueGrowthYoY,\n    netIncome: report.netIncome,\n    eps: report.eps,\n    netMargin: report.netMargin,\n    cash: report.cash,\n    freeCashFlow: report.freeCashFlow,\n    assessment: assessment,\n    fileName: fileName,\n    fileId: fileId,\n    revenueFormatted: formatLargeNumber(report.revenue),\n    netIncomeFormatted: formatLargeNumber(report.netIncome),\n    cashFormatted: formatLargeNumber(report.cash),\n    fcfFormatted: formatLargeNumber(report.freeCashFlow),\n    debtToEquity: debtToEquity,\n    topRisks: topRisks,\n    riskCount: risks.length,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "compile-analysis",
+      "name": "Compile Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Financial Database"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Reports"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company": "={{ $json.company }}",
+            "Ticker": "={{ $json.ticker }}",
+            "Report Type": "={{ $json.reportType }}",
+            "Fiscal Period": "={{ $json.fiscalPeriod }}",
+            "Revenue": "={{ $json.revenueFormatted }}",
+            "Revenue Growth": "={{ $json.revenueGrowthYoY ? $json.revenueGrowthYoY + '%' : 'N/A' }}",
+            "Net Income": "={{ $json.netIncomeFormatted }}",
+            "EPS": "={{ $json.eps || 'N/A' }}",
+            "Net Margin": "={{ $json.netMargin ? $json.netMargin + '%' : 'N/A' }}",
+            "Cash": "={{ $json.cashFormatted }}",
+            "FCF": "={{ $json.fcfFormatted }}",
+            "D/E Ratio": "={{ $json.debtToEquity }}",
+            "Risk Factors": "={{ $json.riskCount }}",
+            "Report Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Analyzed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ticker",
+              "displayName": "Ticker",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Report Type",
+              "displayName": "Report Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fiscal Period",
+              "displayName": "Fiscal Period",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Revenue",
+              "displayName": "Revenue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Revenue Growth",
+              "displayName": "Revenue Growth",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Net Income",
+              "displayName": "Net Income",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "EPS",
+              "displayName": "EPS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Net Margin",
+              "displayName": "Net Margin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cash",
+              "displayName": "Cash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "FCF",
+              "displayName": "FCF",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "D/E Ratio",
+              "displayName": "D/E Ratio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk Factors",
+              "displayName": "Risk Factors",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Report Link",
+              "displayName": "Report Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Analyzed Date",
+              "displayName": "Analyzed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "finance-team"
+        },
+        "text": "=\ud83d\udcca *Financial Report Analysis*\n\n*Company:* {{ $('Compile Analysis').item.json.company }} ({{ $('Compile Analysis').item.json.ticker }})\n*Report:* {{ $('Compile Analysis').item.json.reportType }} - {{ $('Compile Analysis').item.json.fiscalPeriod }}\n\n\ud83d\udcb0 *Key Financials:*\n\u2022 Revenue: {{ $('Compile Analysis').item.json.revenueFormatted }}\n\u2022 Net Income: {{ $('Compile Analysis').item.json.netIncomeFormatted }}\n\u2022 EPS: {{ $('Compile Analysis').item.json.eps || 'N/A' }}\n\u2022 Free Cash Flow: {{ $('Compile Analysis').item.json.fcfFormatted }}\n\u2022 D/E Ratio: {{ $('Compile Analysis').item.json.debtToEquity }}\n\n---\n\n\ud83e\udde0 *AI Assessment:*\n{{ $('Compile Analysis').item.json.assessment }}\n\n---\n\n\u26a0\ufe0f *Top Risk Factors ({{ $('Compile Analysis').item.json.riskCount }}):*\n{{ $('Compile Analysis').item.json.topRisks }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Compile Analysis').item.json.fileId }}/view|View Full Report>",
+        "options": {}
+      },
+      "id": "slack-share",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1740,
+        300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Financial Report": {
+      "main": [
+        [
+          {
+            "node": "Download Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Report": {
+      "main": [
+        [
+          {
+            "node": "Store File Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store File Info": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector Extract",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PDF Vector Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Extract": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Assessment": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Compile Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Analysis": {
+      "main": [
+        [
+          {
+            "node": "Log to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Database": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
