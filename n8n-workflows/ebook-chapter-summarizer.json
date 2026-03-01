@@ -1,0 +1,410 @@
+{
+  "name": "E-book & Book Chapter Summarizer",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📚 E-book Chapter Summarizer\n\n### What this workflow does\n1. Watches Google Drive for book chapter PDFs\n2. Downloads and extracts chapter details\n3. Parses themes, concepts, arguments, quotes\n4. Generates AI insights and takeaways\n5. Logs reading notes to Google Sheets\n6. Sends summary to Slack\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Drive folder for book chapters\n3. Create Google Sheet with columns:\n   Book, Author, Chapter #, Chapter Title, Pages, Main Themes, Key Concepts, Arguments, Quotes Noted, Action Items, Main Takeaway, Read Date\n4. Update folder ID and spreadsheet ID in nodes\n5. Connect Slack for notifications\n\n### Perfect for\n- Book clubs\n- Students\n- Busy professionals\n- Content creators",
+        "height": 628,
+        "width": 476,
+        "color": 5
+      },
+      "id": "cfda33dd-2ac3-457f-a1ea-ff0bee53fe1e",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📝 Notes Generated\n\n- Chapter summaries\n- Key takeaways\n- Notable quotes\n- Vocabulary terms\n- Discussion questions\n- Action items",
+        "height": 232,
+        "width": 280
+      },
+      "id": "51e82376-fead-4529-b2dd-04803874af64",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        448,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_BOOKS_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Book Chapters"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "0c9a1900-55a5-4867-bcf5-d5b56b551812",
+      "name": "New Chapter",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        432,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "8648822c-326c-43eb-963b-4314d3560fdc",
+      "name": "Download Chapter",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        624,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract book chapter information: book title, author, chapter number, chapter title, page range, main themes, key concepts with definitions, important arguments or points made, statistics or data cited, memorable quotes with page numbers, vocabulary terms defined, chapter summary, main takeaway, discussion questions, and action items.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"bookTitle\":{\"type\":\"string\"},\"author\":{\"type\":\"string\"},\"chapterNumber\":{\"type\":\"number\"},\"chapterTitle\":{\"type\":\"string\"},\"pageRange\":{\"type\":\"string\"},\"mainThemes\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"keyConcepts\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"concept\":{\"type\":\"string\"},\"definition\":{\"type\":\"string\"}}}},\"mainArguments\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"statistics\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"notableQuotes\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"quote\":{\"type\":\"string\"},\"page\":{\"type\":\"string\"}}}},\"vocabulary\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"term\":{\"type\":\"string\"},\"definition\":{\"type\":\"string\"}}}},\"chapterSummary\":{\"type\":\"string\"},\"mainTakeaway\":{\"type\":\"string\"},\"discussionQuestions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"actionItems\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"bookTitle\",\"chapterTitle\"],\"additionalProperties\":false}"
+      },
+      "id": "860df966-658b-428f-adfa-fd9c837c8df9",
+      "name": "PDF Vector Extract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        848,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "=data",
+        "prompt": "Based on this book chapter, provide: 1) A 3-4 sentence summary, 2) The single most important insight, 3) How this connects to broader themes (if discernible), and 4) One practical application or action the reader could take based on this chapter."
+      },
+      "id": "d9b9e8d5-0117-4aeb-8169-abc94a7476ba",
+      "name": "PDF Vector Insights",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        848,
+        352
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1056,
+        288
+      ],
+      "id": "e25e4e96-9b73-476d-b35a-6af56035fde1",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from Merge (Extract is index 0, Insights is index 1)\nconst allItems = $input.all();\n\n// Extract data from first item (PDF Vector Extract)\nconst extractItem = allItems[0]?.json || {};\nconst chapter = extractItem.data || extractItem;\n\n// Insights data from second item (PDF Vector Insights)\nconst insightItem = allItems[1]?.json || {};\nconst insights = insightItem.markdown || insightItem.answer || insightItem.text || 'No insights generated';\n\n// Get trigger data for file info\nconst triggerData = $('New Chapter').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Format themes\nconst themes = chapter.mainThemes || [];\nconst themesList = themes.join(', ') || 'Not identified';\n\n// Format key concepts\nconst concepts = chapter.keyConcepts || [];\nconst conceptsList = concepts.map(c => `**${c.concept}**: ${c.definition || ''}`).join('\\n') || 'None';\n\n// Format arguments\nconst args = chapter.mainArguments || [];\nconst argumentsList = args.map((a, i) => `${i + 1}. ${a}`).join('\\n') || 'None';\n\n// Format quotes\nconst quotes = chapter.notableQuotes || [];\nconst quotesList = quotes.map(q => `\"${q.quote}\" (p. ${q.page || '?'})`).join('\\n') || 'None';\n\n// Format action items\nconst actions = chapter.actionItems || [];\nconst actionsList = actions.map(a => `☐ ${a}`).join('\\n') || 'None';\n\n// Format discussion questions\nconst questions = chapter.discussionQuestions || [];\nconst questionsList = questions.map((q, i) => `Q${i + 1}: ${q}`).join('\\n') || 'None';\n\n// Truncate summary for sheets\nconst summaryShort = chapter.chapterSummary \n  ? (chapter.chapterSummary.length > 300 ? chapter.chapterSummary.substring(0, 297) + '...' : chapter.chapterSummary)\n  : 'N/A';\n\nreturn [{\n  json: {\n    bookTitle: chapter.bookTitle || 'Unknown',\n    author: chapter.author || 'Unknown',\n    chapterNumber: chapter.chapterNumber,\n    chapterTitle: chapter.chapterTitle || 'Untitled',\n    pageRange: chapter.pageRange || 'N/A',\n    themesList: themesList,\n    conceptsList: conceptsList,\n    conceptCount: concepts.length,\n    argumentsList: argumentsList,\n    argumentCount: args.length,\n    quotesList: quotesList,\n    quoteCount: quotes.length,\n    actionsList: actionsList,\n    actionCount: actions.length,\n    questionsList: questionsList,\n    questionCount: questions.length,\n    chapterSummary: summaryShort,\n    mainTakeaway: chapter.mainTakeaway || 'N/A',\n    aiInsights: insights,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "ebeafa47-5c19-4546-bb64-28a2a1d05da3",
+      "name": "Compile Notes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Reading Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Book": "={{ $json.bookTitle }}",
+            "Author": "={{ $json.author }}",
+            "Chapter #": "={{ $json.chapterNumber || 'N/A' }}",
+            "Chapter Title": "={{ $json.chapterTitle }}",
+            "Pages": "={{ $json.pageRange }}",
+            "Main Themes": "={{ $json.themesList }}",
+            "Key Concepts": "={{ $json.conceptCount }}",
+            "Arguments": "={{ $json.argumentCount }}",
+            "Quotes Noted": "={{ $json.quoteCount }}",
+            "Action Items": "={{ $json.actionCount }}",
+            "Main Takeaway": "={{ $json.mainTakeaway }}",
+            "Read Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Book",
+              "displayName": "Book",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Author",
+              "displayName": "Author",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chapter #",
+              "displayName": "Chapter #",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chapter Title",
+              "displayName": "Chapter Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pages",
+              "displayName": "Pages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Main Themes",
+              "displayName": "Main Themes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Key Concepts",
+              "displayName": "Key Concepts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Arguments",
+              "displayName": "Arguments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quotes Noted",
+              "displayName": "Quotes Noted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Action Items",
+              "displayName": "Action Items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Main Takeaway",
+              "displayName": "Main Takeaway",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Read Date",
+              "displayName": "Read Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "39c61b02-3ff7-4dc9-b6bc-27b4c791c0ae",
+      "name": "Log to Reading Notes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1424,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "book-club"
+        },
+        "text": "=📚 *Chapter Summary*\n\n*Book:* {{ $('Compile Notes').item.json.bookTitle }}\n*Author:* {{ $('Compile Notes').item.json.author }}\n*Chapter:* {{ $('Compile Notes').item.json.chapterNumber || 'N/A' }} - {{ $('Compile Notes').item.json.chapterTitle }}\n\n📋 *Summary Stats:*\n• Themes: {{ $('Compile Notes').item.json.themesList }}\n• Key Concepts: {{ $('Compile Notes').item.json.conceptCount }}\n• Arguments: {{ $('Compile Notes').item.json.argumentCount }}\n• Quotes: {{ $('Compile Notes').item.json.quoteCount }}\n• Action Items: {{ $('Compile Notes').item.json.actionCount }}\n\n💡 *Main Takeaway:*\n{{ $('Compile Notes').item.json.mainTakeaway }}\n\n🧠 *AI Insights:*\n{{ $('Compile Notes').item.json.aiInsights }}\n\n❓ *Discussion Questions:*\n{{ $('Compile Notes').item.json.questionsList }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Compile Notes').item.json.fileId }}/view|View Chapter>",
+        "otherOptions": {}
+      },
+      "id": "30ea618e-b625-440a-bf26-0de27f30cd60",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1632,
+        288
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Chapter": {
+      "main": [
+        [
+          {
+            "node": "Download Chapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Chapter": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector Extract",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PDF Vector Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Extract": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Insights": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Compile Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Notes": {
+      "main": [
+        [
+          {
+            "node": "Log to Reading Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Reading Notes": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
