@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-38_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-39_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 38 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 39 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2786,6 +2786,49 @@ Turn your product manuals into an intelligent Q&A system. Upload any PDF manual 
 - Add multiple questions by duplicating the PDF Vector Ask and Format Answer nodes for parallel extraction
 - Modify the not-found detection phrases in Format Answer to match your specific use case
 - Add additional notification channels (email, Microsoft Teams) alongside Slack
+
+</details>
+
+<details>
+<summary><strong>📋 SOP Document Processor</strong> - Automatically extract and track Standard Operating Procedures | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/sop-document-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/sop-document-processor.json">📋 Open</a></summary>
+
+Streamline your SOP management by automatically processing new Standard Operating Procedure documents. Drop an SOP PDF into Google Drive and this workflow extracts procedures, safety precautions, quality checkpoints, and generates a quick checklist — then logs everything to Google Sheets and notifies your team on Slack.
+
+#### Who is this for?
+- Operations managers maintaining procedure libraries
+- Quality assurance teams tracking compliance documents
+- Compliance officers managing regulatory SOPs
+- Training departments distributing procedural checklists
+
+#### How it works
+1. **New SOP Document** watches a Google Drive folder for newly uploaded SOP files
+2. **Download SOP** retrieves the PDF document from Google Drive
+3. **PDF Vector Extract** uses AI to extract structured SOP data including title, SOP number, version, procedures, safety precautions, quality checkpoints, and revision history
+4. **Process SOP** formats procedures into a quick checklist, compiles safety items and quality checkpoints, and counts all elements for summary reporting
+5. **Log to SOP Library** appends the extracted SOP metadata (number, title, version, department, author, approver, counts, and document link) to a Google Sheets tracking spreadsheet
+6. **Send to Slack** posts a formatted summary with the SOP details, element counts, and a quick checklist to your team channel
+
+#### Services used
+- Google Drive (trigger and file download)
+- PDF Vector (AI-powered SOP data extraction)
+- Code (JavaScript) (procedure checklist generation and data formatting)
+- Google Sheets (SOP library logging)
+- Slack (team notifications with checklist)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Configure Google Drive credentials and set your SOP folder ID in the trigger node
+3. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credentials
+4. Create a Google Sheet with columns: SOP Number, Title, Version, Department, Effective Date, Author, Approver, Procedure Steps, Safety Items, Quality Checkpoints, Document Link, Last Updated
+5. Set your spreadsheet ID in the "Log to SOP Library" node
+6. Configure Slack credentials and set your channel ID in the "Send to Slack" node
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the extraction schema in PDF Vector to capture additional SOP fields like regulatory references or training requirements
+- Add conditional routing to flag SOPs with high safety item counts for additional review
+- Extend the Slack message to include safety precaution details alongside the procedure checklist
+- Add email notifications for specific departments based on the extracted department field
 
 </details>
 
