@@ -1,0 +1,418 @@
+{
+  "name": "Grant Proposal Analyzer & Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📜 Grant Proposal Analyzer\n\n### What this workflow does\n1. Monitors Gmail for grant announcements with attachments\n2. Extracts grant/RFP details from PDF attachments\n3. Parses deadlines, funding amounts, eligibility\n4. Calculates days until deadline and urgency\n5. Logs opportunities to Sheets tracker\n6. Sends alert to Slack with checklist\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Connect Gmail account (OAuth2)\n3. Create Google Sheet with columns:\n   Funder, Program, Opportunity #, Type, Funding Range, Duration, LOI Deadline, Proposal Deadline, Days Until, Urgency, Eligibility, Required Docs, Matching Required, IDC Rate, Contact, Status, Added Date\n4. Update spreadsheet ID in nodes\n5. Connect Slack for notifications\n\n### Perfect for\n- Nonprofits\n- Research institutions\n- Universities\n- NGOs",
+        "height": 620,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⏰ Key Dates Tracked\n\n- Letter of Intent deadline\n- Full Proposal deadline\n- Award notification date\n- Project start date\n- Days until deadline\n- Urgency level",
+        "height": 200,
+        "width": 200
+      },
+      "id": "sticky-dates",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false,
+          "searchQuery": "subject:(grant OR funding OR RFP OR RFA OR proposal) has:attachment filename:pdf newer_than:1d"
+        },
+        "options": {
+          "downloadAttachments": true,
+          "dataPropertyAttachmentsPrefixName": "attachment_"
+        },
+        "simple": false
+      },
+      "id": "gmail-trigger",
+      "name": "Grant Email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-pdf",
+              "leftValue": "={{ $binary && Object.keys($binary).length > 0 && Object.values($binary).some(att => att.mimeType === 'application/pdf') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-pdf",
+      "name": "Has PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        500,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "={{ Object.keys($binary).find(key => $binary[key].mimeType === 'application/pdf') || 'attachment_0' }}",
+        "prompt": "Extract grant/funding opportunity information: funder name, grant program name, funding opportunity number, funding type, funding amount range (min and max), project duration, eligibility requirements (organization types, geographic restrictions), key dates (LOI deadline, proposal deadline, award notification, project start), required documents list, evaluation criteria, contact information, matching requirements, and indirect cost rate.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"funder\":{\"type\":\"string\"},\"programName\":{\"type\":\"string\"},\"opportunityNumber\":{\"type\":\"string\"},\"fundingType\":{\"type\":\"string\"},\"fundingMin\":{\"type\":\"number\"},\"fundingMax\":{\"type\":\"number\"},\"projectDuration\":{\"type\":\"string\"},\"organizationTypes\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"geographicRestrictions\":{\"type\":\"string\"},\"loiDeadline\":{\"type\":\"string\"},\"proposalDeadline\":{\"type\":\"string\"},\"awardNotification\":{\"type\":\"string\"},\"projectStart\":{\"type\":\"string\"},\"requiredDocuments\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"evaluationCriteria\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"criterion\":{\"type\":\"string\"},\"weight\":{\"type\":\"number\"}}}},\"contactName\":{\"type\":\"string\"},\"contactEmail\":{\"type\":\"string\"},\"contactPhone\":{\"type\":\"string\"},\"matchingRequired\":{\"type\":\"boolean\"},\"indirectCostRate\":{\"type\":\"number\"}},\"required\":[\"funder\",\"programName\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector Extract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        700,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const grant = $input.first().json.data || $input.first().json;\nconst emailData = $('Grant Email').item.json;\n\nlet daysUntilDeadline = 'N/A';\nlet urgency = 'Normal';\nconst deadline = grant.proposalDeadline || grant.loiDeadline;\n\nif (deadline) {\n  try {\n    const deadlineDate = new Date(deadline);\n    const today = new Date();\n    const days = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));\n    if (!isNaN(days)) {\n      daysUntilDeadline = days;\n      if (days <= 14) urgency = 'Urgent';\n      else if (days <= 30) urgency = 'High';\n    }\n  } catch (e) {}\n}\n\nconst fundingRange = (grant.fundingMin || grant.fundingMax)\n  ? `$${(grant.fundingMin || 0).toLocaleString()} - $${(grant.fundingMax || 0).toLocaleString()}`\n  : 'Not specified';\n\nconst docs = grant.requiredDocuments || [];\nconst docsList = docs.map(d => `- ${d}`).join(', ') || 'See RFP';\n\nconst criteria = grant.evaluationCriteria || [];\nconst criteriaList = criteria.map(c => `${c.criterion}: ${c.weight || '?'}%`).join(' | ') || 'Not specified';\n\nconst eligibleOrgs = grant.organizationTypes || [];\nconst eligibilityText = eligibleOrgs.join(', ') || 'See requirements';\n\nlet senderEmail = 'unknown';\nif (emailData.from && emailData.from.value && emailData.from.value[0]) {\n  senderEmail = emailData.from.value[0].address || 'unknown';\n}\n\nreturn [{\n  json: {\n    funder: grant.funder || 'Unknown',\n    programName: grant.programName || 'Unknown',\n    opportunityNumber: grant.opportunityNumber || 'N/A',\n    fundingType: grant.fundingType || 'N/A',\n    fundingRange: fundingRange,\n    projectDuration: grant.projectDuration || 'N/A',\n    loiDeadline: grant.loiDeadline || 'N/A',\n    proposalDeadline: grant.proposalDeadline || 'N/A',\n    daysUntilDeadline: daysUntilDeadline,\n    urgency: urgency,\n    eligibilityText: eligibilityText,\n    docsList: docsList,\n    docCount: docs.length,\n    criteriaList: criteriaList,\n    matchingRequired: grant.matchingRequired || false,\n    indirectCostRate: grant.indirectCostRate,\n    contactEmail: grant.contactEmail || 'N/A',\n    senderEmail: senderEmail,\n    receivedDate: emailData.date || new Date().toISOString(),\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-grant",
+      "name": "Process Grant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Grants Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Opportunities"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Funder": "={{ $json.funder }}",
+            "Program": "={{ $json.programName }}",
+            "Opportunity #": "={{ $json.opportunityNumber }}",
+            "Type": "={{ $json.fundingType }}",
+            "Funding Range": "={{ $json.fundingRange }}",
+            "Duration": "={{ $json.projectDuration }}",
+            "LOI Deadline": "={{ $json.loiDeadline }}",
+            "Proposal Deadline": "={{ $json.proposalDeadline }}",
+            "Days Until": "={{ $json.daysUntilDeadline }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Eligibility": "={{ $json.eligibilityText }}",
+            "Required Docs": "={{ $json.docCount }}",
+            "Matching Required": "={{ $json.matchingRequired ? 'Yes' : 'No' }}",
+            "IDC Rate": "={{ $json.indirectCostRate ? $json.indirectCostRate + '%' : 'N/A' }}",
+            "Contact": "={{ $json.contactEmail }}",
+            "Status": "=New",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Funder",
+              "displayName": "Funder",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Program",
+              "displayName": "Program",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Opportunity #",
+              "displayName": "Opportunity #",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Funding Range",
+              "displayName": "Funding Range",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duration",
+              "displayName": "Duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "LOI Deadline",
+              "displayName": "LOI Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Proposal Deadline",
+              "displayName": "Proposal Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Days Until",
+              "displayName": "Days Until",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Eligibility",
+              "displayName": "Eligibility",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Required Docs",
+              "displayName": "Required Docs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Matching Required",
+              "displayName": "Matching Required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "IDC Rate",
+              "displayName": "IDC Rate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Contact",
+              "displayName": "Contact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Added Date",
+              "displayName": "Added Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1100,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "grants-team"
+        },
+        "text": "=📜 *New Grant Opportunity*\n\n*Funder:* {{ $('Process Grant').item.json.funder }}\n*Program:* {{ $('Process Grant').item.json.programName }}\n*Type:* {{ $('Process Grant').item.json.fundingType }}\n\n💰 *Funding:* {{ $('Process Grant').item.json.fundingRange }}\n📅 *Duration:* {{ $('Process Grant').item.json.projectDuration }}\n\n⏰ *Key Dates:*\n• LOI Deadline: {{ $('Process Grant').item.json.loiDeadline }}\n• Proposal Deadline: {{ $('Process Grant').item.json.proposalDeadline }}\n• *Days Until:* {{ $('Process Grant').item.json.daysUntilDeadline }} ({{ $('Process Grant').item.json.urgency }})\n\n📋 *Required Documents ({{ $('Process Grant').item.json.docCount }}):*\n{{ $('Process Grant').item.json.docsList }}\n\n🎯 *Evaluation:* {{ $('Process Grant').item.json.criteriaList }}",
+        "options": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1300,
+        280
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Grant Email": {
+      "main": [
+        [
+          {
+            "node": "Has PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has PDF?": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Extract": {
+      "main": [
+        [
+          {
+            "node": "Process Grant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Grant": {
+      "main": [
+        [
+          {
+            "node": "Log to Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Tracker": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
