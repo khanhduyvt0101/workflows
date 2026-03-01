@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-41_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-42_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 41 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 42 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2919,6 +2919,71 @@ Automatically extract property listing details from PDF documents uploaded to Go
 - Modify the monthly cost calculation in the Code node to use different mortgage rates or down payment percentages
 - Add conditional routing to filter listings by price range or property type before logging
 - Extend Slack notifications to include comparison data against recently logged listings
+
+</details>
+
+<details>
+<summary><strong>📜 Grant Proposal Analyzer & Tracker</strong> - Monitor Gmail for grant announcements, extract funding details from PDFs, and track opportunities | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/grant-proposal-analyzer-tracker.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/grant-proposal-analyzer-tracker.json">📋 Open</a></summary>
+
+Automate your grant discovery pipeline by monitoring Gmail for funding announcements with PDF attachments. This workflow extracts funder details, deadlines, funding ranges, eligibility requirements, and evaluation criteria from grant RFPs, then logs everything to a Google Sheets tracker and alerts your team on Slack with urgency levels.
+
+#### Who is this for?
+- Nonprofits seeking funding opportunities
+- Research institutions and universities managing multiple grant applications
+- NGOs tracking international funding sources
+- Grant writers who need to quickly assess new opportunities
+
+#### How it works
+1. **Grant Email** monitors Gmail hourly for emails matching grant-related keywords (grant, funding, RFP, RFA, proposal) with PDF attachments
+2. **Has PDF?** verifies the email contains a valid PDF attachment before proceeding
+3. **PDF Vector Extract** uses AI to extract structured grant information from the PDF including funder name, program details, funding amounts, deadlines, eligibility, required documents, and evaluation criteria
+4. **Process Grant** calculates days until deadline, determines urgency level (Urgent/High/Normal), formats funding ranges, and compiles document and eligibility summaries
+5. **Log to Tracker** appends the processed grant opportunity to a Google Sheets spreadsheet with 17 tracking columns
+6. **Send to Slack** posts a formatted alert to your grants team channel with funding details, key dates, required documents, and evaluation criteria
+
+#### Services used
+- Gmail (monitoring for grant announcement emails with PDF attachments)
+- PDF Vector (AI-powered extraction of grant details from PDF documents)
+- Code / JavaScript (deadline calculation, urgency scoring, and data formatting)
+- Conditional Logic (PDF attachment validation)
+- Google Sheets (grant opportunity tracking and logging)
+- Slack (team notifications with opportunity summaries)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Configure Gmail OAuth2 credentials and connect your account
+3. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+4. Create a Google Sheet with these columns: Funder, Program, Opportunity #, Type, Funding Range, Duration, LOI Deadline, Proposal Deadline, Days Until, Urgency, Eligibility, Required Docs, Matching Required, IDC Rate, Contact, Status, Added Date
+5. Update the spreadsheet ID in the "Log to Tracker" node
+6. Configure Slack credentials and set the target channel ID in the "Send to Slack" node
+7. Activate the workflow
+
+#### Google Sheets structure
+| Column | Description |
+|--------|-------------|
+| Funder | Name of the funding organization |
+| Program | Grant program name |
+| Opportunity # | Funding opportunity number |
+| Type | Grant/contract/cooperative agreement |
+| Funding Range | Min-max funding amount |
+| Duration | Project duration |
+| LOI Deadline | Letter of Intent deadline |
+| Proposal Deadline | Full proposal submission deadline |
+| Days Until | Days remaining until nearest deadline |
+| Urgency | Urgent (≤14 days), High (≤30 days), or Normal |
+| Eligibility | Eligible organization types |
+| Required Docs | Number of required documents |
+| Matching Required | Whether cost matching is needed |
+| IDC Rate | Indirect cost rate allowed |
+| Contact | Funder contact email |
+| Status | Tracking status (defaults to "New") |
+| Added Date | Date the opportunity was added |
+
+#### Customizing this workflow
+- Adjust the Gmail search query to match your specific grant sources or add additional keywords
+- Modify urgency thresholds in the Process Grant code node (currently 14 days for Urgent, 30 days for High)
+- Add conditional routing to filter opportunities by funding amount, eligibility, or deadline proximity
+- Extend the Slack notification to include direct links to the funder's application portal
 
 </details>
 
