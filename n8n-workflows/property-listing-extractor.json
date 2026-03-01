@@ -1,0 +1,425 @@
+{
+  "name": "Real Estate Property Listing Extractor",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🏡 Property Listing Extractor\n\n### What this workflow does\n1. Watches Google Drive for property listing PDFs\n2. Downloads and extracts listing details\n3. Parses price, beds, baths, sqft, features\n4. Calculates price/sqft and monthly costs\n5. Logs to property database in Sheets\n6. Sends listing summary to Slack\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Drive folder for listings\n3. Create Google Sheet with columns:\n   Address, Price, Type, Beds, Baths, Sq Ft, $/Sq Ft, Year Built, Lot Size, HOA, Taxes/Year, Est. Monthly, MLS #, Status, DOM, Agent, Agent Phone, Listing Link, Added Date\n4. Update folder ID and spreadsheet ID in nodes\n5. Connect Slack for notifications\n\n### Perfect for\n- Real estate agents\n- Property investors\n- Property managers\n- Home buyers",
+        "height": 620,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Data Tracked\n\n- Price & price/sqft\n- Bedrooms/Bathrooms\n- Square footage\n- Lot size\n- Year built\n- HOA fees\n- Property taxes\n- Agent contact",
+        "height": 240,
+        "width": 200
+      },
+      "id": "sticky-data",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_LISTINGS_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Property Listings"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Listing",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        300,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Listing",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        500,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract property listing information: property address (street, city, state, zip), listing price, property type, bedrooms, bathrooms, square footage, lot size, year built, parking, listing status, MLS number, property description, features and amenities, HOA fees, property taxes, listing agent name, agent phone, agent email, brokerage, and listing date.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"street\":{\"type\":\"string\"},\"city\":{\"type\":\"string\"},\"state\":{\"type\":\"string\"},\"zip\":{\"type\":\"string\"},\"listPrice\":{\"type\":\"number\"},\"propertyType\":{\"type\":\"string\"},\"bedrooms\":{\"type\":\"number\"},\"bathrooms\":{\"type\":\"number\"},\"squareFeet\":{\"type\":\"number\"},\"lotSize\":{\"type\":\"string\"},\"yearBuilt\":{\"type\":\"number\"},\"parkingType\":{\"type\":\"string\"},\"parkingSpaces\":{\"type\":\"number\"},\"listingStatus\":{\"type\":\"string\"},\"mlsNumber\":{\"type\":\"string\"},\"daysOnMarket\":{\"type\":\"number\"},\"description\":{\"type\":\"string\"},\"features\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"hoaFees\":{\"type\":\"number\"},\"hoaFrequency\":{\"type\":\"string\"},\"propertyTaxes\":{\"type\":\"number\"},\"agentName\":{\"type\":\"string\"},\"agentPhone\":{\"type\":\"string\"},\"agentEmail\":{\"type\":\"string\"},\"brokerage\":{\"type\":\"string\"},\"listDate\":{\"type\":\"string\"}},\"required\":[\"street\",\"listPrice\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector Extract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        700,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const listing = $input.first().json.data || $input.first().json;\nconst triggerData = $('New Listing').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Format full address\nconst fullAddress = [listing.street, listing.city, listing.state, listing.zip]\n  .filter(Boolean).join(', ') || 'Address not found';\n\n// Calculate price per square foot\nconst pricePerSqft = listing.squareFeet && listing.listPrice\n  ? Math.round(listing.listPrice / listing.squareFeet)\n  : null;\n\n// Format features\nconst features = listing.features || [];\nconst featuresList = features.slice(0, 10).join(', ') || 'None listed';\n\n// Format HOA\nconst hoaText = listing.hoaFees\n  ? `$${listing.hoaFees}/${listing.hoaFrequency || 'month'}`\n  : 'None';\n\n// Calculate monthly costs estimate\nconst monthlyTaxes = listing.propertyTaxes ? Math.round(listing.propertyTaxes / 12) : 0;\nconst monthlyHoa = listing.hoaFees || 0;\nconst estimatedMortgage = listing.listPrice ? Math.round(listing.listPrice * 0.006) : 0;\nconst totalMonthlyCost = estimatedMortgage + monthlyTaxes + monthlyHoa;\n\nreturn [{\n  json: {\n    fullAddress: fullAddress,\n    listPrice: listing.listPrice || 0,\n    propertyType: listing.propertyType || 'N/A',\n    bedrooms: listing.bedrooms,\n    bathrooms: listing.bathrooms,\n    squareFeet: listing.squareFeet,\n    pricePerSqft: pricePerSqft,\n    yearBuilt: listing.yearBuilt,\n    lotSize: listing.lotSize || 'N/A',\n    hoaText: hoaText,\n    hoaFees: listing.hoaFees,\n    propertyTaxes: listing.propertyTaxes,\n    monthlyTaxes: monthlyTaxes,\n    estimatedMonthlyCost: totalMonthlyCost,\n    mlsNumber: listing.mlsNumber || 'N/A',\n    listingStatus: listing.listingStatus || 'Active',\n    daysOnMarket: listing.daysOnMarket,\n    agentName: listing.agentName || 'N/A',\n    agentPhone: listing.agentPhone || 'N/A',\n    featuresList: featuresList,\n    featureCount: features.length,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-listing",
+      "name": "Process Listing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Property Database"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Listings"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Address": "={{ $json.fullAddress }}",
+            "Price": "={{ $json.listPrice }}",
+            "Type": "={{ $json.propertyType }}",
+            "Beds": "={{ $json.bedrooms || 'N/A' }}",
+            "Baths": "={{ $json.bathrooms || 'N/A' }}",
+            "Sq Ft": "={{ $json.squareFeet || 'N/A' }}",
+            "$/Sq Ft": "={{ $json.pricePerSqft || 'N/A' }}",
+            "Year Built": "={{ $json.yearBuilt || 'N/A' }}",
+            "Lot Size": "={{ $json.lotSize }}",
+            "HOA": "={{ $json.hoaText }}",
+            "Taxes/Year": "={{ $json.propertyTaxes || 'N/A' }}",
+            "Est. Monthly": "={{ $json.estimatedMonthlyCost }}",
+            "MLS #": "={{ $json.mlsNumber }}",
+            "Status": "={{ $json.listingStatus }}",
+            "DOM": "={{ $json.daysOnMarket || 'N/A' }}",
+            "Agent": "={{ $json.agentName }}",
+            "Agent Phone": "={{ $json.agentPhone }}",
+            "Listing Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Price",
+              "displayName": "Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Beds",
+              "displayName": "Beds",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Baths",
+              "displayName": "Baths",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sq Ft",
+              "displayName": "Sq Ft",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "$/Sq Ft",
+              "displayName": "$/Sq Ft",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Year Built",
+              "displayName": "Year Built",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lot Size",
+              "displayName": "Lot Size",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "HOA",
+              "displayName": "HOA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Taxes/Year",
+              "displayName": "Taxes/Year",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Est. Monthly",
+              "displayName": "Est. Monthly",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "MLS #",
+              "displayName": "MLS #",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DOM",
+              "displayName": "DOM",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Agent",
+              "displayName": "Agent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Agent Phone",
+              "displayName": "Agent Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Listing Link",
+              "displayName": "Listing Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Added Date",
+              "displayName": "Added Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1100,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "real-estate"
+        },
+        "text": "=🏡 *New Property Listing*\n\n*Address:* {{ $('Process Listing').item.json.fullAddress }}\n*Price:* ${{ $('Process Listing').item.json.listPrice.toLocaleString() }}\n*Type:* {{ $('Process Listing').item.json.propertyType }}\n\n🏠 *Details:*\n• Beds/Baths: {{ $('Process Listing').item.json.bedrooms || 'N/A' }}/{{ $('Process Listing').item.json.bathrooms || 'N/A' }}\n• Sq Ft: {{ $('Process Listing').item.json.squareFeet ? $('Process Listing').item.json.squareFeet.toLocaleString() : 'N/A' }}\n• Price/Sq Ft: ${{ $('Process Listing').item.json.pricePerSqft || 'N/A' }}\n• Year Built: {{ $('Process Listing').item.json.yearBuilt || 'N/A' }}\n\n💵 *Est. Monthly:* ${{ $('Process Listing').item.json.estimatedMonthlyCost.toLocaleString() }}\n• HOA: {{ $('Process Listing').item.json.hoaText }}\n• Taxes: ${{ $('Process Listing').item.json.monthlyTaxes }}/mo\n\n✨ *Features:* {{ $('Process Listing').item.json.featuresList }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Process Listing').item.json.fileId }}/view|View Listing>",
+        "options": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1300,
+        280
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Listing": {
+      "main": [
+        [
+          {
+            "node": "Download Listing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Listing": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Extract": {
+      "main": [
+        [
+          {
+            "node": "Process Listing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Listing": {
+      "main": [
+        [
+          {
+            "node": "Log to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Database": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
