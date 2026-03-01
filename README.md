@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-42_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-43_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 42 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 43 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2984,6 +2984,50 @@ Automate your grant discovery pipeline by monitoring Gmail for funding announcem
 - Modify urgency thresholds in the Process Grant code node (currently 14 days for Urgent, 30 days for High)
 - Add conditional routing to filter opportunities by funding amount, eligibility, or deadline proximity
 - Extend the Slack notification to include direct links to the funder's application portal
+
+</details>
+
+<details>
+<summary><strong>📚 E-book & Book Chapter Summarizer</strong> - Summarize book chapters with AI-generated insights and reading notes | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/ebook-chapter-summarizer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/ebook-chapter-summarizer.json">📋 Open</a></summary>
+
+Turn your reading into structured, searchable knowledge. Drop a book chapter PDF into Google Drive and get a comprehensive summary with themes, key concepts, notable quotes, discussion questions, and AI-powered insights — all logged to a spreadsheet and sent to Slack for easy sharing.
+
+#### Who is this for?
+- Book clubs wanting structured discussion material
+- Students summarizing textbook chapters for study
+- Busy professionals extracting key takeaways from business books
+- Content creators building a knowledge base from reading
+
+#### How it works
+1. **New Chapter (Google Drive Trigger)** watches a designated folder for new book chapter PDFs
+2. **Download Chapter** retrieves the PDF file from Google Drive
+3. **PDF Vector Extract** uses AI to parse structured data: book title, author, chapter number, themes, key concepts with definitions, arguments, notable quotes with page numbers, vocabulary, discussion questions, and action items
+4. **PDF Vector Insights** simultaneously generates a concise summary, the most important insight, broader theme connections, and a practical application
+5. **Merge** combines the extracted data and AI insights into a single dataset
+6. **Compile Notes** formats all data into readable lists, counts, and a truncated summary for logging
+7. **Log to Reading Notes (Google Sheets)** appends a row with book info, theme counts, concept counts, quote counts, and the main takeaway
+8. **Send to Slack** posts a rich chapter summary with stats, takeaway, AI insights, discussion questions, and a link to the original PDF
+
+#### Services used
+- Google Drive (chapter file monitoring & download)
+- PDF Vector (AI-powered chapter extraction & insight generation)
+- Google Sheets (reading log & notes database)
+- Slack (chapter summary notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive credentials and set the folder ID to your book chapters folder
+4. Create a Google Sheet with columns: Book, Author, Chapter #, Chapter Title, Pages, Main Themes, Key Concepts, Arguments, Quotes Noted, Action Items, Main Takeaway, Read Date
+5. Configure the Google Sheets node with your spreadsheet ID
+6. Set up Slack credentials (OAuth2) and set the channel ID for notifications
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the extraction prompt in PDF Vector Extract to focus on specific aspects (e.g., literary analysis, technical concepts)
+- Add additional columns to Google Sheets for vocabulary terms or statistics
+- Modify the Slack message format to include full quotes or concept definitions
+- Add an email notification node for personal reading summaries
 
 </details>
 
