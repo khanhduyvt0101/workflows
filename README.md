@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-40_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-41_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 40 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 41 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2876,6 +2876,49 @@ Automate the analysis of 10-K and 10-Q financial reports with AI-powered data ex
 - Add conditional routing to flag companies with weak health assessments for priority review
 - Extend the Google Sheets logging to separate tabs by report type (10-K vs 10-Q)
 - Add email notifications for high-priority findings alongside Slack
+
+</details>
+
+<details>
+<summary><strong>🏠 Property Listing Extractor</strong> - Extract and analyze real estate listing data from PDFs | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/property-listing-extractor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/property-listing-extractor.json">📋 Open</a></summary>
+
+Automatically extract property listing details from PDF documents uploaded to Google Drive. This workflow parses key real estate data — price, bedrooms, bathrooms, square footage, HOA fees, taxes — calculates price per square foot and estimated monthly costs, logs everything to a Google Sheets database, and sends a formatted summary to Slack.
+
+#### Who is this for?
+- Real estate agents managing multiple listings
+- Property investors analyzing potential purchases
+- Property managers tracking portfolio listings
+- Home buyers organizing and comparing properties
+
+#### How it works
+1. **New Listing** — Google Drive trigger watches a designated folder for new property listing PDFs uploaded every minute
+2. **Download Listing** — Downloads the PDF file from Google Drive for processing
+3. **PDF Vector Extract** — Uses AI-powered extraction to parse property details including address, price, beds, baths, square footage, lot size, year built, HOA, taxes, MLS number, agent info, and features
+4. **Process Listing** — JavaScript code formats the full address, calculates price per square foot, estimates monthly costs (mortgage + taxes + HOA), and compiles all data into a structured format
+5. **Log to Database** — Appends a row to Google Sheets with 19 columns: Address, Price, Type, Beds, Baths, Sq Ft, $/Sq Ft, Year Built, Lot Size, HOA, Taxes/Year, Est. Monthly, MLS #, Status, DOM, Agent, Agent Phone, Listing Link, Added Date
+6. **Send to Slack** — Posts a formatted listing summary to a Slack channel with property details, monthly cost breakdown, features, and a link to the original document
+
+#### Services used
+- Google Drive (trigger for new listing PDFs and file download)
+- PDF Vector (AI-powered property data extraction with structured schema)
+- Code (JavaScript) (address formatting, price/sqft calculation, monthly cost estimation)
+- Google Sheets (property database with 19-column tracking)
+- Slack (team notifications with formatted listing summaries)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credentials
+3. Configure Google Drive credentials and set your listings folder ID in the trigger node
+4. Create a Google Sheet with columns: Address, Price, Type, Beds, Baths, Sq Ft, $/Sq Ft, Year Built, Lot Size, HOA, Taxes/Year, Est. Monthly, MLS #, Status, DOM, Agent, Agent Phone, Listing Link, Added Date
+5. Set your spreadsheet ID in the "Log to Database" node
+6. Configure Slack credentials and set your channel ID in the "Send to Slack" node
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the extraction schema in PDF Vector to capture additional fields like garage type, pool, or school district
+- Modify the monthly cost calculation in the Code node to use different mortgage rates or down payment percentages
+- Add conditional routing to filter listings by price range or property type before logging
+- Extend Slack notifications to include comparison data against recently logged listings
 
 </details>
 
