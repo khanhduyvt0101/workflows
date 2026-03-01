@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-37_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-38_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 37 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 38 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -2742,6 +2742,50 @@ Streamline your dissertation research by automatically extracting thesis stateme
 - Change the academic search providers (Semantic Scholar, PubMed, ArXiv) based on your research field
 - Modify the paper limit and sorting criteria in the Compile Research code node
 - Add additional notification channels (email, Discord) for research team collaboration
+
+</details>
+
+<details>
+<summary><strong>📄 Product Manual Q&A Bot</strong> - Automatically analyze PDF manuals and answer product questions | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/product-manual-qa-bot.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/product-manual-qa-bot.json">📋 Open</a></summary>
+
+Turn your product manuals into an intelligent Q&A system. Upload any PDF manual to a Google Drive folder and the bot automatically extracts key information — product details, features, specifications, and safety warnings — then logs the results and notifies your team via Slack.
+
+#### Who is this for?
+- Customer support teams needing quick answers from product manuals
+- Internal knowledge base managers automating documentation review
+- Product teams processing large volumes of technical documentation
+- Self-service help centers building FAQ databases from manuals
+
+#### How it works
+1. **New Manual PDF** watches a Google Drive folder for newly uploaded PDF files
+2. **Download PDF** retrieves the PDF document from Google Drive
+3. **Prepare Question** validates the file is a PDF and prepares a configurable question with the binary file data
+4. **PDF Vector Ask** sends the PDF and question to PDF Vector AI, which reads the document and generates a detailed answer with page references
+5. **Format Answer** processes the AI response, detects whether the answer was found in the document, and truncates for spreadsheet logging
+6. **Log Q&A** appends the file name, question, answer, answer-found status, and timestamp to a Google Sheets tracker
+7. **Send Answer** posts a formatted Slack notification with the full answer and a link to the original manual in Google Drive
+
+#### Services used
+- Google Drive (folder monitoring & PDF download)
+- PDF Vector (AI-powered document Q&A)
+- Google Sheets (Q&A result logging)
+- Slack (answer notifications)
+- Code / JavaScript (file validation, question preparation & answer formatting)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Configure Google Drive OAuth2 credentials and set your manuals folder ID in the trigger node
+3. Get a PDF Vector API key from pdfvector.com/api-keys and configure credentials
+4. Create a Google Sheet with columns: File Name, Question, Answer, Answer Found, Processed Date
+5. Update the Google Sheets node with your spreadsheet ID
+6. Configure Slack OAuth2 credentials and set your notification channel ID
+7. Activate the workflow
+
+#### Customizing this workflow
+- Edit the default question in the Prepare Question code node to ask different questions about your manuals
+- Add multiple questions by duplicating the PDF Vector Ask and Format Answer nodes for parallel extraction
+- Modify the not-found detection phrases in Format Answer to match your specific use case
+- Add additional notification channels (email, Microsoft Teams) alongside Slack
 
 </details>
 

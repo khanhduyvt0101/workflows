@@ -1,0 +1,308 @@
+{
+  "name": "Product Manual Q&A Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🤖 Product Manual Q&A Bot\n\n### What this workflow does\n1. Watches Google Drive folder for new PDF manuals\n2. Downloads the PDF document\n3. Uses PDF Vector to answer predefined questions\n4. Extracts key information from the manual\n5. Logs results to Google Sheets\n6. Sends summary to Slack\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Drive folder for manual PDFs\n3. Create Google Sheet with columns:\n   File Name, Question, Answer, Answer Found, Processed Date\n4. Update folder ID and spreadsheet ID in nodes\n5. Customize the question in Prepare Question node\n6. Connect Slack for notifications\n\n### How to use\nUpload any PDF manual to the watched folder.\nThe bot will automatically analyze it and answer your question.\n\n### Perfect for\n- Customer support teams\n- Internal knowledge bases\n- Product documentation\n- Self-service help centers",
+        "height": 640,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📋 Supported Manual Types\n\n- Product manuals (PDF)\n- User guides\n- Technical documentation\n- Installation guides\n- Troubleshooting guides\n- FAQ documents",
+        "height": 200,
+        "width": 200
+      },
+      "id": "sticky-types",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_MANUALS_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Product Manuals"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "drive-trigger",
+      "name": "New Manual PDF",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        280,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "download-pdf",
+      "name": "Download PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get file info from trigger\nconst triggerData = $('New Manual PDF').item.json;\nconst fileName = triggerData.name || 'unknown.pdf';\nconst fileId = triggerData.id || '';\nconst mimeType = triggerData.mimeType || '';\n\n// Check if it's a PDF\nif (!mimeType.includes('pdf') && !fileName.toLowerCase().endsWith('.pdf')) {\n  throw new Error('File is not a PDF: ' + fileName);\n}\n\n// Default question - customize this!\nconst defaultQuestion = \"What is this product manual about? Provide a summary including: 1) Product name and model, 2) Main features, 3) Key specifications, 4) Safety warnings if any.\";\n\n// IMPORTANT: Pass through the binary data from Download PDF\nreturn [{\n  json: {\n    fileName: fileName,\n    fileId: fileId,\n    question: defaultQuestion\n  },\n  binary: $input.first().binary\n}];"
+      },
+      "id": "prepare-question",
+      "name": "Prepare Question",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "={{ $json.question }}\n\nProvide a clear, helpful answer based on this product manual. Include specific page numbers or section references where the information can be found. If the information is not in the manual, say \"Information not found in this document.\""
+      },
+      "id": "pdfvector-ask",
+      "name": "PDF Vector Ask",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        880,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst questionData = $('Prepare Question').item.json;\n\n// Get the answer from PDF Vector\nconst answer = input.markdown || input.answer || 'No answer generated';\nconst question = questionData.question;\nconst fileName = questionData.fileName;\nconst fileId = questionData.fileId;\n\n// Check if answer was actually found in the document\nconst notFoundPhrases = [\n  'not found',\n  'no information',\n  'cannot find',\n  'don\\'t have',\n  'doesn\\'t contain',\n  'not mentioned',\n  'not available',\n  'not in this document'\n];\n\nconst answerLower = answer.toLowerCase();\nconst answerFound = !notFoundPhrases.some(phrase => answerLower.includes(phrase));\n\n// Truncate answer for sheets (max 500 chars)\nconst answerShort = answer.length > 500 ? answer.substring(0, 497) + '...' : answer;\n\nreturn [{\n  json: {\n    fileName: fileName,\n    fileId: fileId,\n    question: question,\n    answer: answer,\n    answerShort: answerShort,\n    answerFound: answerFound,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-answer",
+      "name": "Format Answer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Q&A Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Questions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "File Name": "={{ $json.fileName }}",
+            "Question": "={{ $json.question }}",
+            "Answer": "={{ $json.answerShort }}",
+            "Answer Found": "={{ $json.answerFound ? 'Yes' : 'No' }}",
+            "Processed Date": "={{ $json.processedAt }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "File Name",
+              "displayName": "File Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Question",
+              "displayName": "Question",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Answer",
+              "displayName": "Answer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Answer Found",
+              "displayName": "Answer Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log Q&A",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "support-answers"
+        },
+        "text": "=🤖 *Product Manual Q&A*\n\n📄 *File:* {{ $('Format Answer').item.json.fileName }}\n\n❓ *Question:* {{ $('Format Answer').item.json.question }}\n\n✅ *Answer Found:* {{ $('Format Answer').item.json.answerFound ? 'Yes' : 'No' }}\n\n💬 *Answer:*\n{{ $('Format Answer').item.json.answer }}\n\n---\n🔗 <https://drive.google.com/file/d/{{ $('Format Answer').item.json.fileId }}/view|View Manual>",
+        "options": {}
+      },
+      "id": "slack-notify",
+      "name": "Send Answer",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1480,
+        240
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Manual PDF": {
+      "main": [
+        [
+          {
+            "node": "Download PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF": {
+      "main": [
+        [
+          {
+            "node": "Prepare Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Question": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector Ask",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Ask": {
+      "main": [
+        [
+          {
+            "node": "Format Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Answer": {
+      "main": [
+        [
+          {
+            "node": "Log Q&A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Q&A": {
+      "main": [
+        [
+          {
+            "node": "Send Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
