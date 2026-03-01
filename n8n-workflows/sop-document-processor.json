@@ -1,0 +1,355 @@
+{
+  "name": "SOP Document Creator & Updater",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📋 SOP Document Processor\n\n### What this workflow does\n1. Watches Google Drive for new SOP documents\n2. Downloads and extracts SOP information\n3. Parses procedures, safety items, checkpoints\n4. Generates quick checklist from procedures\n5. Logs SOP details to Google Sheets\n6. Sends summary to Slack with checklist\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Drive folder for SOP documents\n3. Create Google Sheet with columns:\n   SOP Number, Title, Version, Department, Effective Date, Author, Approver, Procedure Steps, Safety Items, Quality Checkpoints, Document Link, Last Updated\n4. Update folder ID and spreadsheet ID in nodes\n5. Connect Slack for notifications\n\n### Perfect for\n- Operations managers\n- Quality assurance teams\n- Compliance officers\n- Training departments",
+        "height": 560,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ✅ SOP Elements Extracted\n\n- Purpose/Scope\n- Responsibilities\n- Step-by-step procedures\n- Safety warnings\n- Required equipment\n- Quality checkpoints\n- Revision history",
+        "height": 220,
+        "width": 220
+      },
+      "id": "sticky-elements",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_SOP_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "SOP Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New SOP Document",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download SOP",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract SOP (Standard Operating Procedure) information: document title, SOP number, version, effective date, author, approver, department, purpose, scope, responsibilities by role, required equipment/materials, safety precautions, step-by-step procedures with substeps, quality checkpoints, and revision history.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"sopNumber\":{\"type\":\"string\"},\"version\":{\"type\":\"string\"},\"effectiveDate\":{\"type\":\"string\"},\"author\":{\"type\":\"string\"},\"approver\":{\"type\":\"string\"},\"department\":{\"type\":\"string\"},\"purpose\":{\"type\":\"string\"},\"scope\":{\"type\":\"string\"},\"responsibilities\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"role\":{\"type\":\"string\"},\"duties\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}},\"equipment\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"safetyPrecautions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"procedures\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"stepNumber\":{\"type\":\"number\"},\"action\":{\"type\":\"string\"},\"details\":{\"type\":\"string\"},\"caution\":{\"type\":\"string\"}}}},\"qualityCheckpoints\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"checkpoint\":{\"type\":\"string\"},\"criteria\":{\"type\":\"string\"}}}},\"revisionHistory\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"version\":{\"type\":\"string\"},\"date\":{\"type\":\"string\"},\"changes\":{\"type\":\"string\"}}}}},\"required\":[\"title\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "PDF Vector Extract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const sop = $input.first().json.data || $input.first().json;\nconst triggerData = $('New SOP Document').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Format procedures as checklist\nconst procedures = sop.procedures || [];\nconst checklistItems = procedures.map(p => \n  `☐ Step ${p.stepNumber || '?'}: ${p.action || ''}${p.caution ? ' ⚠️' : ''}`\n).join('\\n') || 'No procedures found';\n\n// Format safety items\nconst safety = sop.safetyPrecautions || [];\nconst safetyList = safety.map(s => `⚠️ ${s}`).join('\\n') || 'None specified';\n\n// Format quality checkpoints\nconst checkpoints = sop.qualityCheckpoints || [];\nconst checkpointList = checkpoints.map(c => `✓ ${c.checkpoint}: ${c.criteria || ''}`).join('\\n') || 'None specified';\n\n// Count elements\nconst procedureCount = procedures.length;\nconst safetyCount = safety.length;\nconst checkpointCount = checkpoints.length;\n\n// Get latest revision\nconst revisions = sop.revisionHistory || [];\nconst latestRevision = revisions.length > 0 ? revisions[revisions.length - 1] : null;\n\nreturn [{\n  json: {\n    title: sop.title || 'Untitled SOP',\n    sopNumber: sop.sopNumber || 'N/A',\n    version: sop.version || '1.0',\n    effectiveDate: sop.effectiveDate || 'N/A',\n    author: sop.author || 'N/A',\n    approver: sop.approver || 'N/A',\n    department: sop.department || 'N/A',\n    purpose: sop.purpose || '',\n    scope: sop.scope || '',\n    fileName: fileName,\n    fileId: fileId,\n    checklistItems: checklistItems,\n    safetyList: safetyList,\n    checkpointList: checkpointList,\n    procedureCount: procedureCount,\n    safetyCount: safetyCount,\n    checkpointCount: checkpointCount,\n    latestRevision: latestRevision,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-sop",
+      "name": "Process SOP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "SOP Library"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "SOPs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "SOP Number": "={{ $json.sopNumber }}",
+            "Title": "={{ $json.title }}",
+            "Version": "={{ $json.version }}",
+            "Department": "={{ $json.department }}",
+            "Effective Date": "={{ $json.effectiveDate }}",
+            "Author": "={{ $json.author }}",
+            "Approver": "={{ $json.approver }}",
+            "Procedure Steps": "={{ $json.procedureCount }}",
+            "Safety Items": "={{ $json.safetyCount }}",
+            "Quality Checkpoints": "={{ $json.checkpointCount }}",
+            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Last Updated": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "SOP Number",
+              "displayName": "SOP Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Version",
+              "displayName": "Version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Effective Date",
+              "displayName": "Effective Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Author",
+              "displayName": "Author",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Approver",
+              "displayName": "Approver",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Procedure Steps",
+              "displayName": "Procedure Steps",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Safety Items",
+              "displayName": "Safety Items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quality Checkpoints",
+              "displayName": "Quality Checkpoints",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document Link",
+              "displayName": "Document Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last Updated",
+              "displayName": "Last Updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to SOP Library",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "ops-team"
+        },
+        "text": "=📋 *SOP Document Processed*\n\n*Title:* {{ $('Process SOP').item.json.title }}\n*SOP #:* {{ $('Process SOP').item.json.sopNumber }}\n*Version:* {{ $('Process SOP').item.json.version }}\n*Department:* {{ $('Process SOP').item.json.department }}\n\n📊 *Summary:*\n• Procedure Steps: {{ $('Process SOP').item.json.procedureCount }}\n• Safety Items: {{ $('Process SOP').item.json.safetyCount }}\n• Quality Checkpoints: {{ $('Process SOP').item.json.checkpointCount }}\n\n📝 *Quick Checklist:*\n{{ $('Process SOP').item.json.checklistItems }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Process SOP').item.json.fileId }}/view|View Full SOP>",
+        "options": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1300,
+        300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New SOP Document": {
+      "main": [
+        [
+          {
+            "node": "Download SOP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download SOP": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Vector Extract": {
+      "main": [
+        [
+          {
+            "node": "Process SOP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process SOP": {
+      "main": [
+        [
+          {
+            "node": "Log to SOP Library",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to SOP Library": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
