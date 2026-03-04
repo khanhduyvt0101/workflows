@@ -1,0 +1,390 @@
+{
+  "name": "Extract clinical trial data from PDFs and log to Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🧪 Clinical Trial Document Analyzer\n\n### What this workflow does\n1. Watches Google Drive folder for new trial PDFs\n2. Downloads and extracts study data (phase, endpoints, sample size)\n3. Pulls adverse event counts and dosing schedules\n4. Logs structured data to Google Sheets\n5. Sends Slack notification with summary\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for trial documents\n3. Create a Google Sheet with these columns:\n   Study ID | Protocol | Phase | Sponsor | Indication | Design | Primary Endpoint | Secondary Endpoints | Sample Size | Duration | Total AEs | SAEs | Status | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Clinical research organizations\n- Pharma regulatory teams\n- Research coordinators",
+        "height": 520,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Clinical Trials"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Trial Document",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract clinical trial document information including: study identifier, protocol number, phase (I/II/III/IV), sponsor name, indication/disease area, study design (randomized/blinded/controlled), primary endpoint with definition, secondary endpoints, sample size (target enrollment), study duration, inclusion criteria, exclusion criteria, dosing schedule, adverse events summary, serious adverse events count, efficacy results if available, statistical methods, regulatory status, and any key findings or conclusions.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"studyId\":{\"type\":\"string\"},\"protocolNumber\":{\"type\":\"string\"},\"phase\":{\"type\":\"string\"},\"sponsor\":{\"type\":\"string\"},\"indication\":{\"type\":\"string\"},\"studyDesign\":{\"type\":\"string\"},\"primaryEndpoint\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"definition\":{\"type\":\"string\"},\"measurementMethod\":{\"type\":\"string\"}}},\"secondaryEndpoints\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"definition\":{\"type\":\"string\"}}}},\"sampleSize\":{\"type\":\"object\",\"properties\":{\"target\":{\"type\":\"number\"},\"enrolled\":{\"type\":\"number\"},\"completed\":{\"type\":\"number\"}}},\"studyDuration\":{\"type\":\"string\"},\"inclusionCriteria\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"exclusionCriteria\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"dosingSchedule\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"arm\":{\"type\":\"string\"},\"dose\":{\"type\":\"string\"},\"frequency\":{\"type\":\"string\"},\"route\":{\"type\":\"string\"}}}},\"adverseEvents\":{\"type\":\"object\",\"properties\":{\"total\":{\"type\":\"number\"},\"serious\":{\"type\":\"number\"},\"commonEvents\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}},\"efficacyResults\":{\"type\":\"string\"},\"statisticalMethods\":{\"type\":\"string\"},\"regulatoryStatus\":{\"type\":\"string\"},\"keyFindings\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"studyId\",\"phase\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Trial Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        880,
+        280
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const extractData = $input.first().json.data || $input.first().json;\nconst triggerData = $('New Trial Document').item.json;\n\nconst trial = extractData;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Format secondary endpoints\nconst secondaryEndpoints = trial.secondaryEndpoints || [];\nconst secondaryList = secondaryEndpoints.map(e => e.name).join(', ') || 'None listed';\n\n// Format adverse events\nconst ae = trial.adverseEvents || {};\nconst aeTotal = ae.total || 0;\nconst aeSAE = ae.serious || 0;\nconst aeCommon = (ae.commonEvents || []).join(', ') || 'Not reported';\n\n// Format key findings\nconst findings = trial.keyFindings || [];\nconst findingsList = findings.map((f, i) => `${i + 1}. ${f}`).join('\\n') || 'None extracted';\n\n// Sample size info\nconst sampleSize = trial.sampleSize || {};\nconst sampleTarget = sampleSize.target || 'N/A';\nconst sampleEnrolled = sampleSize.enrolled || 'N/A';\nconst sampleCompleted = sampleSize.completed || 'N/A';\n\n// Primary endpoint info\nconst primaryEP = trial.primaryEndpoint || {};\nconst primaryName = primaryEP.name || 'Not specified';\nconst primaryDef = primaryEP.definition || '';\n\nreturn [{\n  json: {\n    studyId: trial.studyId || 'Unknown',\n    protocolNumber: trial.protocolNumber || 'N/A',\n    phase: trial.phase || 'Unknown',\n    sponsor: trial.sponsor || 'Unknown',\n    indication: trial.indication || 'Not specified',\n    studyDesign: trial.studyDesign || 'Not specified',\n    primaryEndpoint: primaryName,\n    primaryEndpointDefinition: primaryDef,\n    secondaryEndpoints: secondaryList,\n    secondaryCount: secondaryEndpoints.length,\n    sampleTarget: sampleTarget,\n    sampleEnrolled: sampleEnrolled,\n    sampleCompleted: sampleCompleted,\n    studyDuration: trial.studyDuration || 'N/A',\n    aeTotal: aeTotal,\n    aeSAE: aeSAE,\n    aeCommon: aeCommon,\n    regulatoryStatus: trial.regulatoryStatus || 'Unknown',\n    keyFindings: findingsList,\n    findingsCount: findings.length,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-data",
+      "name": "Format Trial Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Clinical Trials Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Trials"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Study ID": "={{ $json.studyId }}",
+            "Protocol": "={{ $json.protocolNumber }}",
+            "Phase": "={{ $json.phase }}",
+            "Sponsor": "={{ $json.sponsor }}",
+            "Indication": "={{ $json.indication }}",
+            "Design": "={{ $json.studyDesign }}",
+            "Primary Endpoint": "={{ $json.primaryEndpoint }}",
+            "Secondary Endpoints": "={{ $json.secondaryCount }}",
+            "Sample Size": "={{ $json.sampleTarget }}",
+            "Duration": "={{ $json.studyDuration }}",
+            "Total AEs": "={{ $json.aeTotal }}",
+            "SAEs": "={{ $json.aeSAE }}",
+            "Status": "={{ $json.regulatoryStatus }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Study ID",
+              "displayName": "Study ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Protocol",
+              "displayName": "Protocol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phase",
+              "displayName": "Phase",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sponsor",
+              "displayName": "Sponsor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Indication",
+              "displayName": "Indication",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Design",
+              "displayName": "Design",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Primary Endpoint",
+              "displayName": "Primary Endpoint",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Secondary Endpoints",
+              "displayName": "Secondary Endpoints",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sample Size",
+              "displayName": "Sample Size",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duration",
+              "displayName": "Duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total AEs",
+              "displayName": "Total AEs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SAEs",
+              "displayName": "SAEs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        280
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "clinical-trials"
+        },
+        "text": "=🧪 *Clinical Trial Document Processed*\n\n*Study:* {{ $('Format Trial Data').item.json.studyId }}\n*Protocol:* {{ $('Format Trial Data').item.json.protocolNumber }}\n*Phase:* {{ $('Format Trial Data').item.json.phase }}\n*Sponsor:* {{ $('Format Trial Data').item.json.sponsor }}\n\n📋 *Study Overview:*\n• Indication: {{ $('Format Trial Data').item.json.indication }}\n• Design: {{ $('Format Trial Data').item.json.studyDesign }}\n• Duration: {{ $('Format Trial Data').item.json.studyDuration }}\n\n👥 *Sample Size:*\n• Target: {{ $('Format Trial Data').item.json.sampleTarget }}\n• Enrolled: {{ $('Format Trial Data').item.json.sampleEnrolled }}\n• Completed: {{ $('Format Trial Data').item.json.sampleCompleted }}\n\n🎯 *Primary Endpoint:*\n{{ $('Format Trial Data').item.json.primaryEndpoint }}\n\n📊 *Secondary Endpoints:* {{ $('Format Trial Data').item.json.secondaryCount }}\n\n⚠️ *Safety:*\n• Total AEs: {{ $('Format Trial Data').item.json.aeTotal }}\n• Serious AEs: {{ $('Format Trial Data').item.json.aeSAE }}\n• Common: {{ $('Format Trial Data').item.json.aeCommon }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Format Trial Data').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1480,
+        280
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Trial Document": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract Trial Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Trial Data": {
+      "main": [
+        [
+          {
+            "node": "Format Trial Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Trial Data": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
