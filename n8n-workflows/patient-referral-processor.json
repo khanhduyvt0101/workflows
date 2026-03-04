@@ -1,0 +1,390 @@
+{
+  "name": "Extract patient referrals from PDFs and route to departments",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🏥 Patient Referral Processor\n\n### What this workflow does\n1. Watches Google Drive folder for referral letters\n2. Extracts patient info, referring MD, diagnosis\n3. Identifies urgency level (routine/urgent/stat)\n4. Routes to the right department automatically\n5. Logs referral to Google Sheets\n6. Sends Slack alert with referral details\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for referral documents\n3. Create a Google Sheet with these columns:\n   Patient Name | DOB | Phone | Insurance | Referring MD | MD Practice | Diagnosis | ICD Codes | Urgency | Requested Service | Department | Status | Referral Date | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Hospital intake teams\n- Referral coordinators\n- Specialty clinic staff",
+        "height": 540,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Patient Referrals"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Referral Letter",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Referral",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract patient referral information including: patient full name, date of birth, gender, phone number, address, insurance provider, insurance ID, referring physician name, referring physician practice, referring physician phone, referring physician fax, referring physician NPI, referral date, diagnosis or reason for referral, ICD-10 codes if present, urgency level (routine/urgent/emergent/stat), requested services or specialty, requested provider if specified, relevant medical history, current medications, allergies, recent test results mentioned, and any special instructions or notes.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"patientName\":{\"type\":\"string\"},\"dateOfBirth\":{\"type\":\"string\"},\"gender\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"insuranceProvider\":{\"type\":\"string\"},\"insuranceId\":{\"type\":\"string\"},\"referringPhysician\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"practice\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"fax\":{\"type\":\"string\"},\"npi\":{\"type\":\"string\"}}},\"referralDate\":{\"type\":\"string\"},\"diagnosis\":{\"type\":\"string\"},\"icdCodes\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"urgencyLevel\":{\"type\":\"string\"},\"requestedService\":{\"type\":\"string\"},\"requestedProvider\":{\"type\":\"string\"},\"medicalHistory\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"currentMedications\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"allergies\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"recentTests\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"specialInstructions\":{\"type\":\"string\"}},\"required\":[\"patientName\",\"referringPhysician\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Referral Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        880,
+        280
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const extractData = $input.first().json.data || $input.first().json;\nconst triggerData = $('New Referral Letter').item.json;\n\nconst referral = extractData;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Referring physician info\nconst refMD = referral.referringPhysician || {};\n\n// Format ICD codes\nconst icdCodes = referral.icdCodes || [];\nconst icdList = icdCodes.join(', ') || 'None specified';\n\n// Format medications\nconst meds = referral.currentMedications || [];\nconst medsList = meds.join(', ') || 'None listed';\n\n// Format allergies\nconst allergies = referral.allergies || [];\nconst allergiesList = allergies.join(', ') || 'NKDA';\n\n// Determine department based on requested service\nconst service = (referral.requestedService || '').toLowerCase();\nlet department = 'General';\n\nif (service.includes('cardio') || service.includes('heart')) department = 'Cardiology';\nelse if (service.includes('ortho') || service.includes('bone') || service.includes('joint')) department = 'Orthopedics';\nelse if (service.includes('neuro') || service.includes('brain')) department = 'Neurology';\nelse if (service.includes('gastro') || service.includes('gi')) department = 'Gastroenterology';\nelse if (service.includes('pulmo') || service.includes('lung')) department = 'Pulmonology';\nelse if (service.includes('oncol') || service.includes('cancer')) department = 'Oncology';\nelse if (service.includes('derma') || service.includes('skin')) department = 'Dermatology';\nelse if (service.includes('endo') || service.includes('diabetes')) department = 'Endocrinology';\nelse if (service.includes('psych') || service.includes('mental')) department = 'Psychiatry';\nelse if (service.includes('surgery')) department = 'Surgery';\nelse if (service.includes('radiol') || service.includes('imaging')) department = 'Radiology';\n\n// Determine priority flag\nconst urgency = (referral.urgencyLevel || 'routine').toLowerCase();\nlet priorityFlag = '🟢';\nif (urgency.includes('stat') || urgency.includes('emergent')) priorityFlag = '🔴';\nelse if (urgency.includes('urgent')) priorityFlag = '🟡';\n\nreturn [{\n  json: {\n    patientName: referral.patientName || 'Unknown',\n    dateOfBirth: referral.dateOfBirth || 'N/A',\n    gender: referral.gender || 'N/A',\n    phone: referral.phone || 'N/A',\n    insuranceProvider: referral.insuranceProvider || 'Unknown',\n    insuranceId: referral.insuranceId || 'N/A',\n    referringMDName: refMD.name || 'Unknown',\n    referringMDPractice: refMD.practice || 'N/A',\n    referringMDPhone: refMD.phone || 'N/A',\n    referringMDFax: refMD.fax || 'N/A',\n    referralDate: referral.referralDate || 'N/A',\n    diagnosis: referral.diagnosis || 'Not specified',\n    icdCodes: icdList,\n    urgencyLevel: referral.urgencyLevel || 'Routine',\n    priorityFlag: priorityFlag,\n    requestedService: referral.requestedService || 'Not specified',\n    requestedProvider: referral.requestedProvider || 'Any available',\n    department: department,\n    currentMedications: medsList,\n    allergies: allergiesList,\n    specialInstructions: referral.specialInstructions || 'None',\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-data",
+      "name": "Format and Route",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Patient Referrals Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Referrals"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Patient Name": "={{ $json.patientName }}",
+            "DOB": "={{ $json.dateOfBirth }}",
+            "Phone": "={{ $json.phone }}",
+            "Insurance": "={{ $json.insuranceProvider }}",
+            "Referring MD": "={{ $json.referringMDName }}",
+            "MD Practice": "={{ $json.referringMDPractice }}",
+            "Diagnosis": "={{ $json.diagnosis }}",
+            "ICD Codes": "={{ $json.icdCodes }}",
+            "Urgency": "={{ $json.urgencyLevel }}",
+            "Requested Service": "={{ $json.requestedService }}",
+            "Department": "={{ $json.department }}",
+            "Status": "New",
+            "Referral Date": "={{ $json.referralDate }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Patient Name",
+              "displayName": "Patient Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DOB",
+              "displayName": "DOB",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Insurance",
+              "displayName": "Insurance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Referring MD",
+              "displayName": "Referring MD",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "MD Practice",
+              "displayName": "MD Practice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Diagnosis",
+              "displayName": "Diagnosis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ICD Codes",
+              "displayName": "ICD Codes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Requested Service",
+              "displayName": "Requested Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Referral Date",
+              "displayName": "Referral Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        280
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "patient-referrals"
+        },
+        "text": "={{ $('Format and Route').item.json.priorityFlag }} *New Patient Referral*\n\n*Patient:* {{ $('Format and Route').item.json.patientName }}\n*DOB:* {{ $('Format and Route').item.json.dateOfBirth }}\n*Phone:* {{ $('Format and Route').item.json.phone }}\n\n📋 *Insurance:*\n• Provider: {{ $('Format and Route').item.json.insuranceProvider }}\n• ID: {{ $('Format and Route').item.json.insuranceId }}\n\n👨‍⚕️ *Referring Physician:*\n• Name: {{ $('Format and Route').item.json.referringMDName }}\n• Practice: {{ $('Format and Route').item.json.referringMDPractice }}\n• Phone: {{ $('Format and Route').item.json.referringMDPhone }}\n\n🏥 *Referral Details:*\n• Date: {{ $('Format and Route').item.json.referralDate }}\n• Urgency: *{{ $('Format and Route').item.json.urgencyLevel }}*\n• Diagnosis: {{ $('Format and Route').item.json.diagnosis }}\n• ICD Codes: {{ $('Format and Route').item.json.icdCodes }}\n\n🎯 *Routing:*\n• Requested: {{ $('Format and Route').item.json.requestedService }}\n• *Department: {{ $('Format and Route').item.json.department }}*\n\n💊 *Clinical Info:*\n• Medications: {{ $('Format and Route').item.json.currentMedications }}\n• Allergies: {{ $('Format and Route').item.json.allergies }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Format and Route').item.json.fileId }}/view|View Referral>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1480,
+        280
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Referral Letter": {
+      "main": [
+        [
+          {
+            "node": "Download Referral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Referral": {
+      "main": [
+        [
+          {
+            "node": "Extract Referral Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Referral Data": {
+      "main": [
+        [
+          {
+            "node": "Format and Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format and Route": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
