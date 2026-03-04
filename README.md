@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-44_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-45_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 44 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 45 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3070,6 +3070,52 @@ Automate the extraction of structured clinical trial data from PDF documents. Th
 - Add additional Google Sheets columns for inclusion/exclusion criteria or dosing schedules
 - Modify the Slack message to include efficacy results or statistical methods
 - Add an email notification node for regulatory team alerts
+
+</details>
+
+<details>
+<summary><strong>🏥 Medical Bill Analyzer</strong> - Analyze medical bills for errors with AI and Slack alerts | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/medical-bill-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/medical-bill-analyzer.json">📋 Open</a></summary>
+
+Catch billing errors before you overpay. This workflow automatically watches for medical bills uploaded to Google Drive, uses AI to extract line items and CPT codes, then analyzes charges for duplicate billing, upcoding, unbundling, and other common overcharge patterns. Results are logged to Google Sheets and a detailed Slack alert is sent with dispute recommendations.
+
+#### Who is this for?
+- Patients reviewing hospital or provider bills
+- Medical billing advocates and consultants
+- Healthcare organizations auditing billing accuracy
+
+#### How it works
+1. **New Medical Bill** - Google Drive trigger watches a designated folder for new medical bill PDFs
+2. **Download Bill** - Downloads the PDF file from Google Drive
+3. **Extract Bill Data** - PDF Vector extracts structured data including provider info, line items with CPT/HCPCS codes, diagnosis codes, charges, and insurance adjustments
+4. **Analyze for Errors** - PDF Vector AI analyzes the bill for duplicate billing, unbundling, upcoding, phantom charges, balance billing, itemized discrepancies, date errors, and quantity errors
+5. **Merge Results** - Combines extracted data and analysis results from the parallel processing branches
+6. **Format Results** - JavaScript code formats the merged data, counts issues found, and assigns a dispute priority level (High/Medium/Low)
+7. **Log to Sheets** - Appends a summary row to Google Sheets with provider, patient, charges, issues found, and dispute priority
+8. **Send to Slack** - Posts a detailed analysis report to Slack including charges breakdown, issues found, and a link to the original bill
+
+#### Services used
+- Google Drive (trigger and file download for medical bill PDFs)
+- PDF Vector (structured data extraction and AI-powered bill error analysis)
+- Google Sheets (logging bill review results and dispute tracking)
+- Slack (sending detailed analysis alerts with dispute recommendations)
+- Code/JavaScript (data formatting, issue counting, and priority assignment)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Create a Google Drive folder for uploading medical bills and update the folder ID in the trigger node
+4. Create a Google Sheet with columns: Provider, Patient, Date of Service, Total Billed, Insurance Paid, Patient Owes, Line Items, Issues Found, Dispute Priority, Due Date, Processed Date
+5. Update the spreadsheet ID in the "Log to Sheets" node
+6. Configure Google Drive and Google Sheets OAuth2 credentials
+7. Connect your Slack workspace and set the target channel in the "Send to Slack" node
+8. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the AI analysis prompt to focus on specific billing error types relevant to your cases
+- Add an email notification node for patients or billing departments
+- Modify the priority thresholds in the Code node for stricter or more lenient issue flagging
+- Add a conditional branch to auto-generate dispute letters for high-priority issues
+- Extend the Google Sheets logging with additional columns for tracking dispute outcomes
 
 </details>
 
