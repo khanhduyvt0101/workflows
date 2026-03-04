@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-47_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-48_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 47 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 48 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3202,6 +3202,51 @@ Automate your patient referral intake by extracting structured data from referra
 - Adjust urgency level keywords to align with your organization's triage protocol
 - Connect to an EHR system instead of Google Sheets for direct integration
 - Add email notifications for stat/emergent referrals that need immediate attention
+
+</details>
+
+<details>
+<summary><strong>⚖️ M&A Contract Review & Risk Analysis</strong> - Review M&A contracts for risks and missing clauses with Slack alerts | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/ma-contract-review-risk-analysis.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/ma-contract-review-risk-analysis.json">📋 Open</a></summary>
+
+Automate M&A due diligence by scanning data room contracts for transaction risks, compliance gaps, and missing clauses. This workflow extracts key terms and runs parallel AI risk analysis on every document added to your data room, then logs findings and alerts your deal team via Slack.
+
+#### Who is this for?
+- M&A attorneys reviewing data room documents
+- Corporate development teams running due diligence
+- Private equity firms evaluating target company contracts
+
+#### How it works
+1. **New Data Room Doc** watches a Google Drive folder for newly uploaded contracts
+2. **Download Document** retrieves the PDF from Google Drive
+3. **Extract Contract Terms** (parallel) uses AI to extract structured data: document type, parties, effective date, term, governing law, change of control provisions, non-compete/non-solicitation clauses, IP provisions, confidentiality obligations, indemnification, and regulatory compliance flags
+4. **Risk Analysis** (parallel) performs comprehensive M&A risk assessment covering change of control risks, compliance gaps (GDPR, anti-bribery), assignment restrictions, termination risks, IP/confidentiality risks, and key person provisions
+5. **Merge Results** combines the extraction and analysis outputs
+6. **Format Assessment** processes all data into a unified risk report with risk level scoring (Critical/High/Medium/Low) based on issue counts, and identifies missing clauses
+7. **Log to Sheets** appends the due diligence findings to a Google Sheets tracking spreadsheet
+8. **Send to Slack** posts a detailed risk assessment alert with contract terms, change of control status, compliance provisions, and risk summary
+
+#### Services used
+- Google Drive (data room folder monitoring & document download)
+- PDF Vector (AI-powered contract extraction & risk analysis)
+- Merge (parallel processing combiner)
+- Code / JavaScript (risk scoring & data formatting)
+- Google Sheets (due diligence logging)
+- Slack (deal team notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set the folder ID to your M&A data room folder
+4. Create a Google Sheet with columns: Document, Type, Parties, Effective Date, Term, Governing Law, CoC Status, CoC Consent, Risk Level, Critical Issues, Missing Clauses, Processed Date
+5. Configure the Google Sheets node with your spreadsheet ID
+6. Set up Slack OAuth2 credentials and set the channel ID for your due diligence channel
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust risk scoring thresholds in the Code node to match your firm's risk tolerance
+- Add additional compliance checks (e.g., sanctions screening, export control) to the risk analysis prompt
+- Route critical-risk contracts to a separate urgent review Slack channel
+- Connect to a deal management platform instead of Google Sheets for integrated tracking
 
 </details>
 

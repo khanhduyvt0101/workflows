@@ -1,0 +1,446 @@
+{
+  "name": "Review M&A contracts for risks and missing clauses with Slack alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📊 M&A Due Diligence Scanner\n\n### What this workflow does\n1. Watches Google Drive folder for data room contracts\n2. Extracts key terms (change-of-control, IP, non-compete)\n3. AI checks for compliance gaps and transaction risks\n4. Flags missing GDPR or anti-bribery clauses\n5. Logs findings to Google Sheets\n6. Sends Slack alert with risk assessment\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for data room documents\n3. Create a Google Sheet with these columns:\n   Document | Type | Parties | Effective Date | Term | Governing Law | CoC Status | CoC Consent | Risk Level | Critical Issues | Missing Clauses | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- M&A attorneys\n- Corporate development teams\n- Private equity due diligence",
+        "height": 560,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 Parallel Processing\n\nExtract and Risk Analysis run at the\nsame time from the same PDF",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "M&A Data Room"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Data Room Doc",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract M&A due diligence information from this contract/agreement including: document type (employment agreement/vendor contract/customer agreement/IP license/lease/loan agreement/partnership agreement/NDA/other), parties involved with their roles, effective date, expiration or term, governing law jurisdiction, change of control provisions (full text if present), assignment restrictions, termination clauses including notice periods, non-compete provisions with scope and duration, non-solicitation provisions, IP ownership or assignment clauses, confidentiality obligations and survival period, indemnification terms, limitation of liability, material adverse change clauses, consent requirements, representations and warranties, and any regulatory compliance provisions (GDPR, data protection, anti-bribery).",
+        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\"},\"parties\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"role\":{\"type\":\"string\"}}}},\"effectiveDate\":{\"type\":\"string\"},\"expirationDate\":{\"type\":\"string\"},\"termLength\":{\"type\":\"string\"},\"governingLaw\":{\"type\":\"string\"},\"changeOfControl\":{\"type\":\"object\",\"properties\":{\"present\":{\"type\":\"boolean\"},\"provision\":{\"type\":\"string\"},\"consentRequired\":{\"type\":\"boolean\"},\"terminationRight\":{\"type\":\"boolean\"}}},\"assignmentRestrictions\":{\"type\":\"string\"},\"terminationClauses\":{\"type\":\"object\",\"properties\":{\"forCause\":{\"type\":\"string\"},\"forConvenience\":{\"type\":\"string\"},\"noticePeriod\":{\"type\":\"string\"},\"terminationFee\":{\"type\":\"string\"}}},\"nonCompete\":{\"type\":\"object\",\"properties\":{\"present\":{\"type\":\"boolean\"},\"scope\":{\"type\":\"string\"},\"duration\":{\"type\":\"string\"},\"geography\":{\"type\":\"string\"}}},\"nonSolicitation\":{\"type\":\"object\",\"properties\":{\"present\":{\"type\":\"boolean\"},\"scope\":{\"type\":\"string\"},\"duration\":{\"type\":\"string\"}}},\"ipProvisions\":{\"type\":\"object\",\"properties\":{\"ownership\":{\"type\":\"string\"},\"assignments\":{\"type\":\"string\"},\"licenses\":{\"type\":\"string\"}}},\"confidentiality\":{\"type\":\"object\",\"properties\":{\"present\":{\"type\":\"boolean\"},\"survivalPeriod\":{\"type\":\"string\"},\"scope\":{\"type\":\"string\"}}},\"indemnification\":{\"type\":\"string\"},\"limitationOfLiability\":{\"type\":\"string\"},\"macClause\":{\"type\":\"boolean\"},\"consentRequirements\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"repsAndWarranties\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"gdprCompliance\":{\"type\":\"boolean\"},\"dataProtectionProvisions\":{\"type\":\"string\"},\"antiBriberyProvisions\":{\"type\":\"boolean\"},\"contractValue\":{\"type\":\"string\"}},\"required\":[\"documentType\",\"parties\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Contract Terms",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Perform M&A due diligence risk analysis on this contract. Evaluate for transaction risks:\n\n**CHANGE OF CONTROL RISKS:**\n- Does this contract have change of control provisions?\n- Could the transaction trigger termination rights?\n- Are consents required from counterparties?\n- What is the financial impact if this contract is terminated?\n\n**COMPLIANCE GAPS:**\n- Is there a GDPR/data protection clause? (Required for EU operations)\n- Are anti-bribery/FCPA provisions present? (Required for US public companies)\n- Is there an anti-money laundering clause?\n- Are there adequate cybersecurity/data breach provisions?\n\n**ASSIGNMENT & SUCCESSOR RISKS:**\n- Can this contract be assigned to an acquirer?\n- Are there restrictions on assignment by operation of law?\n- Do successor obligations exist?\n\n**TERMINATION RISKS:**\n- Can the counterparty terminate without cause?\n- What is the notice period for termination?\n- Are there material adverse change triggers?\n\n**IP & CONFIDENTIALITY RISKS:**\n- Are IP rights clearly assigned or licensed?\n- Do confidentiality obligations survive termination?\n- Could IP be lost or disputed post-transaction?\n\n**KEY PERSON & NON-COMPETE:**\n- Are there key person provisions?\n- Do non-competes survive a change of control?\n- Could critical employees leave post-transaction?\n\nFor each risk area, provide:\n1. Risk Level: CRITICAL / HIGH / MEDIUM / LOW / NONE\n2. Specific finding or gap\n3. Potential impact on transaction\n4. Recommended action\n\nProvide overall risk score (1-10) and deal impact summary."
+      },
+      "id": "pdfvector-analyze",
+      "name": "Risk Analysis",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from Merge (Extract is index 0, Analysis is index 1)\nconst allItems = $input.all();\n\n// Extract data from first item\nconst extractItem = allItems[0]?.json || {};\nconst contractData = extractItem.data || extractItem;\n\n// Analysis data from second item\nconst analysisItem = allItems[1]?.json || {};\nconst riskAnalysis = analysisItem.markdown || analysisItem.answer || analysisItem.text || 'No analysis generated';\n\n// Get trigger data for file info\nconst triggerData = $('New Data Room Doc').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Format parties\nconst parties = contractData.parties || [];\nconst partiesList = parties.map(p => `${p.name} (${p.role})`).join(', ') || 'Not extracted';\nconst partyNames = parties.map(p => p.name).join(' / ') || 'Unknown';\n\n// Change of control info\nconst coc = contractData.changeOfControl || {};\nconst cocStatus = coc.present ? 'Present' : 'Not Found';\nconst cocConsent = coc.consentRequired ? 'Required' : 'Not Required';\nconst cocTermRight = coc.terminationRight ? 'Yes' : 'No';\n\n// Non-compete info\nconst nc = contractData.nonCompete || {};\nconst ncStatus = nc.present ? `${nc.duration || 'N/A'} / ${nc.geography || 'N/A'}` : 'None';\n\n// Non-solicitation info\nconst ns = contractData.nonSolicitation || {};\nconst nsStatus = ns.present ? `${ns.duration || 'N/A'}` : 'None';\n\n// Termination info\nconst term = contractData.terminationClauses || {};\nconst termNotice = term.noticePeriod || 'Not specified';\n\n// IP info\nconst ip = contractData.ipProvisions || {};\nconst ipOwnership = ip.ownership || 'Not specified';\n\n// Confidentiality\nconst conf = contractData.confidentiality || {};\nconst confSurvival = conf.survivalPeriod || 'Not specified';\n\n// Consent requirements\nconst consents = contractData.consentRequirements || [];\nconst consentsList = consents.join(', ') || 'None identified';\n\n// Compliance flags\nconst gdpr = contractData.gdprCompliance ? '✅ Present' : '❌ Missing';\nconst antiBribery = contractData.antiBriberyProvisions ? '✅ Present' : '❌ Missing';\nconst mac = contractData.macClause ? '✅ Present' : '❌ Missing';\n\n// Determine risk level from analysis\nlet riskLevel = 'Low';\nlet criticalCount = 0;\nlet highCount = 0;\n\nconst analysisLower = riskAnalysis.toLowerCase();\ncriticalCount = (analysisLower.match(/critical/g) || []).length;\nhighCount = (analysisLower.match(/high/g) || []).length;\n\nif (criticalCount >= 2) riskLevel = 'Critical';\nelse if (criticalCount >= 1 || highCount >= 3) riskLevel = 'High';\nelse if (highCount >= 1) riskLevel = 'Medium';\n\n// Missing clauses summary\nconst missingClauses = [];\nif (!contractData.gdprCompliance) missingClauses.push('GDPR');\nif (!contractData.antiBriberyProvisions) missingClauses.push('Anti-Bribery');\nif (!coc.present) missingClauses.push('Change of Control');\nif (!contractData.macClause) missingClauses.push('MAC Clause');\nif (!conf.present) missingClauses.push('Confidentiality');\n\nconst missingList = missingClauses.join(', ') || 'None';\n\nreturn [{\n  json: {\n    documentType: contractData.documentType || 'Unknown',\n    parties: partiesList,\n    partyNames: partyNames,\n    effectiveDate: contractData.effectiveDate || 'N/A',\n    expirationDate: contractData.expirationDate || 'N/A',\n    termLength: contractData.termLength || 'N/A',\n    governingLaw: contractData.governingLaw || 'Not specified',\n    contractValue: contractData.contractValue || 'Not disclosed',\n    changeOfControlStatus: cocStatus,\n    changeOfControlProvision: coc.provision || 'N/A',\n    cocConsentRequired: cocConsent,\n    cocTerminationRight: cocTermRight,\n    nonCompete: ncStatus,\n    nonSolicitation: nsStatus,\n    terminationNotice: termNotice,\n    assignmentRestrictions: contractData.assignmentRestrictions || 'None specified',\n    ipOwnership: ipOwnership,\n    confidentialitySurvival: confSurvival,\n    indemnification: contractData.indemnification || 'Not specified',\n    limitationOfLiability: contractData.limitationOfLiability || 'Not specified',\n    consentRequirements: consentsList,\n    gdprCompliance: gdpr,\n    antiBribery: antiBribery,\n    macClause: mac,\n    dataProtection: contractData.dataProtectionProvisions || 'Not specified',\n    missingClauses: missingList,\n    missingCount: missingClauses.length,\n    riskAnalysis: riskAnalysis,\n    riskLevel: riskLevel,\n    criticalIssues: criticalCount,\n    highIssues: highCount,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-data",
+      "name": "Format Assessment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "M&A Due Diligence Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Contracts"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Document": "={{ $json.fileName }}",
+            "Type": "={{ $json.documentType }}",
+            "Parties": "={{ $json.partyNames }}",
+            "Effective Date": "={{ $json.effectiveDate }}",
+            "Term": "={{ $json.termLength }}",
+            "Governing Law": "={{ $json.governingLaw }}",
+            "CoC Status": "={{ $json.changeOfControlStatus }}",
+            "CoC Consent": "={{ $json.cocConsentRequired }}",
+            "Risk Level": "={{ $json.riskLevel }}",
+            "Critical Issues": "={{ $json.criticalIssues }}",
+            "Missing Clauses": "={{ $json.missingClauses }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Document",
+              "displayName": "Document",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Parties",
+              "displayName": "Parties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Effective Date",
+              "displayName": "Effective Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Term",
+              "displayName": "Term",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Governing Law",
+              "displayName": "Governing Law",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CoC Status",
+              "displayName": "CoC Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CoC Consent",
+              "displayName": "CoC Consent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk Level",
+              "displayName": "Risk Level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Critical Issues",
+              "displayName": "Critical Issues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Missing Clauses",
+              "displayName": "Missing Clauses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "ma-due-diligence"
+        },
+        "text": "=📊 *M&A Due Diligence Analysis Complete*\n\n*Document:* {{ $('Format Assessment').item.json.fileName }}\n*Type:* {{ $('Format Assessment').item.json.documentType }}\n*Parties:* {{ $('Format Assessment').item.json.parties }}\n\n📅 *Contract Terms:*\n• Effective: {{ $('Format Assessment').item.json.effectiveDate }}\n• Expiration: {{ $('Format Assessment').item.json.expirationDate }}\n• Term: {{ $('Format Assessment').item.json.termLength }}\n• Governing Law: {{ $('Format Assessment').item.json.governingLaw }}\n\n🔄 *Change of Control:*\n• Status: {{ $('Format Assessment').item.json.changeOfControlStatus }}\n• Consent Required: {{ $('Format Assessment').item.json.cocConsentRequired }}\n• Termination Right: {{ $('Format Assessment').item.json.cocTerminationRight }}\n\n⚖️ *Restrictive Covenants:*\n• Non-Compete: {{ $('Format Assessment').item.json.nonCompete }}\n• Non-Solicitation: {{ $('Format Assessment').item.json.nonSolicitation }}\n• Termination Notice: {{ $('Format Assessment').item.json.terminationNotice }}\n\n✅ *Compliance Provisions:*\n• GDPR: {{ $('Format Assessment').item.json.gdprCompliance }}\n• Anti-Bribery: {{ $('Format Assessment').item.json.antiBribery }}\n• MAC Clause: {{ $('Format Assessment').item.json.macClause }}\n\n⚠️ *Risk Assessment:*\n• Risk Level: *{{ $('Format Assessment').item.json.riskLevel }}*\n• Critical Issues: {{ $('Format Assessment').item.json.criticalIssues }}\n• High Issues: {{ $('Format Assessment').item.json.highIssues }}\n• Missing Clauses: {{ $('Format Assessment').item.json.missingClauses }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Format Assessment').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Data Room Doc": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract Contract Terms",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Risk Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Contract Terms": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Assessment": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
