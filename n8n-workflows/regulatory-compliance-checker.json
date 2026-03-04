@@ -1,0 +1,414 @@
+{
+  "name": "Parse regulatory documents and check policy compliance with AI",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ⚖️ Regulatory Change Tracker\n\n### What this workflow does\n1. Watches Google Drive folder for new regulations\n2. Parses regulatory text into clean markdown\n3. AI compares against your internal policies\n4. Identifies provisions requiring updates\n5. Logs findings to Google Sheets\n6. Sends Slack alert with action items\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for regulatory documents\n3. Create a Google Sheet with these columns:\n   Regulation Name | Jurisdiction | Effective Date | Key Provisions | Policy Gaps | Affected Templates | Priority | Action Items | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- In-house legal teams\n- Compliance departments\n- Regulatory affairs managers",
+        "height": 520,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 Parallel Processing\n\nParse and Policy Analysis run at the\nsame time from the same PDF",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Regulatory Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Regulation",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "parse",
+        "inputType": "file",
+        "binaryPropertyName": "data"
+      },
+      "id": "pdfvector-parse",
+      "name": "Parse Regulation",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Analyze this regulatory document and identify compliance requirements. Provide:\n\n**REGULATION OVERVIEW:**\n- Regulation name and number\n- Issuing authority/jurisdiction\n- Effective date and compliance deadlines\n- Scope (who is affected)\n\n**KEY PROVISIONS:**\nList the main requirements with section references:\n1. [Provision] - Section [X]\n2. [Provision] - Section [X]\n(continue for all major provisions)\n\n**POLICY IMPACT ANALYSIS:**\nFor typical internal policies, identify:\n\n1. DATA PROTECTION POLICIES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n2. EMPLOYEE POLICIES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n3. VENDOR/THIRD-PARTY POLICIES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n4. OPERATIONAL PROCEDURES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n**CONTRACT TEMPLATE IMPACT:**\n- Templates requiring updates: [list]\n- New clauses needed: [list]\n- Clauses to remove/modify: [list]\n\n**PRIORITY ACTIONS:**\nRank by urgency (Critical/High/Medium/Low):\n1. [Action] - [Priority] - [Deadline]\n2. [Action] - [Priority] - [Deadline]\n\n**PENALTIES FOR NON-COMPLIANCE:**\n- Financial penalties: [amount/range]\n- Other consequences: [list]\n\nProvide overall compliance complexity score (1-10) and estimated implementation effort (hours/days)."
+      },
+      "id": "pdfvector-analyze",
+      "name": "Policy Gap Analysis",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from Merge (Parse is index 0, Analysis is index 1)\nconst allItems = $input.all();\n\n// Parse data from first item\nconst parseItem = allItems[0]?.json || {};\nconst parsedMarkdown = parseItem.markdown || parseItem.text || 'No content parsed';\nconst pageCount = parseItem.pageCount || 0;\n\n// Analysis data from second item\nconst analysisItem = allItems[1]?.json || {};\nconst policyAnalysis = analysisItem.markdown || analysisItem.answer || analysisItem.text || 'No analysis generated';\n\n// Get trigger data for file info\nconst triggerData = $('New Regulation').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Extract regulation name from filename or content\nlet regulationName = fileName.replace(/\\.[^/.]+$/, '').replace(/_/g, ' ');\n\n// Determine jurisdiction from analysis\nlet jurisdiction = 'Unknown';\nconst analysisLower = policyAnalysis.toLowerCase();\nif (analysisLower.includes('european union') || analysisLower.includes('eu ')) jurisdiction = 'EU';\nelse if (analysisLower.includes('united states') || analysisLower.includes('federal')) jurisdiction = 'US Federal';\nelse if (analysisLower.includes('california')) jurisdiction = 'US - California';\nelse if (analysisLower.includes('colorado')) jurisdiction = 'US - Colorado';\nelse if (analysisLower.includes('new york')) jurisdiction = 'US - New York';\nelse if (analysisLower.includes('uk') || analysisLower.includes('united kingdom')) jurisdiction = 'UK';\n\n// Count policy gaps mentioned\nlet gapCount = 0;\nif (analysisLower.includes('gap')) {\n  gapCount = (analysisLower.match(/gap/g) || []).length;\n}\n\n// Determine priority\nlet priority = 'Medium';\nlet criticalCount = (analysisLower.match(/critical/g) || []).length;\nlet highCount = (analysisLower.match(/high/g) || []).length;\n\nif (criticalCount >= 2) priority = 'Critical';\nelse if (criticalCount >= 1 || highCount >= 3) priority = 'High';\nelse if (highCount >= 1) priority = 'Medium';\nelse priority = 'Low';\n\n// Extract action items count\nlet actionCount = 0;\nconst actionMatches = policyAnalysis.match(/\\d+\\./g);\nif (actionMatches) actionCount = actionMatches.length;\n\nreturn [{\n  json: {\n    regulationName: regulationName,\n    jurisdiction: jurisdiction,\n    pageCount: pageCount,\n    parsedContent: parsedMarkdown.substring(0, 500) + '...',\n    fullParsedContent: parsedMarkdown,\n    policyAnalysis: policyAnalysis,\n    gapCount: gapCount,\n    actionCount: actionCount,\n    priority: priority,\n    criticalItems: criticalCount,\n    highItems: highCount,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-data",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Regulatory Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Regulations"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Regulation Name": "={{ $json.regulationName }}",
+            "Jurisdiction": "={{ $json.jurisdiction }}",
+            "Pages": "={{ $json.pageCount }}",
+            "Policy Gaps": "={{ $json.gapCount }}",
+            "Action Items": "={{ $json.actionCount }}",
+            "Priority": "={{ $json.priority }}",
+            "Critical Items": "={{ $json.criticalItems }}",
+            "High Items": "={{ $json.highItems }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Regulation Name",
+              "displayName": "Regulation Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Jurisdiction",
+              "displayName": "Jurisdiction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pages",
+              "displayName": "Pages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Policy Gaps",
+              "displayName": "Policy Gaps",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Action Items",
+              "displayName": "Action Items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Critical Items",
+              "displayName": "Critical Items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "High Items",
+              "displayName": "High Items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "regulatory-compliance"
+        },
+        "text": "=⚖️ *New Regulatory Document Analyzed*\n\n*Regulation:* {{ $('Format Results').item.json.regulationName }}\n*Jurisdiction:* {{ $('Format Results').item.json.jurisdiction }}\n*Pages:* {{ $('Format Results').item.json.pageCount }}\n\n📊 *Impact Summary:*\n• Policy Gaps Found: {{ $('Format Results').item.json.gapCount }}\n• Action Items: {{ $('Format Results').item.json.actionCount }}\n• Priority: *{{ $('Format Results').item.json.priority }}*\n• Critical Items: {{ $('Format Results').item.json.criticalItems }}\n• High Priority Items: {{ $('Format Results').item.json.highItems }}\n\n📝 *Policy Gap Analysis:*\n{{ $('Format Results').item.json.policyAnalysis }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Format Results').item.json.fileId }}/view|View Regulation>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Regulation": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Parse Regulation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Policy Gap Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Regulation": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policy Gap Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
