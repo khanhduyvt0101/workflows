@@ -1,0 +1,436 @@
+{
+  "name": "Scan HIPAA documents for compliance gaps with risk scoring",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🏥 HIPAA Risk Assessment Automator\n\n### What this workflow does\n1. Watches Google Drive folder for compliance docs\n2. Extracts data from policies, BAAs, training records\n3. AI checks against HIPAA Security Rule requirements\n4. Identifies gaps and assigns risk levels\n5. Logs findings to Google Sheets\n6. Sends Slack alert with compliance score\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for compliance documents\n3. Create a Google Sheet with these columns:\n   Document Type | Organization | Document Date | Risk Level | Critical Issues | High Issues | Safeguards Found | Implemented | Compliance Score | Next Review | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Healthcare compliance officers\n- HIPAA consultants\n- Healthcare IT security teams",
+        "height": 540,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 Parallel Processing\n\nExtract and Gap Analysis run at the\nsame time from the same PDF",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "HIPAA Compliance Docs"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Compliance Doc",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract HIPAA compliance-related information from this document including: document type (security policy/BAA/training record/incident log/risk assessment/procedure), organization name, document date, version number, last review date, next review date, covered entity or business associate name, administrative safeguards mentioned, physical safeguards mentioned, technical safeguards mentioned, encryption requirements, access control policies, audit controls, breach notification procedures, employee training requirements, sanctions policy, contingency plans, and any specific compliance certifications or attestations.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\"},\"organizationName\":{\"type\":\"string\"},\"documentDate\":{\"type\":\"string\"},\"versionNumber\":{\"type\":\"string\"},\"lastReviewDate\":{\"type\":\"string\"},\"nextReviewDate\":{\"type\":\"string\"},\"coveredEntity\":{\"type\":\"string\"},\"businessAssociate\":{\"type\":\"string\"},\"administrativeSafeguards\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"safeguard\":{\"type\":\"string\"},\"implemented\":{\"type\":\"boolean\"},\"details\":{\"type\":\"string\"}}}},\"physicalSafeguards\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"safeguard\":{\"type\":\"string\"},\"implemented\":{\"type\":\"boolean\"},\"details\":{\"type\":\"string\"}}}},\"technicalSafeguards\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"safeguard\":{\"type\":\"string\"},\"implemented\":{\"type\":\"boolean\"},\"details\":{\"type\":\"string\"}}}},\"encryptionPolicy\":{\"type\":\"string\"},\"accessControlPolicy\":{\"type\":\"string\"},\"auditControls\":{\"type\":\"string\"},\"breachNotificationProcedure\":{\"type\":\"string\"},\"trainingRequirements\":{\"type\":\"string\"},\"sanctionsPolicy\":{\"type\":\"string\"},\"contingencyPlan\":{\"type\":\"string\"},\"certifications\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"documentType\",\"organizationName\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Compliance Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Perform a HIPAA Security Rule compliance gap analysis on this document. Evaluate against the following requirements:\n\n**ADMINISTRATIVE SAFEGUARDS (§164.308):**\n- Security management process (risk analysis, risk management, sanctions, review)\n- Assigned security responsibility\n- Workforce security (authorization, clearance, termination)\n- Information access management\n- Security awareness training\n- Security incident procedures\n- Contingency plan (backup, recovery, emergency)\n- Evaluation\n- Business associate contracts\n\n**PHYSICAL SAFEGUARDS (§164.310):**\n- Facility access controls\n- Workstation use and security\n- Device and media controls\n\n**TECHNICAL SAFEGUARDS (§164.312):**\n- Access control (unique IDs, emergency access, auto-logoff, encryption)\n- Audit controls\n- Integrity controls\n- Person authentication\n- Transmission security\n\nFor each requirement, identify:\n1. Requirement name\n2. Status: COMPLIANT / GAP IDENTIFIED / NOT ADDRESSED / PARTIAL\n3. Evidence found in document\n4. Specific gap description if applicable\n5. Severity: CRITICAL / HIGH / MEDIUM / LOW\n6. Remediation recommendation\n\nProvide an overall compliance score (0-100) and prioritized remediation roadmap."
+      },
+      "id": "pdfvector-analyze",
+      "name": "Gap Analysis",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from Merge (Extract is index 0, Analysis is index 1)\nconst allItems = $input.all();\n\n// Extract data from first item\nconst extractItem = allItems[0]?.json || {};\nconst docData = extractItem.data || extractItem;\n\n// Analysis data from second item\nconst analysisItem = allItems[1]?.json || {};\nconst gapAnalysis = analysisItem.markdown || analysisItem.answer || analysisItem.text || 'No analysis generated';\n\n// Get trigger data for file info\nconst triggerData = $('New Compliance Doc').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Count safeguards\nconst adminSafeguards = docData.administrativeSafeguards || [];\nconst physicalSafeguards = docData.physicalSafeguards || [];\nconst technicalSafeguards = docData.technicalSafeguards || [];\n\nconst totalSafeguards = adminSafeguards.length + physicalSafeguards.length + technicalSafeguards.length;\nconst implementedCount = [\n  ...adminSafeguards.filter(s => s.implemented),\n  ...physicalSafeguards.filter(s => s.implemented),\n  ...technicalSafeguards.filter(s => s.implemented)\n].length;\n\n// Determine risk level based on gap analysis content\nlet riskLevel = 'Low';\nlet criticalCount = 0;\nlet highCount = 0;\n\nconst analysisLower = gapAnalysis.toLowerCase();\nif (analysisLower.includes('critical')) {\n  criticalCount = (analysisLower.match(/critical/g) || []).length;\n}\nif (analysisLower.includes('high')) {\n  highCount = (analysisLower.match(/high/g) || []).length;\n}\n\nif (criticalCount >= 2) riskLevel = 'Critical';\nelse if (criticalCount >= 1 || highCount >= 3) riskLevel = 'High';\nelse if (highCount >= 1) riskLevel = 'Medium';\n\n// Calculate compliance score\nconst complianceScore = totalSafeguards > 0 ? Math.round((implementedCount / totalSafeguards) * 100) : 0;\n\nreturn [{\n  json: {\n    documentType: docData.documentType || 'Unknown',\n    organizationName: docData.organizationName || 'Unknown',\n    documentDate: docData.documentDate || 'N/A',\n    versionNumber: docData.versionNumber || 'N/A',\n    lastReviewDate: docData.lastReviewDate || 'N/A',\n    nextReviewDate: docData.nextReviewDate || 'N/A',\n    adminSafeguardsCount: adminSafeguards.length,\n    physicalSafeguardsCount: physicalSafeguards.length,\n    technicalSafeguardsCount: technicalSafeguards.length,\n    totalSafeguards: totalSafeguards,\n    implementedSafeguards: implementedCount,\n    gapAnalysis: gapAnalysis,\n    riskLevel: riskLevel,\n    criticalIssues: criticalCount,\n    highIssues: highCount,\n    complianceScore: complianceScore,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-data",
+      "name": "Format Assessment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "HIPAA Assessments"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Assessments"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Document Type": "={{ $json.documentType }}",
+            "Organization": "={{ $json.organizationName }}",
+            "Document Date": "={{ $json.documentDate }}",
+            "Risk Level": "={{ $json.riskLevel }}",
+            "Critical Issues": "={{ $json.criticalIssues }}",
+            "High Issues": "={{ $json.highIssues }}",
+            "Safeguards Found": "={{ $json.totalSafeguards }}",
+            "Implemented": "={{ $json.implementedSafeguards }}",
+            "Compliance Score": "={{ $json.complianceScore }}%",
+            "Next Review": "={{ $json.nextReviewDate }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Document Type",
+              "displayName": "Document Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Organization",
+              "displayName": "Organization",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document Date",
+              "displayName": "Document Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk Level",
+              "displayName": "Risk Level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Critical Issues",
+              "displayName": "Critical Issues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "High Issues",
+              "displayName": "High Issues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Safeguards Found",
+              "displayName": "Safeguards Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Implemented",
+              "displayName": "Implemented",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Compliance Score",
+              "displayName": "Compliance Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Next Review",
+              "displayName": "Next Review",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "hipaa-compliance"
+        },
+        "text": "=🏥 *HIPAA Risk Assessment Complete*\n\n*Document:* {{ $('Format Assessment').item.json.documentType }}\n*Organization:* {{ $('Format Assessment').item.json.organizationName }}\n*Version:* {{ $('Format Assessment').item.json.versionNumber }}\n\n📅 *Review Status:*\n• Document Date: {{ $('Format Assessment').item.json.documentDate }}\n• Last Review: {{ $('Format Assessment').item.json.lastReviewDate }}\n• Next Review: {{ $('Format Assessment').item.json.nextReviewDate }}\n\n⚠️ *Risk Assessment:*\n• Risk Level: *{{ $('Format Assessment').item.json.riskLevel }}*\n• Critical Issues: {{ $('Format Assessment').item.json.criticalIssues }}\n• High Issues: {{ $('Format Assessment').item.json.highIssues }}\n• Compliance Score: {{ $('Format Assessment').item.json.complianceScore }}%\n\n🛡️ *Safeguards:*\n• Administrative: {{ $('Format Assessment').item.json.adminSafeguardsCount }}\n• Physical: {{ $('Format Assessment').item.json.physicalSafeguardsCount }}\n• Technical: {{ $('Format Assessment').item.json.technicalSafeguardsCount }}\n• Implemented: {{ $('Format Assessment').item.json.implementedSafeguards }} / {{ $('Format Assessment').item.json.totalSafeguards }}\n\n📝 *Gap Analysis:*\n{{ $('Format Assessment').item.json.gapAnalysis }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Format Assessment').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Compliance Doc": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract Compliance Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gap Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Compliance Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gap Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Assessment": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
