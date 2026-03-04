@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-46_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-47_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 46 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 47 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3160,6 +3160,48 @@ Automate HIPAA Security Rule compliance assessments by scanning policies, BAAs, 
 - Add additional HIPAA requirements to the gap analysis prompt for more thorough evaluation
 - Connect to a database instead of Google Sheets for enterprise-scale tracking
 - Add email notifications for critical-risk findings that need immediate attention
+
+</details>
+
+<details>
+<summary><strong>🏥 Patient Referral Processor</strong> - Extract patient referrals from PDFs and route to departments | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/patient-referral-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/patient-referral-processor.json">📋 Open</a></summary>
+
+Automate your patient referral intake by extracting structured data from referral letter PDFs. This workflow watches a Google Drive folder, uses AI to pull out patient demographics, referring physician details, diagnosis, ICD codes, and urgency level, then intelligently routes the referral to the correct department and notifies your team via Slack.
+
+#### Who is this for?
+- Hospital intake teams processing incoming referrals
+- Referral coordinators managing multi-department routing
+- Specialty clinic staff triaging patient referrals
+
+#### How it works
+1. **New Referral Letter** monitors a Google Drive folder for newly uploaded referral PDFs
+2. **Download Referral** retrieves the PDF file from Google Drive
+3. **Extract Referral Data** uses PDF Vector AI to extract structured patient information including name, DOB, insurance, referring physician, diagnosis, ICD codes, urgency level, medications, allergies, and special instructions
+4. **Format and Route** processes the extracted data, determines the target department based on the requested service (e.g., Cardiology, Orthopedics, Neurology, Oncology, etc.), and assigns a priority flag based on urgency level
+5. **Log to Sheets** appends the complete referral record to a Google Sheets tracking spreadsheet
+6. **Send to Slack** posts a detailed referral notification with patient info, insurance, referring physician, diagnosis, department routing, and a link to the original document
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI-powered referral data extraction)
+- Code / JavaScript (department routing & data formatting)
+- Google Sheets (referral logging & tracking)
+- Slack (team notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set the folder ID to your referral documents folder
+4. Create a Google Sheet with columns: Patient Name, DOB, Phone, Insurance, Referring MD, MD Practice, Diagnosis, ICD Codes, Urgency, Requested Service, Department, Status, Referral Date, Processed Date
+5. Configure the Google Sheets node with your spreadsheet ID
+6. Set up Slack OAuth2 credentials and set the channel ID for referral notifications
+7. Activate the workflow
+
+#### Customizing this workflow
+- Add more department routing rules in the Code node to match your facility's specialties
+- Adjust urgency level keywords to align with your organization's triage protocol
+- Connect to an EHR system instead of Google Sheets for direct integration
+- Add email notifications for stat/emergent referrals that need immediate attention
 
 </details>
 
