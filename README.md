@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-50_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-51_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 50 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 51 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3331,6 +3331,48 @@ Automate the abstraction of commercial lease documents by extracting key financi
 - Route leases with termination clauses or short remaining terms to a separate urgent Slack channel
 - Connect to a property management system or CRM instead of Google Sheets for integrated portfolio tracking
 - Add conditional logic to flag leases with above-market rent escalations or missing renewal options
+
+</details>
+
+<details>
+<summary><strong>💰 ISDA Master Agreement Terms Extraction</strong> - Extract ISDA terms and log to Google Sheets | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/isda-terms-extraction.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/isda-terms-extraction.json">📋 Open</a></summary>
+
+Automatically digitize ISDA Master Agreements by extracting key legal and financial terms from uploaded documents. This workflow monitors a Google Drive folder for new ISDA documents, uses AI-powered extraction to pull out netting provisions, credit support terms, close-out mechanics, cross-default thresholds, and governing law details, then logs everything to a structured Google Sheet and sends a comprehensive Slack summary.
+
+#### Who is this for?
+- Derivatives trading desks managing multiple ISDA agreements
+- Financial institutions needing to digitize legacy agreements
+- Risk management teams tracking counterparty exposure and credit terms
+
+#### How it works
+1. **New ISDA Document** - Google Drive trigger watches a designated folder for newly uploaded ISDA documents
+2. **Download Document** - Downloads the document file from Google Drive for processing
+3. **Extract ISDA Terms** - PDF Vector AI extracts structured data including party details, LEIs, netting provisions, credit support terms, thresholds, events of default, cross-default provisions, close-out mechanics, and amendments
+4. **Format ISDA Data** - JavaScript code normalizes and formats all extracted fields into a consistent structure for downstream use
+5. **Log to Sheets** - Appends a row to Google Sheets with counterparty names, agreement date, governing law, netting type, credit support details, thresholds, MTA, cross-default status, and close-out method
+6. **Send to Slack** - Posts a detailed agreement summary to Slack including counterparty info, LEIs, jurisdictions, netting details, credit support terms, and risk provisions with a link to the source document
+
+#### Services used
+- Google Drive (document upload monitoring and file download)
+- PDF Vector (AI-powered ISDA term extraction with structured schema)
+- Google Sheets (agreement terms logging and tracking)
+- Slack (agreement summary notifications)
+- Code / JavaScript (data normalization and formatting)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set `YOUR_FOLDER_ID` to your ISDA documents folder
+4. Create a Google Sheet with columns: Party A | Party B | Agreement Date | Governing Law | Netting Type | Credit Support | Threshold A | Threshold B | MTA | Cross Default | Close-out Method | Processed Date
+5. Configure the Google Sheets node with your spreadsheet ID
+6. Set up Slack OAuth2 credentials and set the channel ID for ISDA agreement notifications
+7. Activate the workflow
+
+#### Customizing this workflow
+- Extend the extraction schema to capture additional ISDA-specific fields such as Additional Termination Events, Specified Entities, or Multibranch provisions
+- Add conditional logic to flag agreements with high cross-default thresholds or missing credit support annexes for priority review
+- Connect to a risk management system or compliance database instead of Google Sheets for integrated counterparty risk tracking
+- Add a second Slack channel for urgent alerts when agreements contain non-standard amendments or unusual governing law jurisdictions
 
 </details>
 
