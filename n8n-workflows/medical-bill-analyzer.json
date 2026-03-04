@@ -1,0 +1,436 @@
+{
+  "name": "Analyze medical bills for errors with AI and Slack alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 💊 Medical Bill Dispute Assistant\n\n### What this workflow does\n1. Watches Google Drive folder for medical bills\n2. Extracts line items, CPT codes, and charges\n3. AI checks for duplicate billing and overcharges\n4. Flags discrepancies between amounts\n5. Logs findings to Google Sheets\n6. Sends Slack alert with analysis\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for bills\n3. Create a Google Sheet with these columns:\n   Provider | Patient | Date of Service | Total Billed | Insurance Paid | Patient Owes | Line Items | Issues Found | Dispute Priority | Due Date | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Patients reviewing hospital bills\n- Medical billing advocates\n- Healthcare consultants",
+        "height": 540,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 Parallel Processing\n\nExtract and Ask run at the same time\nso both get the PDF binary data",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Medical Bills"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Medical Bill",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Bill",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract medical bill information including: provider name, provider address, patient name, account number, date of service, admission date if applicable, discharge date if applicable, all line items with CPT/HCPCS codes, descriptions, quantities, unit charges, total charges, diagnosis codes (ICD-10), insurance adjustments, patient responsibility, payment due date, and any itemized pharmacy or supply charges.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"providerName\":{\"type\":\"string\"},\"providerAddress\":{\"type\":\"string\"},\"patientName\":{\"type\":\"string\"},\"accountNumber\":{\"type\":\"string\"},\"dateOfService\":{\"type\":\"string\"},\"admissionDate\":{\"type\":\"string\"},\"dischargeDate\":{\"type\":\"string\"},\"lineItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"cptCode\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unitCharge\":{\"type\":\"number\"},\"totalCharge\":{\"type\":\"number\"},\"category\":{\"type\":\"string\"}}}},\"diagnosisCodes\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"code\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"}}}},\"totalBilled\":{\"type\":\"number\"},\"insuranceAdjustments\":{\"type\":\"number\"},\"insurancePaid\":{\"type\":\"number\"},\"patientResponsibility\":{\"type\":\"number\"},\"paymentDueDate\":{\"type\":\"string\"},\"facilityCharges\":{\"type\":\"number\"},\"physicianCharges\":{\"type\":\"number\"},\"pharmacyCharges\":{\"type\":\"number\"},\"supplyCharges\":{\"type\":\"number\"}},\"required\":[\"providerName\",\"totalBilled\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Bill Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Analyze this medical bill for potential errors, overcharges, and disputable items. Check for:\n\n1. DUPLICATE BILLING: Same service billed multiple times on same date\n2. UNBUNDLING: Services that should be billed together but separated\n3. UPCODING: Higher-level codes than services warrant\n4. PHANTOM CHARGES: Services not typically associated with the procedure\n5. BALANCE BILLING: Charges exceeding allowed amounts for in-network\n6. ITEMIZED DISCREPANCIES: Unit prices that seem excessive\n7. DATE ERRORS: Services billed outside admission dates\n8. QUANTITY ERRORS: Excessive quantities for supplies/medications\n\nFor each issue found, provide:\n- Issue type\n- Specific charge(s) affected\n- Estimated overcharge amount\n- Recommended dispute action\n- Priority level (High/Medium/Low)\n\nAlso provide an overall bill health score (1-10) and total potential savings."
+      },
+      "id": "pdfvector-analyze",
+      "name": "Analyze for Errors",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from Merge (Extract is index 0, Analysis is index 1)\nconst allItems = $input.all();\n\n// Extract data from first item (PDF Vector Extract)\nconst extractItem = allItems[0]?.json || {};\nconst billData = extractItem.data || extractItem;\n\n// Analysis data from second item (PDF Vector Ask)\nconst analysisItem = allItems[1]?.json || {};\nconst analysis = analysisItem.markdown || analysisItem.answer || analysisItem.text || 'No analysis generated';\n\n// Get trigger data for file info\nconst triggerData = $('New Medical Bill').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Format line items\nconst lineItems = billData.lineItems || [];\nconst lineItemsList = lineItems.map(item => \n  `${item.cptCode || 'N/A'}: ${item.description} - $${item.totalCharge?.toFixed(2) || '0.00'}`\n).join('\\n') || 'No line items extracted';\n\n// Calculate totals\nconst totalBilled = billData.totalBilled || 0;\nconst insurancePaid = billData.insurancePaid || 0;\nconst patientResp = billData.patientResponsibility || 0;\n\n// Count potential issues from analysis\nlet issueCount = 0;\nlet priority = 'Low';\nconst analysisLower = analysis.toLowerCase();\nif (analysisLower.includes('duplicate')) issueCount++;\nif (analysisLower.includes('unbundling')) issueCount++;\nif (analysisLower.includes('upcoding')) issueCount++;\nif (analysisLower.includes('overcharge')) issueCount++;\nif (analysisLower.includes('error')) issueCount++;\n\nif (issueCount >= 3) priority = 'High';\nelse if (issueCount >= 1) priority = 'Medium';\n\nreturn [{\n  json: {\n    providerName: billData.providerName || 'Unknown Provider',\n    patientName: billData.patientName || 'Unknown',\n    accountNumber: billData.accountNumber || 'N/A',\n    dateOfService: billData.dateOfService || 'N/A',\n    admissionDate: billData.admissionDate || 'N/A',\n    dischargeDate: billData.dischargeDate || 'N/A',\n    totalBilled: totalBilled,\n    insurancePaid: insurancePaid,\n    patientResponsibility: patientResp,\n    paymentDueDate: billData.paymentDueDate || 'N/A',\n    lineItemCount: lineItems.length,\n    lineItemsList: lineItemsList,\n    facilityCharges: billData.facilityCharges || 0,\n    physicianCharges: billData.physicianCharges || 0,\n    pharmacyCharges: billData.pharmacyCharges || 0,\n    supplyCharges: billData.supplyCharges || 0,\n    analysisReport: analysis,\n    issueCount: issueCount,\n    disputePriority: priority,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-data",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Medical Bill Reviews"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Bills"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Provider": "={{ $json.providerName }}",
+            "Patient": "={{ $json.patientName }}",
+            "Date of Service": "={{ $json.dateOfService }}",
+            "Total Billed": "={{ $json.totalBilled }}",
+            "Insurance Paid": "={{ $json.insurancePaid }}",
+            "Patient Owes": "={{ $json.patientResponsibility }}",
+            "Line Items": "={{ $json.lineItemCount }}",
+            "Issues Found": "={{ $json.issueCount }}",
+            "Dispute Priority": "={{ $json.disputePriority }}",
+            "Due Date": "={{ $json.paymentDueDate }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Provider",
+              "displayName": "Provider",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Patient",
+              "displayName": "Patient",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date of Service",
+              "displayName": "Date of Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Billed",
+              "displayName": "Total Billed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Insurance Paid",
+              "displayName": "Insurance Paid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Patient Owes",
+              "displayName": "Patient Owes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Line Items",
+              "displayName": "Line Items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Issues Found",
+              "displayName": "Issues Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Dispute Priority",
+              "displayName": "Dispute Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "billing-reviews"
+        },
+        "text": "=\ud83d\udc8a *Medical Bill Analysis Complete*\n\n*Provider:* {{ $('Format Results').item.json.providerName }}\n*Patient:* {{ $('Format Results').item.json.patientName }}\n*Account:* {{ $('Format Results').item.json.accountNumber }}\n\n\ud83d\udcc5 *Service Details:*\n\u2022 Date: {{ $('Format Results').item.json.dateOfService }}\n\u2022 Admission: {{ $('Format Results').item.json.admissionDate }}\n\u2022 Discharge: {{ $('Format Results').item.json.dischargeDate }}\n\n\ud83d\udcb0 *Charges:*\n\u2022 Total Billed: ${{ $('Format Results').item.json.totalBilled }}\n\u2022 Insurance Paid: ${{ $('Format Results').item.json.insurancePaid }}\n\u2022 *Patient Owes: ${{ $('Format Results').item.json.patientResponsibility }}*\n\u2022 Due: {{ $('Format Results').item.json.paymentDueDate }}\n\n\ud83d\udd0d *Analysis:*\n\u2022 Issues Found: {{ $('Format Results').item.json.issueCount }}\n\u2022 Priority: {{ $('Format Results').item.json.disputePriority }}\n\n\ud83d\udcdd *AI Report:*\n{{ $('Format Results').item.json.analysisReport }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Results').item.json.fileId }}/view|View Bill>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Medical Bill": {
+      "main": [
+        [
+          {
+            "node": "Download Bill",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Bill": {
+      "main": [
+        [
+          {
+            "node": "Extract Bill Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Analyze for Errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Bill Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze for Errors": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
