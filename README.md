@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-48_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-49_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 48 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 49 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3247,6 +3247,49 @@ Automate M&A due diligence by scanning data room contracts for transaction risks
 - Add additional compliance checks (e.g., sanctions screening, export control) to the risk analysis prompt
 - Route critical-risk contracts to a separate urgent review Slack channel
 - Connect to a deal management platform instead of Google Sheets for integrated tracking
+
+</details>
+
+<details>
+<summary><strong>⚖️ Regulatory Compliance Checker</strong> - Parse regulatory documents and check policy compliance with AI | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/regulatory-compliance-checker.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/regulatory-compliance-checker.json">📋 Open</a></summary>
+
+Automate regulatory change tracking for your legal and compliance teams. Drop new regulation PDFs into a Google Drive folder and let AI parse the document, identify compliance gaps against your internal policies, and deliver prioritized action items directly to Slack.
+
+#### Who is this for?
+- In-house legal teams tracking regulatory changes
+- Compliance departments managing policy updates
+- Regulatory affairs managers monitoring new legislation
+
+#### How it works
+1. **Google Drive Trigger** watches your designated folder for new regulatory document uploads
+2. **Download Document** retrieves the PDF from Google Drive
+3. **Parse Regulation** (PDF Vector) converts the regulatory text into clean, structured markdown (runs in parallel with step 4)
+4. **Policy Gap Analysis** (PDF Vector AI) analyzes the document for compliance requirements, policy impact, contract template changes, priority actions, and penalties for non-compliance
+5. **Merge Results** combines the parsed content and AI analysis into a single data stream
+6. **Format Results** (Code) extracts jurisdiction, counts policy gaps, determines priority level (Critical/High/Medium/Low), and structures all findings
+7. **Log to Sheets** appends regulation name, jurisdiction, gap count, action items, priority, and processing date to Google Sheets
+8. **Send to Slack** posts a detailed alert with impact summary, policy gap analysis, and a link to the original document
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (document parsing & AI compliance analysis)
+- Google Sheets (regulatory tracking log)
+- Slack (compliance team notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set the folder ID to your regulatory documents folder
+4. Create a Google Sheet with columns: Regulation Name, Jurisdiction, Pages, Policy Gaps, Action Items, Priority, Critical Items, High Items, Processed Date
+5. Configure the Google Sheets node with your spreadsheet ID
+6. Set up Slack OAuth2 credentials and set the channel ID for your compliance channel
+7. Activate the workflow
+
+#### Customizing this workflow
+- Expand jurisdiction detection in the Code node to cover additional regions (e.g., APAC, LATAM)
+- Add additional policy categories to the AI analysis prompt for industry-specific regulations
+- Route critical-priority regulations to a separate urgent Slack channel or email notification
+- Connect to a compliance management platform instead of Google Sheets for integrated tracking
 
 </details>
 
