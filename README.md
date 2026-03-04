@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-45_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-46_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 45 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 46 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3116,6 +3116,50 @@ Catch billing errors before you overpay. This workflow automatically watches for
 - Modify the priority thresholds in the Code node for stricter or more lenient issue flagging
 - Add a conditional branch to auto-generate dispute letters for high-priority issues
 - Extend the Google Sheets logging with additional columns for tracking dispute outcomes
+
+</details>
+
+<details>
+<summary><strong>🏥 HIPAA Compliance Scanner</strong> - Scan HIPAA documents for compliance gaps with risk scoring | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/hipaa-compliance-scanner.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/hipaa-compliance-scanner.json">📋 Open</a></summary>
+
+Automate HIPAA Security Rule compliance assessments by scanning policies, BAAs, training records, and other healthcare documents. The workflow uses AI to extract compliance data and perform gap analysis in parallel, then scores risk levels and sends detailed findings to your team via Slack.
+
+#### Who is this for?
+- Healthcare compliance officers managing HIPAA audits
+- HIPAA consultants assessing client organizations
+- Healthcare IT security teams monitoring safeguard implementation
+
+#### How it works
+1. **New Compliance Doc** watches a Google Drive folder for newly uploaded compliance documents (policies, BAAs, training records, incident logs)
+2. **Download Document** retrieves the PDF from Google Drive
+3. **Extract Compliance Data** (parallel) uses AI to extract structured data including document type, organization, safeguards (administrative, physical, technical), encryption policies, access controls, audit controls, breach notification procedures, and certifications
+4. **Gap Analysis** (parallel) performs a comprehensive HIPAA Security Rule gap analysis evaluating against Administrative Safeguards (§164.308), Physical Safeguards (§164.310), and Technical Safeguards (§164.312), identifying compliance status, evidence, gaps, severity, and remediation recommendations
+5. **Merge Results** combines the extracted data and gap analysis into a single item
+6. **Format Assessment** calculates compliance scores, counts safeguards, determines risk level (Critical/High/Medium/Low) based on gap findings, and structures the final assessment
+7. **Log to Sheets** appends the assessment results to a Google Sheets tracking spreadsheet with document type, risk level, issue counts, compliance score, and review dates
+8. **Send to Slack** posts a detailed compliance report to your team channel including risk level, compliance score, safeguard breakdown, and full gap analysis
+
+#### Services used
+- Google Drive (compliance document monitoring & download)
+- PDF Vector (AI-powered data extraction & gap analysis)
+- Google Sheets (assessment tracking & logging)
+- Slack (team notifications & compliance alerts)
+- Code / JavaScript (risk scoring & data formatting)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set the folder ID to your compliance documents folder
+4. Create a Google Sheet with columns: Document Type, Organization, Document Date, Risk Level, Critical Issues, High Issues, Safeguards Found, Implemented, Compliance Score, Next Review, Processed Date
+5. Configure the Google Sheets node with your spreadsheet ID
+6. Set up Slack OAuth2 credentials and set the channel ID for compliance alerts
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the risk level thresholds in the Code node to match your organization's risk tolerance
+- Add additional HIPAA requirements to the gap analysis prompt for more thorough evaluation
+- Connect to a database instead of Google Sheets for enterprise-scale tracking
+- Add email notifications for critical-risk findings that need immediate attention
 
 </details>
 
