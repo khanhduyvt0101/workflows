@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-43_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-44_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 43 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 44 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3028,6 +3028,48 @@ Turn your reading into structured, searchable knowledge. Drop a book chapter PDF
 - Add additional columns to Google Sheets for vocabulary terms or statistics
 - Modify the Slack message format to include full quotes or concept definitions
 - Add an email notification node for personal reading summaries
+
+</details>
+
+<details>
+<summary><strong>🏥 Extract Clinical Trial Data from PDFs</strong> - Extract study data from trial documents and log to Google Sheets | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/extract-trial-data-pdfs.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/extract-trial-data-pdfs.json">📋 Open</a></summary>
+
+Automate the extraction of structured clinical trial data from PDF documents. This workflow monitors a Google Drive folder for new trial PDFs, uses AI to extract key study information like phase, endpoints, sample size, and adverse events, then logs everything to a Google Sheet and sends a Slack summary.
+
+#### Who is this for?
+- Clinical research organizations processing trial documentation
+- Pharma regulatory teams tracking study protocols and safety data
+- Research coordinators managing multiple clinical studies
+
+#### How it works
+1. **New Trial Document** - Google Drive trigger watches a designated folder for newly uploaded clinical trial PDFs
+2. **Download Document** - Downloads the PDF file from Google Drive for processing
+3. **Extract Trial Data** - PDF Vector AI extracts structured data including study ID, protocol, phase, sponsor, endpoints, sample size, adverse events, dosing schedules, and key findings
+4. **Format Trial Data** - JavaScript code node normalizes and formats the extracted data, preparing fields for spreadsheet logging and Slack notification
+5. **Log to Sheets** - Appends a structured row to Google Sheets with study ID, protocol, phase, sponsor, indication, design, endpoints, sample size, duration, AE counts, and status
+6. **Send to Slack** - Posts a detailed summary to a Slack channel including study overview, sample size breakdown, primary endpoint, and safety data with a link to the source document
+
+#### Services used
+- Google Drive (trigger and file download for trial PDFs)
+- PDF Vector (AI-powered extraction of clinical trial data)
+- Code / JavaScript (data formatting and normalization)
+- Google Sheets (structured trial data logging)
+- Slack (team notification with study summary)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set the folder ID to your clinical trials folder
+4. Create a Google Sheet with columns: Study ID | Protocol | Phase | Sponsor | Indication | Design | Primary Endpoint | Secondary Endpoints | Sample Size | Duration | Total AEs | SAEs | Status | Processed Date
+5. Configure the Google Sheets node with your spreadsheet ID
+6. Set up Slack OAuth2 credentials and set the channel ID for notifications
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the PDF Vector extraction prompt to focus on specific trial aspects (e.g., pharmacokinetics, biomarker data)
+- Add additional Google Sheets columns for inclusion/exclusion criteria or dosing schedules
+- Modify the Slack message to include efficacy results or statistical methods
+- Add an email notification node for regulatory team alerts
 
 </details>
 
