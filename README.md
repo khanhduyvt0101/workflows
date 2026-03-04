@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-49_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-50_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 49 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 50 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3290,6 +3290,47 @@ Automate regulatory change tracking for your legal and compliance teams. Drop ne
 - Add additional policy categories to the AI analysis prompt for industry-specific regulations
 - Route critical-priority regulations to a separate urgent Slack channel or email notification
 - Connect to a compliance management platform instead of Google Sheets for integrated tracking
+
+</details>
+
+<details>
+<summary><strong>🏠 Commercial Lease Abstraction</strong> - Extract and log commercial lease terms from PDF documents | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/commercial-lease-abstraction.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/commercial-lease-abstraction.json">📋 Open</a></summary>
+
+Automate the abstraction of commercial lease documents by extracting key financial and legal terms from PDF files. This workflow captures rent details, escalation schedules, CAM charges, renewal options, termination clauses, parking provisions, tenant improvement allowances, and special provisions — then logs everything to a spreadsheet and sends a comprehensive Slack summary.
+
+#### Who is this for?
+- Real estate attorneys reviewing lease portfolios
+- Property managers tracking lease terms across multiple properties
+- REITs and portfolio managers needing standardized lease data
+
+#### How it works
+1. **New Lease Document** — Google Drive trigger watches a designated folder for new lease PDF uploads
+2. **Download Lease** — Downloads the lease file from Google Drive for processing
+3. **Extract Lease Terms** — PDF Vector AI extracts 27+ lease data points including property details, parties, rent, escalation, CAM, renewal, termination, permitted use, parking, and TI allowance
+4. **Format Lease Data** — JavaScript code node normalizes and structures all extracted data with default values and computed summaries (escalation summary, termination summary)
+5. **Log to Sheets** — Appends a row to Google Sheets with key lease terms for portfolio tracking
+6. **Send to Slack** — Posts a detailed lease summary to Slack with all extracted terms and a link to the original document
+
+#### Services used
+- Google Drive (trigger for new lease documents and file download)
+- PDF Vector (AI-powered extraction of structured lease data from PDFs)
+- Google Sheets (lease term logging and portfolio tracking)
+- Slack (comprehensive lease summary notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set `YOUR_FOLDER_ID` to your lease documents folder
+4. Create a Google Sheet with columns: Property | Tenant | Landlord | Lease Start | Lease End | Term (Yrs) | Base Rent | Escalation | CAM | Renewal Options | Termination Notice | Processed Date
+5. Configure the Google Sheets node with your spreadsheet ID
+6. Set up Slack OAuth2 credentials and set the channel ID for lease notifications
+7. Activate the workflow
+
+#### Customizing this workflow
+- Add additional extraction fields to the PDF Vector prompt for industry-specific lease clauses (e.g., SNDA, co-tenancy, exclusivity)
+- Route leases with termination clauses or short remaining terms to a separate urgent Slack channel
+- Connect to a property management system or CRM instead of Google Sheets for integrated portfolio tracking
+- Add conditional logic to flag leases with above-market rent escalations or missing renewal options
 
 </details>
 

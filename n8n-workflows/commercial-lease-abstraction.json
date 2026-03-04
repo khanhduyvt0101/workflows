@@ -1,0 +1,371 @@
+{
+  "name": "W37 - Commercial Lease Abstraction",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83c\udfe2 Commercial Lease Abstraction\n\n### What this workflow does\n1. Watches Google Drive folder for lease documents\n2. Extracts rent, escalation, CAM, renewal options, termination terms\n3. Captures parking, TI allowance, permitted use, and special provisions\n4. Logs all terms to Google Sheets\n5. Sends Slack alert with full lease summary\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for lease documents\n3. Create a Google Sheet with these columns:\n   Property | Tenant | Landlord | Lease Start | Lease End | Term (Yrs) | Base Rent | Escalation | CAM | Renewal Options | Termination Notice | Processed Date\n4. Update YOUR_FOLDER_ID in the Google Drive Trigger node\n5. Update YOUR_SPREADSHEET_ID in the Log to Sheets node\n6. Update YOUR_SLACK_CHANNEL_ID in the Send to Slack node\n7. Connect your Google Drive, Google Sheets, PDF Vector, and Slack credentials\n\n### Perfect for\n- Real estate attorneys\n- Property managers\n- REITs and portfolio managers",
+        "height": 540,
+        "width": 400,
+        "color": 5
+      },
+      "id": "43be3fee-87b4-4a87-867c-499cf81da030",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3168,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Your Folder"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "f6f869d5-abf1-40c8-92b1-999f9a4ead46",
+      "name": "New Lease Document",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        704
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "02d5cc27-f843-4bbb-8aed-8f19dbeb0132",
+      "name": "Download Lease",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3792,
+        704
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract commercial lease information including: property address, property name, landlord name and contact, tenant name and contact, lease commencement date, lease expiration date, lease term in years, base rent amount and payment frequency, rent per square foot, rent escalation type and percentage and schedule, security deposit amount, CAM charges and cap, renewal options, termination allowed status and notice period and fee, permitted use clause, parking spaces and cost, tenant improvement allowance, and any special provisions.",
+        "jsonSchema": "{\"type\":\"object\",\"properties\":{\"propertyAddress\":{\"type\":\"string\"},\"propertyName\":{\"type\":\"string\"},\"landlordName\":{\"type\":\"string\"},\"landlordContact\":{\"type\":\"string\"},\"tenantName\":{\"type\":\"string\"},\"tenantContact\":{\"type\":\"string\"},\"commencementDate\":{\"type\":\"string\"},\"expirationDate\":{\"type\":\"string\"},\"termYears\":{\"type\":\"number\"},\"baseRentAmount\":{\"type\":\"number\"},\"rentFrequency\":{\"type\":\"string\"},\"rentPerSqFt\":{\"type\":\"number\"},\"escalationType\":{\"type\":\"string\"},\"escalationPercentage\":{\"type\":\"number\"},\"escalationSchedule\":{\"type\":\"string\"},\"securityDeposit\":{\"type\":\"number\"},\"camAmount\":{\"type\":\"number\"},\"camCap\":{\"type\":\"string\"},\"renewalOptions\":{\"type\":\"string\"},\"terminationAllowed\":{\"type\":\"boolean\"},\"terminationNoticePeriod\":{\"type\":\"string\"},\"terminationFee\":{\"type\":\"string\"},\"permittedUse\":{\"type\":\"string\"},\"parkingSpaces\":{\"type\":\"number\"},\"parkingCost\":{\"type\":\"string\"},\"tenantImprovementAllowance\":{\"type\":\"number\"},\"specialProvisions\":{\"type\":\"string\"}},\"required\":[\"propertyAddress\",\"tenantName\",\"landlordName\"],\"additionalProperties\":false}"
+      },
+      "id": "8834bc75-2ecc-4b03-a5a0-6fab4da39bb7",
+      "name": "Extract Lease Terms",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        4000,
+        704
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const extractData = $input.first().json.data || $input.first().json;\nconst triggerData = $('New Lease Document').item.json;\n\nconst lease = extractData;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Escalation summary\nconst escalationType = lease.escalationType || 'Fixed';\nconst escalationPct = lease.escalationPercentage || 0;\nconst escalationSchedule = lease.escalationSchedule || 'Annual';\nconst escalationSummary = `${escalationType}: ${escalationPct}% ${escalationSchedule}`;\n\n// Termination summary\nconst termAllowed = lease.terminationAllowed ? 'Yes' : 'No';\nconst termNotice = lease.terminationNoticePeriod || 'N/A';\nconst termFee = lease.terminationFee || 'N/A';\n\nreturn [{\n  json: {\n    propertyAddress: lease.propertyAddress || 'N/A',\n    propertyName: lease.propertyName || 'N/A',\n    landlordName: lease.landlordName || 'Unknown',\n    landlordContact: lease.landlordContact || 'N/A',\n    tenantName: lease.tenantName || 'Unknown',\n    tenantContact: lease.tenantContact || 'N/A',\n    commencementDate: lease.commencementDate || 'N/A',\n    expirationDate: lease.expirationDate || 'N/A',\n    termYears: lease.termYears || 'N/A',\n    baseRentAmount: lease.baseRentAmount || 0,\n    rentFrequency: lease.rentFrequency || 'monthly',\n    rentPerSqFt: lease.rentPerSqFt || 0,\n    escalationSummary: escalationSummary,\n    securityDeposit: lease.securityDeposit || 0,\n    camAmount: lease.camAmount || 0,\n    camCap: lease.camCap || 'No cap',\n    renewalOptions: lease.renewalOptions || 'None',\n    terminationAllowed: termAllowed,\n    terminationNotice: termNotice,\n    terminationFee: termFee,\n    permittedUse: lease.permittedUse || 'N/A',\n    parkingSpaces: lease.parkingSpaces || 0,\n    parkingCost: lease.parkingCost || 'N/A',\n    tiAllowance: lease.tenantImprovementAllowance || 0,\n    specialProvisions: lease.specialProvisions || 'None',\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "33df6546-5f06-4282-99d9-fe0f7214f8e4",
+      "name": "Format Lease Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4192,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Your Spreadsheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Property": "={{ $json.propertyAddress }}",
+            "Tenant": "={{ $json.tenantName }}",
+            "Landlord": "={{ $json.landlordName }}",
+            "Lease Start": "={{ $json.commencementDate }}",
+            "Lease End": "={{ $json.expirationDate }}",
+            "Term (Yrs)": "={{ $json.termYears }}",
+            "Base Rent": "={{ $json.baseRentAmount }}",
+            "Escalation": "={{ $json.escalationSummary }}",
+            "CAM": "={{ $json.camAmount }}",
+            "Renewal Options": "={{ $json.renewalOptions }}",
+            "Termination Notice": "={{ $json.terminationNotice }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Property",
+              "displayName": "Property",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tenant",
+              "displayName": "Tenant",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Landlord",
+              "displayName": "Landlord",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lease Start",
+              "displayName": "Lease Start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lease End",
+              "displayName": "Lease End",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Term (Yrs)",
+              "displayName": "Term (Yrs)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Base Rent",
+              "displayName": "Base Rent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Escalation",
+              "displayName": "Escalation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CAM",
+              "displayName": "CAM",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Renewal Options",
+              "displayName": "Renewal Options",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Termination Notice",
+              "displayName": "Termination Notice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e6467f31-cd2d-4c56-851b-20d5438c7cbf",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        4400,
+        704
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "your-channel"
+        },
+        "text": "=\ud83c\udfe2 *Commercial Lease Abstracted*\n\n*Property:* {{ $('Format Lease Data').item.json.propertyAddress }}\n*Name:* {{ $('Format Lease Data').item.json.propertyName }}\n\n\ud83d\udc65 *Parties:*\n\u2022 Landlord: {{ $('Format Lease Data').item.json.landlordName }}\n\u2022 Tenant: {{ $('Format Lease Data').item.json.tenantName }}\n\n\ud83d\udcc5 *Term:*\n\u2022 Start: {{ $('Format Lease Data').item.json.commencementDate }}\n\u2022 End: {{ $('Format Lease Data').item.json.expirationDate }}\n\u2022 Duration: {{ $('Format Lease Data').item.json.termYears }} years\n\n\ud83d\udcb0 *Rent:*\n\u2022 Base: ${{ $('Format Lease Data').item.json.baseRentAmount }} {{ $('Format Lease Data').item.json.rentFrequency }}\n\u2022 Per Sq Ft: ${{ $('Format Lease Data').item.json.rentPerSqFt }}\n\u2022 Escalation: {{ $('Format Lease Data').item.json.escalationSummary }}\n\u2022 Security Deposit: ${{ $('Format Lease Data').item.json.securityDeposit }}\n\n\ud83c\udfd7\ufe0f *Operating Costs:*\n\u2022 CAM: ${{ $('Format Lease Data').item.json.camAmount }} (Cap: {{ $('Format Lease Data').item.json.camCap }})\n\n\ud83d\udccb *Options:*\n\u2022 Renewal: {{ $('Format Lease Data').item.json.renewalOptions }}\n\n\u26a0\ufe0f *Termination:*\n\u2022 Allowed: {{ $('Format Lease Data').item.json.terminationAllowed }}\n\u2022 Notice: {{ $('Format Lease Data').item.json.terminationNotice }}\n\u2022 Fee: {{ $('Format Lease Data').item.json.terminationFee }}\n\n\ud83c\udfea *Use:*\n\u2022 Permitted Use: {{ $('Format Lease Data').item.json.permittedUse }}\n\u2022 Parking: {{ $('Format Lease Data').item.json.parkingSpaces }} spaces ({{ $('Format Lease Data').item.json.parkingCost }})\n\u2022 TI Allowance: ${{ $('Format Lease Data').item.json.tiAllowance }}\n\n\ud83d\udcdd *Special Provisions:* {{ $('Format Lease Data').item.json.specialProvisions }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Lease Data').item.json.fileId }}/view|View Lease>",
+        "otherOptions": {}
+      },
+      "id": "e202d70c-8bf2-4585-993a-d0005ebd7d75",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        4592,
+        704
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Lease Document": {
+      "main": [
+        [
+          {
+            "node": "Download Lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Lease": {
+      "main": [
+        [
+          {
+            "node": "Extract Lease Terms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Lease Terms": {
+      "main": [
+        [
+          {
+            "node": "Format Lease Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Lease Data": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
