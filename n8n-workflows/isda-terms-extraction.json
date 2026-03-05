@@ -1,0 +1,370 @@
+{
+  "name": "Extract ISDA master agreement terms and log to Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📈 ISDA Master Agreement Digitizer\n\n### What this workflow does\n1. Watches Google Drive folder for ISDA documents\n2. Extracts netting provisions and credit support terms\n3. Pulls close-out mechanics and governing law\n4. Extracts CSA terms and threshold amounts\n5. Logs all terms to Google Sheets\n6. Sends Slack alert with agreement summary\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for ISDA documents\n3. Create a Google Sheet with these columns:\n   Counterparty | Agreement Date | Governing Law | Netting Type | Credit Support | Threshold | MTA | Close-out | Cross Default | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Derivatives trading desks\n- Financial institutions\n- Risk management teams",
+        "height": 520,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "ISDA Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New ISDA Document",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract ISDA Master Agreement information including: document type (ISDA 2002/ISDA 1992/CSA/Schedule/Amendment), parties (Party A and Party B names, LEIs if present), agreement date, governing law jurisdiction, netting provisions (payment netting, close-out netting), credit support document type, eligible collateral types, threshold amounts for each party, minimum transfer amount (MTA), independent amounts, valuation date and notification times, credit events and events of default, termination events, cross-default provisions and threshold, close-out amount calculation method, set-off rights, transfer provisions, early termination date mechanics, calculation agent, dispute resolution procedures, and any non-standard amendments or modifications.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\"},\"partyA\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"lei\":{\"type\":\"string\"},\"jurisdiction\":{\"type\":\"string\"}}},\"partyB\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"lei\":{\"type\":\"string\"},\"jurisdiction\":{\"type\":\"string\"}}},\"agreementDate\":{\"type\":\"string\"},\"governingLaw\":{\"type\":\"string\"},\"netting\":{\"type\":\"object\",\"properties\":{\"paymentNetting\":{\"type\":\"boolean\"},\"closeOutNetting\":{\"type\":\"boolean\"},\"nettingType\":{\"type\":\"string\"}}},\"creditSupport\":{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\"},\"eligibleCollateral\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"thresholdPartyA\":{\"type\":\"string\"},\"thresholdPartyB\":{\"type\":\"string\"},\"minimumTransferAmount\":{\"type\":\"string\"},\"independentAmountPartyA\":{\"type\":\"string\"},\"independentAmountPartyB\":{\"type\":\"string\"},\"valuationDate\":{\"type\":\"string\"},\"notificationTime\":{\"type\":\"string\"}}},\"eventsOfDefault\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"event\":{\"type\":\"string\"},\"gracePeriod\":{\"type\":\"string\"}}}},\"terminationEvents\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"crossDefault\":{\"type\":\"object\",\"properties\":{\"applicable\":{\"type\":\"boolean\"},\"threshold\":{\"type\":\"string\"},\"specifiedIndebtedness\":{\"type\":\"string\"}}},\"closeOut\":{\"type\":\"object\",\"properties\":{\"calculationMethod\":{\"type\":\"string\"},\"setOffRights\":{\"type\":\"boolean\"},\"earlyTerminationMechanics\":{\"type\":\"string\"}}},\"calculationAgent\":{\"type\":\"string\"},\"disputeResolution\":{\"type\":\"string\"},\"amendments\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"partyA\",\"partyB\",\"agreementDate\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract ISDA Terms",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        880,
+        280
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const extractData = $input.first().json.data || $input.first().json;\nconst triggerData = $('New ISDA Document').item.json;\n\nconst isda = extractData;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Party info\nconst partyA = isda.partyA || {};\nconst partyB = isda.partyB || {};\n\n// Netting info\nconst netting = isda.netting || {};\nconst nettingType = netting.nettingType || 'Standard';\nconst paymentNetting = netting.paymentNetting ? 'Yes' : 'No';\nconst closeOutNetting = netting.closeOutNetting ? 'Yes' : 'No';\n\n// Credit support info\nconst cs = isda.creditSupport || {};\nconst csDocType = cs.documentType || 'N/A';\nconst eligibleCollateral = (cs.eligibleCollateral || []).join(', ') || 'N/A';\nconst thresholdA = cs.thresholdPartyA || 'N/A';\nconst thresholdB = cs.thresholdPartyB || 'N/A';\nconst mta = cs.minimumTransferAmount || 'N/A';\nconst iaA = cs.independentAmountPartyA || 'N/A';\nconst iaB = cs.independentAmountPartyB || 'N/A';\n\n// Cross default\nconst xd = isda.crossDefault || {};\nconst xdApplicable = xd.applicable ? 'Yes' : 'No';\nconst xdThreshold = xd.threshold || 'N/A';\n\n// Close-out\nconst closeOut = isda.closeOut || {};\nconst calcMethod = closeOut.calculationMethod || 'N/A';\nconst setOff = closeOut.setOffRights ? 'Yes' : 'No';\n\n// Events of default\nconst eods = isda.eventsOfDefault || [];\nconst eodList = eods.map(e => `${e.event} (${e.gracePeriod})`).join('; ') || 'Standard';\n\n// Termination events\nconst termEvents = (isda.terminationEvents || []).join('; ') || 'Standard';\n\n// Amendments\nconst amendments = (isda.amendments || []).join('; ') || 'None';\n\nreturn [{\n  json: {\n    documentType: isda.documentType || 'ISDA',\n    partyAName: partyA.name || 'Unknown',\n    partyALei: partyA.lei || 'N/A',\n    partyAJurisdiction: partyA.jurisdiction || 'N/A',\n    partyBName: partyB.name || 'Unknown',\n    partyBLei: partyB.lei || 'N/A',\n    partyBJurisdiction: partyB.jurisdiction || 'N/A',\n    agreementDate: isda.agreementDate || 'N/A',\n    governingLaw: isda.governingLaw || 'N/A',\n    nettingType: nettingType,\n    paymentNetting: paymentNetting,\n    closeOutNetting: closeOutNetting,\n    creditSupportDoc: csDocType,\n    eligibleCollateral: eligibleCollateral,\n    thresholdPartyA: thresholdA,\n    thresholdPartyB: thresholdB,\n    minimumTransferAmount: mta,\n    independentAmountA: iaA,\n    independentAmountB: iaB,\n    crossDefaultApplicable: xdApplicable,\n    crossDefaultThreshold: xdThreshold,\n    closeOutMethod: calcMethod,\n    setOffRights: setOff,\n    eventsOfDefault: eodList,\n    terminationEvents: termEvents,\n    calculationAgent: isda.calculationAgent || 'N/A',\n    disputeResolution: isda.disputeResolution || 'N/A',\n    amendments: amendments,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-data",
+      "name": "Format ISDA Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "ISDA Agreements"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Agreements"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Party A": "={{ $json.partyAName }}",
+            "Party B": "={{ $json.partyBName }}",
+            "Agreement Date": "={{ $json.agreementDate }}",
+            "Governing Law": "={{ $json.governingLaw }}",
+            "Netting Type": "={{ $json.nettingType }}",
+            "Credit Support": "={{ $json.creditSupportDoc }}",
+            "Threshold A": "={{ $json.thresholdPartyA }}",
+            "Threshold B": "={{ $json.thresholdPartyB }}",
+            "MTA": "={{ $json.minimumTransferAmount }}",
+            "Cross Default": "={{ $json.crossDefaultApplicable }}",
+            "Close-out Method": "={{ $json.closeOutMethod }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Party A",
+              "displayName": "Party A",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Party B",
+              "displayName": "Party B",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Agreement Date",
+              "displayName": "Agreement Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Governing Law",
+              "displayName": "Governing Law",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Netting Type",
+              "displayName": "Netting Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Credit Support",
+              "displayName": "Credit Support",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Threshold A",
+              "displayName": "Threshold A",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Threshold B",
+              "displayName": "Threshold B",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "MTA",
+              "displayName": "MTA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cross Default",
+              "displayName": "Cross Default",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Close-out Method",
+              "displayName": "Close-out Method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        280
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "isda-agreements"
+        },
+        "text": "=📈 *ISDA Agreement Digitized*\n\n*Document Type:* {{ $('Format ISDA Data').item.json.documentType }}\n*Agreement Date:* {{ $('Format ISDA Data').item.json.agreementDate }}\n\n👥 *Counterparties:*\n• Party A: {{ $('Format ISDA Data').item.json.partyAName }}\n  - LEI: {{ $('Format ISDA Data').item.json.partyALei }}\n  - Jurisdiction: {{ $('Format ISDA Data').item.json.partyAJurisdiction }}\n• Party B: {{ $('Format ISDA Data').item.json.partyBName }}\n  - LEI: {{ $('Format ISDA Data').item.json.partyBLei }}\n  - Jurisdiction: {{ $('Format ISDA Data').item.json.partyBJurisdiction }}\n\n⚖️ *Governing Law:* {{ $('Format ISDA Data').item.json.governingLaw }}\n\n🔄 *Netting:*\n• Type: {{ $('Format ISDA Data').item.json.nettingType }}\n• Payment Netting: {{ $('Format ISDA Data').item.json.paymentNetting }}\n• Close-out Netting: {{ $('Format ISDA Data').item.json.closeOutNetting }}\n\n💰 *Credit Support:*\n• Document: {{ $('Format ISDA Data').item.json.creditSupportDoc }}\n• Threshold Party A: {{ $('Format ISDA Data').item.json.thresholdPartyA }}\n• Threshold Party B: {{ $('Format ISDA Data').item.json.thresholdPartyB }}\n• MTA: {{ $('Format ISDA Data').item.json.minimumTransferAmount }}\n• Eligible Collateral: {{ $('Format ISDA Data').item.json.eligibleCollateral }}\n\n⚠️ *Risk Provisions:*\n• Cross Default: {{ $('Format ISDA Data').item.json.crossDefaultApplicable }} ({{ $('Format ISDA Data').item.json.crossDefaultThreshold }})\n• Close-out Method: {{ $('Format ISDA Data').item.json.closeOutMethod }}\n• Set-off Rights: {{ $('Format ISDA Data').item.json.setOffRights }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Format ISDA Data').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1480,
+        280
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New ISDA Document": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract ISDA Terms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract ISDA Terms": {
+      "main": [
+        [
+          {
+            "node": "Format ISDA Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format ISDA Data": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
