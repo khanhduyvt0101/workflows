@@ -1,0 +1,393 @@
+{
+  "name": "Resume Optimizer and Job Match Scorer",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83d\udcc4 Resume Optimizer & Job Match Scorer\n\n### What this workflow does\n1. Watches Google Drive folder for new resume PDFs\n2. PDF Vector extracts candidate skills, experience, education\n3. PDF Vector Ask scores the resume against job requirements\n4. Calculates match score and identifies gaps\n5. Logs results to Google Sheets\n6. Sends Slack alert with score and recommendations\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for incoming resumes\n3. Create a Google Sheet with columns:\n   Candidate | Email | Current Title | Experience Years | Match Score | Recommendation | Top Strengths | Critical Gaps | Suggestions | File Name | Processed Date\n4. Update folder ID and sheet ID in the nodes\n5. Connect Slack workspace\n\n### How to test\nUpload any resume PDF to your Google Drive folder.\nThe workflow triggers automatically within 1 minute.\n\n### Perfect for\n- Recruiters screening candidates\n- Career coaches reviewing resumes\n- HR teams matching applicants to roles\n\n### Template by PDF Vector\npdfvector.com/integrations/n8n",
+        "height": 700,
+        "width": 460,
+        "color": 5
+      },
+      "id": "404f7c6c-1fe8-43bd-888c-40398a9372e5",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract candidate information from this resume for job matching. Extract all skills, work experience, and qualifications.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"candidateName\": {\"type\": \"string\"}, \"email\": {\"type\": \"string\"}, \"phone\": {\"type\": \"string\"}, \"location\": {\"type\": \"string\"}, \"yearsOfExperience\": {\"type\": \"number\"}, \"currentTitle\": {\"type\": \"string\"}, \"currentCompany\": {\"type\": \"string\"}, \"technicalSkills\": {\"type\": \"string\"}, \"softSkills\": {\"type\": \"string\"}, \"educationDegree\": {\"type\": \"string\"}, \"educationField\": {\"type\": \"string\"}, \"educationSchool\": {\"type\": \"string\"}, \"certifications\": {\"type\": \"string\"}, \"languages\": {\"type\": \"string\"}, \"keyAchievements\": {\"type\": \"string\"}, \"industryBackground\": {\"type\": \"string\"}, \"toolsAndPlatforms\": {\"type\": \"string\"}}, \"required\": [\"candidateName\", \"technicalSkills\"], \"additionalProperties\": false}"
+      },
+      "id": "7e7f3a9b-fab7-47bd-8fbe-bec04f51aa96",
+      "name": "Extract Resume Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "You are an expert recruiter. Analyze this resume and provide a detailed assessment.\n\nJOB TITLE: Software Engineer / General Professional Role\n\nJOB REQUIREMENTS:\nStrong technical or domain skills, 2+ years experience, problem solving, communication, teamwork, attention to detail, ability to learn quickly\n\nProvide your assessment in this exact format:\nMATCH_SCORE: [0-100]\nRECOMMENDATION: [STRONG_FIT / GOOD_FIT / POSSIBLE_FIT / NOT_A_FIT]\nTOP_3_STRENGTHS: [list the top 3 strengths from this resume]\nCRITICAL_GAPS: [list the most important missing or weak areas]\nSUGGESTIONS: [2-3 specific improvements the candidate could make]"
+      },
+      "id": "ddccbf0c-964e-4030-8f8b-a17f374ba0b8",
+      "name": "Score Job Match",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        580
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get resume data\nconst resumeNode = $('Extract Resume Data').first();\nconst candidate = resumeNode.json.data || resumeNode.json;\n\n// Get match analysis\nconst matchNode = $('Score Job Match').first();\nconst analysis = matchNode.json.answer || matchNode.json.markdown || matchNode.json.text || '';\n\n// Get file name from trigger\nconst triggerData = $('New Resume').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\n// Parse match score\nconst scoreMatch = analysis.match(/MATCH_SCORE[:\\s]+([0-9]+)/i);\nconst matchScore = scoreMatch ? parseInt(scoreMatch[1]) : 50;\n\n// Parse recommendation\nconst recMatch = analysis.match(/RECOMMENDATION[:\\s]+([A-Z_]+)/i);\nconst recommendation = recMatch ? recMatch[1] : 'REVIEW_NEEDED';\n\n// Parse strengths\nconst strengthMatch = analysis.match(/TOP_3_STRENGTHS[:\\s]+([^\\n]+)/i);\nconst strengths = strengthMatch ? strengthMatch[1].trim() : 'N/A';\n\n// Parse gaps\nconst gapMatch = analysis.match(/CRITICAL_GAPS[:\\s]+([^\\n]+)/i);\nconst gaps = gapMatch ? gapMatch[1].trim() : 'None identified';\n\n// Parse suggestions\nconst suggestMatch = analysis.match(/SUGGESTIONS[:\\s]+([\\s\\S]+?)(?=\\n[A-Z_]+:|$)/i);\nconst suggestions = suggestMatch ? suggestMatch[1].trim() : 'N/A';\n\nreturn [{ json: {\n  candidateName:     candidate.candidateName     || 'Unknown',\n  email:             candidate.email             || 'N/A',\n  phone:             candidate.phone             || 'N/A',\n  currentTitle:      candidate.currentTitle      || 'N/A',\n  yearsOfExperience: candidate.yearsOfExperience || 0,\n  technicalSkills:   candidate.technicalSkills   || 'N/A',\n  softSkills:        candidate.softSkills        || 'N/A',\n  education:         (candidate.educationDegree  || '') + ' ' + (candidate.educationField || ''),\n  certifications:    candidate.certifications    || 'None',\n  matchScore,\n  recommendation,\n  strengths,\n  gaps,\n  suggestions,\n  fileName,\n  fileId,\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "15a8acbb-9cb0-48ef-9384-cf582f4c9848",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Resume Match Results"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Results"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Candidate": "={{ $json.candidateName }}",
+            "Email": "={{ $json.email }}",
+            "Current Title": "={{ $json.currentTitle }}",
+            "Experience Years": "={{ $json.yearsOfExperience }}",
+            "Match Score": "={{ $json.matchScore }}",
+            "Recommendation": "={{ $json.recommendation }}",
+            "Top Strengths": "={{ $json.strengths }}",
+            "Critical Gaps": "={{ $json.gaps }}",
+            "Suggestions": "={{ $json.suggestions }}",
+            "File Name": "={{ $json.fileName }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Candidate",
+              "displayName": "Candidate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Current Title",
+              "displayName": "Current Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Experience Years",
+              "displayName": "Experience Years",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Match Score",
+              "displayName": "Match Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Recommendation",
+              "displayName": "Recommendation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Top Strengths",
+              "displayName": "Top Strengths",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Critical Gaps",
+              "displayName": "Critical Gaps",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Suggestions",
+              "displayName": "Suggestions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "File Name",
+              "displayName": "File Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a9d3bb2b-592a-45dd-a76d-9f2c0ce2729d",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1960,
+        380
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "recruiting"
+        },
+        "text": "=\ud83d\udcc4 *Resume Screened*\n\n*Candidate:* {{ $('Format Results').item.json.candidateName }}\n*File:* {{ $('Format Results').item.json.fileName }}\n*Current Title:* {{ $('Format Results').item.json.currentTitle }}\n*Experience:* {{ $('Format Results').item.json.yearsOfExperience }} years\n\n\ud83c\udfaf *Match Score:* {{ $('Format Results').item.json.matchScore }}/100\n*Recommendation:* *{{ $('Format Results').item.json.recommendation }}*\n\n\u2705 *Top Strengths:*\n{{ $('Format Results').item.json.strengths }}\n\n\u26a0\ufe0f *Critical Gaps:*\n{{ $('Format Results').item.json.gaps }}\n\n\ud83d\udca1 *Suggestions:*\n{{ $('Format Results').item.json.suggestions }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Results').item.json.fileId }}/view|View Resume>",
+        "otherOptions": {}
+      },
+      "id": "2dbf5430-7431-4ed5-b607-c88769ce290b",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1960,
+        580
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_RESUMES_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Resumes to Screen"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "0bea6700-475e-412e-8dd0-3f69c8aaeca0",
+      "name": "New Resume",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        480
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "8f3a3af0-1ecb-4dc9-8db4-8c1ea9aefbc1",
+      "name": "Download Resume",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1300,
+        480
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "New Resume": {
+      "main": [
+        [
+          {
+            "node": "Download Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Resume": {
+      "main": [
+        [
+          {
+            "node": "Extract Resume Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Score Job Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Resume Data": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Job Match": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
