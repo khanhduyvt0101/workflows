@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-51_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-52_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 51 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 52 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3373,6 +3373,51 @@ Automatically digitize ISDA Master Agreements by extracting key legal and financ
 - Add conditional logic to flag agreements with high cross-default thresholds or missing credit support annexes for priority review
 - Connect to a risk management system or compliance database instead of Google Sheets for integrated counterparty risk tracking
 - Add a second Slack channel for urgent alerts when agreements contain non-standard amendments or unusual governing law jurisdictions
+
+</details>
+
+<details>
+<summary><strong>💰 W39 Three-Way Invoice Matcher</strong> - Automated invoice-to-PO matching with discrepancy detection | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/three-way-invoice-matcher.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/three-way-invoice-matcher.json">📋 Open</a></summary>
+
+Automate your accounts payable three-way matching process by comparing invoices against purchase orders. This workflow watches a Google Drive folder for new invoice PDFs, extracts detailed line-item data using AI, looks up the corresponding PO in your Google Sheets database, and performs quantity and price matching with a 2% tolerance threshold. Discrepancies are flagged with priority levels and sent as Slack alerts.
+
+#### Who is this for?
+- Accounts payable teams processing high volumes of invoices
+- Controllers needing automated invoice verification
+- Finance managers wanting visibility into PO-to-invoice discrepancies
+
+#### How it works
+1. **New Invoice** - Google Drive trigger watches a designated folder for newly uploaded invoice PDFs
+2. **Download Invoice** - Downloads the invoice file from Google Drive for processing
+3. **Extract Invoice Data** - PDF Vector AI extracts structured data including invoice number, vendor details, PO reference, line items, quantities, prices, subtotal, freight, tax, and total amount
+4. **Lookup PO Database** - Searches the Google Sheets PO database for a matching purchase order number
+5. **Three-Way Match** - JavaScript code performs three-way matching: compares invoice totals against PO totals (with 2% tolerance), checks line-item quantities, determines match status (FULL_MATCH, PARTIAL_MATCH, or NO_PO_FOUND), and assigns priority levels
+6. **Log Match Results** - Appends match results to a Google Sheets tracking tab with invoice number, vendor, PO number, totals, status, and discrepancy details
+7. **Send to Slack** - Posts a formatted match result to Slack including status, priority, amounts, discrepancies, and a link to the source invoice
+
+#### Services used
+- Google Drive (invoice upload monitoring and file download)
+- PDF Vector (AI-powered invoice data extraction with structured schema)
+- Google Sheets (PO database lookup and match results logging)
+- Slack (match result notifications with priority alerts)
+- Code / JavaScript (three-way matching logic with tolerance-based comparison)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set `YOUR_INVOICES_FOLDER_ID` to your invoice upload folder
+4. Create a Google Sheet with two tabs:
+   - Tab 1 (PO_Database): PO Number | Vendor | Line Items | Quantities | Prices | Total
+   - Tab 2 (Match_Results): Invoice Number | Vendor | PO Number | Invoice Total | PO Total | Status | Discrepancies | Processed Date
+5. Configure the Google Sheets nodes with your spreadsheet ID
+6. Set up Slack OAuth2 credentials and set the channel ID for invoice match notifications
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the 2% tolerance threshold in the Three-Way Match code node to match your organization's acceptable variance
+- Add a conditional branch to auto-approve invoices with FULL_MATCH status and route mismatches to a manual review queue
+- Connect to an ERP system instead of Google Sheets for enterprise-grade PO lookup and invoice processing
+- Add email notifications alongside Slack for critical high-priority discrepancies above a configurable dollar threshold
 
 </details>
 

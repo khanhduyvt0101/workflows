@@ -1,0 +1,374 @@
+{
+  "name": "W39 Three-Way Invoice Matcher",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83d\udd04 W39 Three-Way Invoice Matcher\n\n### What this workflow does\n1. Watches Google Drive folder for invoice PDFs\n2. Extracts line items, quantities, prices, totals\n3. Looks up matching PO in your Sheets database\n4. Compares quantities and prices\n5. Flags mismatches and discrepancies\n6. Sends Slack alert with match results\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for invoices\n3. Create a Google Sheet with two tabs:\n   - Tab 1 (PO_Database): PO Number | Vendor | Line Items | Quantities | Prices | Total\n   - Tab 2 (Match_Results): Invoice Number | Vendor | PO Number | Invoice Total | PO Total | Status | Discrepancies | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Accounts payable teams\n- Controllers\n- Finance managers\n\n### Template by PDF Vector\npdfvector.com/integrations/n8n",
+        "height": 684,
+        "width": 596,
+        "color": 5
+      },
+      "id": "5c6861f0-839e-4922-8e16-9035c3d04510",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        10080,
+        2976
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_INVOICES_FOLDER_ID",
+          "mode": "list"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "9b68a218-7215-4e2c-b9f3-ea7a01e81469",
+      "name": "New Invoice",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        10720,
+        3216
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "e485f9e2-1fec-40c8-bed0-de58e19ad4bc",
+      "name": "Download Invoice",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        10944,
+        3216
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract invoice information for three-way matching including: invoice number, invoice date, vendor name, vendor address, vendor ID or tax ID, purchase order number referenced, bill to name and address, ship to name and address, payment terms, due date, line items with item number/SKU, description, quantity ordered, quantity shipped, quantity invoiced, unit of measure, unit price, extended price, subtotal, freight/shipping charges, tax amount, total amount, and any notes or discrepancies mentioned.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"invoiceNumber\":{\"type\":\"string\"},\"invoiceDate\":{\"type\":\"string\"},\"vendorName\":{\"type\":\"string\"},\"vendorAddress\":{\"type\":\"string\"},\"vendorId\":{\"type\":\"string\"},\"poNumber\":{\"type\":\"string\"},\"billToName\":{\"type\":\"string\"},\"billToAddress\":{\"type\":\"string\"},\"shipToName\":{\"type\":\"string\"},\"shipToAddress\":{\"type\":\"string\"},\"paymentTerms\":{\"type\":\"string\"},\"dueDate\":{\"type\":\"string\"},\"lineItemCount\":{\"type\":\"number\"},\"lineItemsSummary\":{\"type\":\"string\"},\"subtotal\":{\"type\":\"number\"},\"freight\":{\"type\":\"number\"},\"tax\":{\"type\":\"number\"},\"totalAmount\":{\"type\":\"number\"},\"notes\":{\"type\":\"string\"}},\"required\":[\"invoiceNumber\",\"vendorName\",\"totalAmount\"],\"additionalProperties\":false}"
+      },
+      "id": "91959f45-f32a-426d-9292-a6a83537d075",
+      "name": "Extract Invoice Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        11168,
+        3216
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Page 1"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "PO Number",
+              "lookupValue": "={{ $json.data.poNumber }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "07f10ff4-3ef5-4601-b687-746d488a1bdd",
+      "name": "Lookup PO Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        11376,
+        3216
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get invoice data from Extract node\nconst extractNode = $('Extract Invoice Data').first();\nconst invoiceData = extractNode.json.data || extractNode.json;\n\n// Get PO database from Sheets lookup\nconst poRecords = $('Lookup PO Database').all();\n\n// Get trigger data\nconst triggerData = $('New Invoice').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Invoice details\nconst invoiceNumber = invoiceData.invoiceNumber || 'Unknown';\nconst poNumber = invoiceData.poNumber || '';\nconst vendorName = invoiceData.vendorName || 'Unknown';\nconst invoiceTotal = invoiceData.totalAmount || 0;\nconst lineItems = invoiceData.lineItems || [];\n\n// Find matching PO\nlet poMatch = null;\nlet matchStatus = 'NO_PO_FOUND';\nlet poTotal = 0;\n\nfor (const po of poRecords) {\n  const poData = po.json;\n  if (poData['PO Number'] === poNumber || poData.poNumber === poNumber) {\n    poMatch = poData;\n    poTotal = parseFloat(poData['Total'] || poData.total || 0);\n    matchStatus = 'PO_FOUND';\n    break;\n  }\n}\n\n// Perform three-way matching analysis\nlet qtyMatch = 'N/A';\nlet priceMatch = 'N/A';\nlet discrepancies = [];\nlet discrepancyAmount = 0;\n\nif (poMatch) {\n  // Check total amount match (within 2% tolerance)\n  const tolerance = poTotal * 0.02;\n  const totalDiff = Math.abs(invoiceTotal - poTotal);\n  \n  if (totalDiff <= tolerance) {\n    priceMatch = 'MATCH';\n  } else {\n    priceMatch = 'MISMATCH';\n    discrepancyAmount = invoiceTotal - poTotal;\n    discrepancies.push(`Total: Invoice $${invoiceTotal.toFixed(2)} vs PO $${poTotal.toFixed(2)} (Diff: $${discrepancyAmount.toFixed(2)})`);\n  }\n  \n  // Check line item quantities\n  let qtyIssues = 0;\n  for (const item of lineItems) {\n    const ordered = item.quantityOrdered || 0;\n    const invoiced = item.quantityInvoiced || item.quantityShipped || ordered;\n    \n    if (invoiced > ordered) {\n      qtyIssues++;\n      discrepancies.push(`${item.description}: Qty ${invoiced} > ${ordered}`);\n    }\n  }\n  \n  qtyMatch = qtyIssues === 0 ? 'MATCH' : 'MISMATCH';\n  \n  // Determine overall status\n  if (priceMatch === 'MATCH' && qtyMatch === 'MATCH') {\n    matchStatus = 'FULL_MATCH';\n  } else {\n    matchStatus = 'PARTIAL_MATCH';\n  }\n} else {\n  discrepancies.push('No matching PO found in database');\n}\n\n// Determine priority\nlet priority = 'Low';\nif (matchStatus === 'NO_PO_FOUND') priority = 'High';\nelse if (matchStatus === 'PARTIAL_MATCH' && Math.abs(discrepancyAmount) > 1000) priority = 'High';\nelse if (matchStatus === 'PARTIAL_MATCH') priority = 'Medium';\n\nreturn [{\n  json: {\n    invoiceNumber: invoiceNumber,\n    invoiceDate: invoiceData.invoiceDate || 'N/A',\n    vendorName: vendorName,\n    poNumber: poNumber || 'Not Referenced',\n    invoiceTotal: invoiceTotal,\n    poTotal: poTotal,\n    matchStatus: matchStatus,\n    discrepancies: discrepancies.join('; ') || 'None',\n    priority: priority,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "729ac25d-d2cc-48d0-ba87-7267b9e6377d",
+      "name": "Three-Way Match",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        11600,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2060479334,
+          "mode": "list",
+          "cachedResultName": "Page 2"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice Number": "={{ $json.invoiceNumber }}",
+            "Vendor": "={{ $json.invoiceDate }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Invoice Number",
+              "displayName": "Invoice Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "PO Number",
+              "displayName": "PO Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Invoice Total",
+              "displayName": "Invoice Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "PO Total",
+              "displayName": "PO Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Discrepancies",
+              "displayName": "Discrepancies",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "41f79ebc-9cee-494b-a26a-8d047750cb21",
+      "name": "Log Match Results",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        11824,
+        3216
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list"
+        },
+        "text": "=\ud83d\udd04 *Three-Way Match Result*\n\n*Invoice:* {{ $('Three-Way Match').item.json.invoiceNumber }}\n*Vendor:* {{ $('Three-Way Match').item.json.vendorName }}\n*PO:* {{ $('Three-Way Match').item.json.poNumber }}\n\n\ud83d\udcca *Status:* {{ $('Three-Way Match').item.json.matchStatus }}\n*Priority:* {{ $('Three-Way Match').item.json.priority }}\n\n\ud83d\udcb0 *Amounts:*\n\u2022 Invoice: ${{ $('Three-Way Match').item.json.invoiceTotal }}\n\u2022 PO: ${{ $('Three-Way Match').item.json.poTotal }}\n\n\u26a0\ufe0f *Discrepancies:*\n{{ $('Three-Way Match').item.json.discrepancies }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Three-Way Match').item.json.fileId }}/view|View Invoice>",
+        "otherOptions": {}
+      },
+      "id": "5ec33cee-71dc-4a37-825e-5b140c730663",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        12048,
+        3216
+      ],
+      "webhookId": "e584fef1-0ca2-4a41-9098-87d1d864d8cb",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Invoice": {
+      "main": [
+        [
+          {
+            "node": "Download Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Invoice": {
+      "main": [
+        [
+          {
+            "node": "Extract Invoice Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Invoice Data": {
+      "main": [
+        [
+          {
+            "node": "Lookup PO Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup PO Database": {
+      "main": [
+        [
+          {
+            "node": "Three-Way Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Three-Way Match": {
+      "main": [
+        [
+          {
+            "node": "Log Match Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Match Results": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
