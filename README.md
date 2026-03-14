@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-54_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-55_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 54 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 55 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3504,6 +3504,50 @@ Automate your Know Your Customer (KYC) document verification process. This workf
 - Add additional document type checks or country-specific validation logic
 - Extend with email notifications for high-risk documents or failed verifications
 - Add a database node to cross-reference multiple documents per customer
+
+</details>
+
+<details>
+<summary><strong>💰 Financial Statement Analyzer</strong> - Extract financial statements and analyze trends with AI | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/financial-statement-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/financial-statement-analyzer.json">📋 Open</a></summary>
+
+Automate the analysis of financial statements by watching a Google Drive folder for new documents. AI extracts key financial metrics (revenue, EBITDA, margins, debt ratios) and performs comprehensive trend analysis with risk flagging, then logs results to Google Sheets and sends a detailed Slack summary.
+
+#### Who is this for?
+- Financial analysts reviewing company performance
+- Credit officers assessing borrower financial health
+- Investment analysts conducting due diligence
+
+#### How it works
+1. **New Statement** - Google Drive trigger watches a folder for new financial statement uploads
+2. **Download Document** - Downloads the uploaded PDF from Google Drive
+3. **Extract Financials** - PDF Vector extracts structured financial data (income statement, balance sheet, cash flow) using a detailed schema
+4. **Financial Analysis** - PDF Vector performs comprehensive AI analysis covering profitability, liquidity, leverage, efficiency, and cash flow quality (runs in parallel with extraction)
+5. **Merge Results** - Combines extracted data and AI analysis into a single dataset
+6. **Calculate Ratios** - JavaScript code calculates key financial ratios (current ratio, debt-to-equity, YoY growth), assigns a health score, and flags risks
+7. **Log to Sheets** - Appends company financials, ratios, health score, and risk flags to a Google Sheet
+8. **Send to Slack** - Posts a detailed financial summary with income statement, balance sheet, key ratios, health assessment, and AI analysis to Slack
+
+#### Services used
+- Google Drive (trigger and file download for financial statements)
+- PDF Vector (structured data extraction and AI-powered financial analysis)
+- Code / JavaScript (financial ratio calculations and risk flag logic)
+- Google Sheets (logging analysis results)
+- Slack (sending financial summary alerts)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the PDF Vector credential
+3. Configure Google Drive OAuth2 credentials and set the folder ID to watch
+4. Create a Google Sheet with columns: Company, Period, Revenue, EBITDA, Net Income, Debt/Equity, Current Ratio, YoY Growth, Health Score, Risk Flags, Processed Date
+5. Configure Google Sheets OAuth2 credentials and set the spreadsheet ID
+6. Configure Slack OAuth2 credentials and set the channel ID
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust risk flag thresholds in the Calculate Ratios code node (e.g., change debt-to-equity threshold from 2 to match your industry)
+- Modify the health score calculation logic to weight different risk factors
+- Add additional financial metrics to the extraction schema for industry-specific analysis
+- Extend with email notifications for high-risk flagged statements
 
 </details>
 
