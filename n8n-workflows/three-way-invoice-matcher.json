@@ -1,9 +1,9 @@
 {
-  "name": "W39 Three-Way Invoice Matcher",
+  "name": "Three-Way Invoice Matcher",
   "nodes": [
     {
       "parameters": {
-        "content": "## \ud83d\udd04 W39 Three-Way Invoice Matcher\n\n### What this workflow does\n1. Watches Google Drive folder for invoice PDFs\n2. Extracts line items, quantities, prices, totals\n3. Looks up matching PO in your Sheets database\n4. Compares quantities and prices\n5. Flags mismatches and discrepancies\n6. Sends Slack alert with match results\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for invoices\n3. Create a Google Sheet with two tabs:\n   - Tab 1 (PO_Database): PO Number | Vendor | Line Items | Quantities | Prices | Total\n   - Tab 2 (Match_Results): Invoice Number | Vendor | PO Number | Invoice Total | PO Total | Status | Discrepancies | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Accounts payable teams\n- Controllers\n- Finance managers\n\n### Template by PDF Vector\npdfvector.com/integrations/n8n",
+        "content": "## \ud83d\udd04 Three-Way Invoice Matcher\n\n### What this workflow does\n1. Watches Google Drive folder for invoice PDFs\n2. Extracts line items, quantities, prices, totals\n3. Looks up matching PO in your Sheets database\n4. Compares quantities and prices\n5. Flags mismatches and discrepancies\n6. Sends Slack alert with match results\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for invoices\n3. Create a Google Sheet with two tabs:\n   - Tab 1 (PO_Database): PO Number | Vendor | Line Items | Quantities | Prices | Total\n   - Tab 2 (Match_Results): Invoice Number | Vendor | PO Number | Invoice Total | PO Total | Status | Discrepancies | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Accounts payable teams\n- Controllers\n- Finance managers\n\n### Template by PDF Vector\npdfvector.com/integrations/n8n",
         "height": 684,
         "width": 596,
         "color": 5

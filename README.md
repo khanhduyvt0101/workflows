@@ -3377,7 +3377,7 @@ Automatically digitize ISDA Master Agreements by extracting key legal and financ
 </details>
 
 <details>
-<summary><strong>💰 W39 Three-Way Invoice Matcher</strong> - Automated invoice-to-PO matching with discrepancy detection | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/three-way-invoice-matcher.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/three-way-invoice-matcher.json">📋 Open</a></summary>
+<summary><strong>💰 Three-Way Invoice Matcher</strong> - Automated invoice-to-PO matching with discrepancy detection | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/three-way-invoice-matcher.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/three-way-invoice-matcher.json">📋 Open</a></summary>
 
 Automate your accounts payable three-way matching process by comparing invoices against purchase orders. This workflow watches a Google Drive folder for new invoice PDFs, extracts detailed line-item data using AI, looks up the corresponding PO in your Google Sheets database, and performs quantity and price matching with a 2% tolerance threshold. Discrepancies are flagged with priority levels and sent as Slack alerts.
 
