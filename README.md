@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-53_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-54_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 53 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 54 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3461,6 +3461,49 @@ Automate your resume screening process with AI-powered analysis. This workflow w
 - Add additional extraction fields in the "Extract Resume Data" schema for industry-specific qualifications
 - Extend the Slack message format or add email notifications for high-scoring candidates
 - Add conditional routing to automatically flag candidates above a certain match score threshold
+
+</details>
+
+<details>
+<summary><strong>🔐 KYC Document Verification</strong> - Extract and verify identity documents for KYC compliance | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/kyc-document-verification.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/kyc-document-verification.json">📋 Open</a></summary>
+
+Automate your Know Your Customer (KYC) document verification process. This workflow watches for new identity documents uploaded to Google Drive, uses AI to extract structured data from passports, driver's licenses, national IDs, and utility bills, then validates the documents and flags any discrepancies or risks automatically.
+
+#### Who is this for?
+- Compliance teams managing KYC/AML requirements
+- Fintech companies onboarding new customers
+- Banking and financial services KYC departments
+
+#### How it works
+1. **New KYC Document** - Google Drive trigger watches a designated folder for newly uploaded identity documents
+2. **Download Document** - Downloads the uploaded document file from Google Drive
+3. **Extract ID Data** - PDF Vector AI extracts structured identity information including name, DOB, document number, address, photo/signature presence, and security features
+4. **Verify & Format** - JavaScript code validates the extracted data, checks document expiration, verifies required fields are present, assesses risk level (Low/Medium/High), and flags discrepancies
+5. **Log to Sheets** - Appends verification results to a Google Sheets log with customer ID, name, DOB, ID type, document number, address, status, discrepancies, and risk level
+6. **Send to Slack** - Posts a detailed verification alert to Slack with document details, identity information, address, verification checks, and any discrepancies found
+
+#### Services used
+- Google Drive (document upload trigger and file download)
+- PDF Vector (AI-powered identity document data extraction)
+- Code / JavaScript (document validation, risk assessment, and data formatting)
+- Google Sheets (verification results logging)
+- Slack (real-time verification status notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Create a Google Drive folder for KYC document uploads and update the folder ID
+4. Create a Google Sheet with columns: Customer ID, Name, DOB, ID Type, ID Number, Expiration, Address, Status, Discrepancies, Risk Level, Processed Date
+5. Configure Google Drive and Google Sheets OAuth2 credentials
+6. Connect your Slack workspace and set the notification channel
+7. Name uploaded files with the pattern `CUSTID_doctype.pdf` (e.g., `CUST123_passport.pdf`) for automatic customer ID extraction
+8. Activate the workflow
+
+#### Customizing this workflow
+- Adjust risk level thresholds and validation rules in the Verify & Format code node
+- Add additional document type checks or country-specific validation logic
+- Extend with email notifications for high-risk documents or failed verifications
+- Add a database node to cross-reference multiple documents per customer
 
 </details>
 
