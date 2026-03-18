@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-55_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-56_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 55 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 56 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3548,6 +3548,49 @@ Automate the analysis of financial statements by watching a Google Drive folder 
 - Modify the health score calculation logic to weight different risk factors
 - Add additional financial metrics to the extraction schema for industry-specific analysis
 - Extend with email notifications for high-risk flagged statements
+
+</details>
+
+<details>
+<summary><strong>🏠 Title Deed Risk Scorer</strong> - Extract title deed data and score risk factors with AI | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/title-deed-risk-scorer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/title-deed-risk-scorer.json">📋 Open</a></summary>
+
+Automate title deed analysis for real estate transactions. This workflow watches for new title documents, uses AI to extract grantor/grantee information, liens, easements, and legal descriptions, then performs a comprehensive risk assessment with an insurability score.
+
+#### Who is this for?
+- Title companies processing high volumes of deeds
+- Real estate attorneys reviewing chain of title
+- Escrow officers needing quick risk assessments
+
+#### How it works
+1. **New Title Document** - Google Drive trigger watches a folder for new title document uploads
+2. **Download Document** - Downloads the PDF from Google Drive for processing
+3. **Extract Title Data** - PDF Vector AI extracts structured data: document type, grantor/grantee names, property description, liens, easements, recording info, and more
+4. **Risk Analysis** - PDF Vector AI performs comprehensive risk assessment evaluating chain of title gaps, lien risks, encumbrance risks, legal description issues, vesting problems, and document execution defects
+5. **Merge Results** - Combines extracted data and risk analysis results (both run in parallel)
+6. **Score Risk** - JavaScript code calculates risk score (1-100), risk level, and insurability assessment based on critical/high/medium issues found
+7. **Log to Sheets** - Appends property details, risk score, and insurability to a Google Sheet for tracking
+8. **Send to Slack** - Posts a detailed risk assessment alert with parties, liens, easements, and risk analysis
+
+#### Services used
+- Google Drive (trigger and document download)
+- PDF Vector (AI-powered data extraction and risk analysis)
+- Google Sheets (logging results)
+- Slack (risk assessment notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys
+3. Configure Google Drive OAuth2 credentials and set the folder ID to watch
+4. Create a Google Sheet with columns: Property | Parcel | Grantor | Grantee | Recording Date | Liens | Lien Amount | Risk Score | Risk Level | Insurability | Processed Date
+5. Configure Google Sheets OAuth2 credentials and set the spreadsheet ID
+6. Configure Slack OAuth2 credentials and set the channel ID
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust risk score thresholds in the Score Risk code node (e.g., change critical threshold from 30 to suit your risk tolerance)
+- Modify the extraction prompt to focus on specific document types relevant to your practice
+- Add additional notification channels (email, Microsoft Teams) for high-risk findings
+- Extend the Google Sheet schema with additional columns for your tracking needs
 
 </details>
 
