@@ -1,0 +1,385 @@
+{
+  "name": "Closing Document Validator",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83d\udcd1 Closing Document Validator\n\n### What this workflow does\n1. Watches Google Drive folder for closing packages\n2. Extracts data from closing disclosure, deed, note\n3. Cross-validates names, addresses, amounts\n4. Flags inconsistencies across documents\n5. Logs validation results to Google Sheets\n6. Sends Slack alert with discrepancy report\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for closing documents\n3. Create a Google Sheet with these columns:\n   File Number | Property | Buyer | Seller | Amount | Doc Type | Validation Status | Discrepancies | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Closing coordinators\n- Transaction managers\n- Title company processors",
+        "height": 520,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Closing Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Closing Doc",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract real estate closing document data as flat fields only \u2014 no nested objects. Extract: documentType (closing disclosure/HUD-1/settlement statement/deed/mortgage note/etc), fileNumber, closingDate. Property: propertyStreet, propertyCity, propertyState, propertyZip, propertyCounty, parcelNumber. Parties: buyerName, buyerAddress, sellerName, sellerAddress. Loan: loanAmount, loanType (conventional/FHA/VA/USDA/cash), interestRate (decimal), loanTerm. Financials: purchasePrice, earnestMoneyDeposit, totalClosingCosts, cashToClose, sellerProceeds. Agents: lenderName, titleCompany, closingAgentName. Execution: buyerSigned (true/false), sellerSigned (true/false), notarized (true/false). All monetary values as plain numbers in dollars.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"documentType\": {\"type\": \"string\"}, \"fileNumber\": {\"type\": \"string\"}, \"closingDate\": {\"type\": \"string\"}, \"propertyStreet\": {\"type\": \"string\"}, \"propertyCity\": {\"type\": \"string\"}, \"propertyState\": {\"type\": \"string\"}, \"propertyZip\": {\"type\": \"string\"}, \"propertyCounty\": {\"type\": \"string\"}, \"parcelNumber\": {\"type\": \"string\"}, \"buyerName\": {\"type\": \"string\"}, \"buyerAddress\": {\"type\": \"string\"}, \"sellerName\": {\"type\": \"string\"}, \"sellerAddress\": {\"type\": \"string\"}, \"loanAmount\": {\"type\": \"number\"}, \"loanType\": {\"type\": \"string\"}, \"interestRate\": {\"type\": \"number\"}, \"loanTerm\": {\"type\": \"string\"}, \"purchasePrice\": {\"type\": \"number\"}, \"earnestMoneyDeposit\": {\"type\": \"number\"}, \"totalClosingCosts\": {\"type\": \"number\"}, \"cashToClose\": {\"type\": \"number\"}, \"sellerProceeds\": {\"type\": \"number\"}, \"lenderName\": {\"type\": \"string\"}, \"titleCompany\": {\"type\": \"string\"}, \"closingAgentName\": {\"type\": \"string\"}, \"buyerSigned\": {\"type\": \"boolean\"}, \"sellerSigned\": {\"type\": \"boolean\"}, \"notarized\": {\"type\": \"boolean\"}}, \"required\": [\"documentType\", \"purchasePrice\"], \"additionalProperties\": false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Closing Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        880,
+        280
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Closing Validation Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Documents"
+        },
+        "options": {},
+        "returnAll": true
+      },
+      "id": "sheets-lookup",
+      "name": "Get Previous Docs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1080,
+        280
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const extractNode = $('Extract Closing Data').first();\nconst doc = extractNode.json.data || extractNode.json;\n\nconst previousDocs = $('Get Previous Docs').all();\nconst triggerData  = $('New Closing Doc').item.json;\nconst fileName     = triggerData.name || 'unknown';\nconst fileId       = triggerData.id   || '';\n\nconst docType      = doc.documentType  || 'Unknown';\nconst fileNumber   = doc.fileNumber    || 'N/A';\nconst purchasePrice= parseFloat(doc.purchasePrice)    || 0;\nconst loanAmount   = parseFloat(doc.loanAmount)       || 0;\nconst cashToClose  = parseFloat(doc.cashToClose)      || 0;\nconst closingCosts = parseFloat(doc.totalClosingCosts)|| 0;\n\nconst propertyAddress = [doc.propertyStreet, doc.propertyCity, doc.propertyState, doc.propertyZip]\n  .filter(Boolean).join(', ') || 'N/A';\n\nconst discrepancies = [];\nlet validationStatus = 'Valid';\n\n// Basic validation checks\nif (!doc.buyerName)   discrepancies.push('Missing buyer name');\nif (!doc.sellerName)  discrepancies.push('Missing seller name');\nif (!doc.closingDate) discrepancies.push('Missing closing date');\nif (purchasePrice <= 0) discrepancies.push('Missing or zero purchase price');\n\n// Loan-to-value check\nif (loanAmount > 0 && purchasePrice > 0) {\n  const ltv = loanAmount / purchasePrice;\n  if (ltv > 0.97) discrepancies.push(`LTV ratio ${(ltv*100).toFixed(1)}% exceeds 97% limit`);\n}\n\n// Signature checks\nif (!doc.buyerSigned)  discrepancies.push('Buyer signature missing');\nif (!doc.sellerSigned) discrepancies.push('Seller signature missing');\nif (!doc.notarized)    discrepancies.push('Document not notarized');\n\n// Cross-validate against previous docs for same file number\nconst hasRows = previousDocs.length > 0\n  && previousDocs[0].json\n  && Object.keys(previousDocs[0].json).length > 0;\n\nif (hasRows && fileNumber !== 'N/A') {\n  const relatedDocs = previousDocs.filter(r =>\n    (r.json['File Number'] || '').trim() === fileNumber.trim()\n  );\n  relatedDocs.forEach(prev => {\n    const prevPrice = parseFloat(prev.json['Amount'] || 0);\n    if (prevPrice > 0 && purchasePrice > 0 && Math.abs(prevPrice - purchasePrice) > 100) {\n      discrepancies.push(\n        `Purchase price mismatch: this doc $${purchasePrice} vs previous $${prevPrice}`\n      );\n    }\n    const prevBuyer = (prev.json['Buyer'] || '').toLowerCase();\n    const thisBuyer = (doc.buyerName || '').toLowerCase();\n    if (prevBuyer && thisBuyer && !thisBuyer.includes(prevBuyer.split(' ')[0])) {\n      discrepancies.push(`Buyer name inconsistency: \"${doc.buyerName}\" vs previous \"${prev.json['Buyer']}\"`);\n    }\n  });\n}\n\nif (discrepancies.length > 0) {\n  validationStatus = discrepancies.length >= 3 ? 'Failed' : 'Review Required';\n}\n\nreturn [{ json: {\n  fileNumber,\n  documentType:   docType,\n  propertyAddress,\n  buyerName:      doc.buyerName      || 'N/A',\n  sellerName:     doc.sellerName     || 'N/A',\n  lenderName:     doc.lenderName     || 'N/A',\n  closingDate:    doc.closingDate    || 'N/A',\n  purchasePrice,\n  loanAmount,\n  loanType:       doc.loanType       || 'N/A',\n  interestRate:   doc.interestRate   || 0,\n  cashToClose,\n  closingCosts,\n  sellerProceeds: doc.sellerProceeds || 0,\n  buyerSigned:    doc.buyerSigned    ? 'Yes' : 'No',\n  sellerSigned:   doc.sellerSigned   ? 'Yes' : 'No',\n  notarized:      doc.notarized      ? 'Yes' : 'No',\n  validationStatus,\n  discrepancies:  discrepancies.join('; ') || 'None',\n  discrepancyCount: discrepancies.length,\n  fileName,\n  fileId,\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "validate-data",
+      "name": "Cross-Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Closing Validation Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Documents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "File Number": "={{ $json.fileNumber }}",
+            "Property": "={{ $json.propertyAddress }}",
+            "Buyer": "={{ $json.buyerNames }}",
+            "Seller": "={{ $json.sellerNames }}",
+            "Amount": "={{ $json.purchasePrice }}",
+            "Doc Type": "={{ $json.documentType }}",
+            "Validation Status": "={{ $json.validationStatus }}",
+            "Discrepancies": "={{ $json.discrepancies }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "File Number",
+              "displayName": "File Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property",
+              "displayName": "Property",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Buyer",
+              "displayName": "Buyer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Seller",
+              "displayName": "Seller",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Doc Type",
+              "displayName": "Doc Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Validation Status",
+              "displayName": "Validation Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Discrepancies",
+              "displayName": "Discrepancies",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1480,
+        280
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "closing-validation"
+        },
+        "text": "=\ud83d\udcd1 *Closing Document Validated*\n\n*File:* {{ $('Cross-Validate').item.json.fileNumber }}\n*Document:* {{ $('Cross-Validate').item.json.documentType }}\n*Status:* {{ $('Cross-Validate').item.json.validationStatus }}\n\n\ud83c\udfe0 *Property:*\n{{ $('Cross-Validate').item.json.propertyAddress }}\n\n\ud83d\udc65 *Parties:*\n\u2022 Buyer: {{ $('Cross-Validate').item.json.buyerNames }}\n\u2022 Seller: {{ $('Cross-Validate').item.json.sellerNames }}\n\u2022 Lender: {{ $('Cross-Validate').item.json.lender }}\n\n\ud83d\udcb0 *Financial Summary:*\n\u2022 Purchase Price: ${{ $('Cross-Validate').item.json.purchasePrice }}\n\u2022 Loan Amount: ${{ $('Cross-Validate').item.json.loanAmount }}\n\u2022 Down Payment: ${{ $('Cross-Validate').item.json.downPayment }}\n\u2022 Interest Rate: {{ $('Cross-Validate').item.json.interestRate }}%\n\n\ud83d\udcb5 *Closing Figures:*\n\u2022 Buyer Costs: ${{ $('Cross-Validate').item.json.totalBuyerCosts }}\n\u2022 Seller Costs: ${{ $('Cross-Validate').item.json.totalSellerCosts }}\n\u2022 Cash to Close: ${{ $('Cross-Validate').item.json.cashToClose }}\n\u2022 Proceeds to Seller: ${{ $('Cross-Validate').item.json.proceedsToSeller }}\n\n\u270d\ufe0f *Signatures:* {{ $('Cross-Validate').item.json.signatures }}\n\n\ud83d\udccb *Validation ({{ $('Cross-Validate').item.json.relatedDocCount }} related docs):*\n{{ $('Cross-Validate').item.json.discrepancies }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Cross-Validate').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        280
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Closing Doc": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract Closing Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Closing Data": {
+      "main": [
+        [
+          {
+            "node": "Get Previous Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Previous Docs": {
+      "main": [
+        [
+          {
+            "node": "Cross-Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cross-Validate": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-56_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-57_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 56 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 57 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3591,6 +3591,49 @@ Automate title deed analysis for real estate transactions. This workflow watches
 - Modify the extraction prompt to focus on specific document types relevant to your practice
 - Add additional notification channels (email, Microsoft Teams) for high-risk findings
 - Extend the Google Sheet schema with additional columns for your tracking needs
+
+</details>
+
+<details>
+<summary><strong>🏠 Closing Document Validator</strong> - Cross-validate real estate closing documents for discrepancies | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/closing-document-validator.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/closing-document-validator.json">📋 Open</a></summary>
+
+Automate the tedious process of validating real estate closing packages. This workflow monitors a Google Drive folder for new closing documents, extracts key data using AI, cross-validates names, addresses, and financial figures across related documents, and immediately flags any inconsistencies via Slack.
+
+#### Who is this for?
+- Closing coordinators managing multiple transactions
+- Transaction managers at title companies
+- Title company processors handling closing packages
+
+#### How it works
+1. **New Closing Doc** - Google Drive trigger watches a folder for newly uploaded closing documents (closing disclosures, deeds, mortgage notes)
+2. **Download Document** - Downloads the uploaded PDF from Google Drive
+3. **Extract Closing Data** - Uses PDF Vector AI to extract structured data including document type, property details, party names, loan terms, financial figures, and signature status
+4. **Get Previous Docs** - Retrieves previously processed documents from Google Sheets for cross-validation
+5. **Cross-Validate** - Runs JavaScript validation logic: checks for missing fields, verifies LTV ratios stay under 97%, confirms signatures and notarization, and cross-references buyer names and purchase prices against related documents with the same file number
+6. **Log to Sheets** - Appends validation results to a Google Sheets log with file number, property, parties, amounts, status, and any discrepancies found
+7. **Send to Slack** - Posts a detailed validation report to Slack including property info, financial summary, signature status, and discrepancy details with a link to the original document
+
+#### Services used
+- Google Drive (document upload monitoring and download)
+- PDF Vector (AI-powered closing document data extraction)
+- Google Sheets (validation log and cross-reference lookup)
+- Slack (discrepancy alerts and validation reports)
+- Code / JavaScript (cross-validation logic and LTV checks)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set your folder ID in the trigger node
+4. Create a Google Sheet with columns: File Number, Property, Buyer, Seller, Amount, Doc Type, Validation Status, Discrepancies, Processed Date
+5. Configure Google Sheets OAuth2 credentials and set the spreadsheet ID in both Sheets nodes
+6. Configure Slack OAuth2 credentials and set your channel ID
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the LTV threshold in the Cross-Validate code node (currently set to 97%)
+- Modify the discrepancy count threshold for "Failed" vs "Review Required" status (currently 3+)
+- Extend the extraction prompt to capture additional fields specific to your closing packages
+- Add email notifications alongside Slack for critical validation failures
 
 </details>
 
