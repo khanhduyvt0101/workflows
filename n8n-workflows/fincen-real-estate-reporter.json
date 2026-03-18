@@ -1,0 +1,370 @@
+{
+  "name": "FinCEN Real Estate Reporter",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83c\udfdb\ufe0f FinCEN Real Estate Reporter\n\n### What this workflow does\n1. Watches Google Drive folder for closing documents\n2. Extracts buyer, seller, property, transaction data\n3. Identifies beneficial owners for entity buyers\n4. Checks if transaction meets reporting thresholds\n5. Logs reportable transactions to Google Sheets\n6. Sends Slack alert with FinCEN report data\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for closings\n3. Create a Google Sheet with these columns:\n   File # | Property | Transaction Type | Amount | Buyer Type | Buyer Name | Beneficial Owner | Seller | Reportable | Report Status | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Title companies\n- Real estate attorneys\n- Closing agents",
+        "height": 540,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "FinCEN Transactions"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Transaction",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        280
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract real estate transaction data for FinCEN reporting. Return all fields flat \u2014 no nested objects. Extract: transactionType (sale/purchase/transfer), closingDate, fileNumber, propertyType (residential/commercial/mixed-use). Property address flat: propertyStreet, propertyCity, propertyState, propertyZip, propertyCounty. Transaction: purchasePrice (number), paymentMethod (cash/wire/check/financed), financingType (conventional/FHA/VA/none/cash). Buyer: buyerType (Individual/LLC/Corporation/Trust/Partnership), buyerLegalName, buyerAddress, buyerTinLast4, buyerFormationState, buyerFormationDate. Beneficial owners as plain text: beneficialOwnersSummary (name and ownership % comma separated), beneficialOwnersCount (number). Seller: sellerType, sellerLegalName, sellerAddress. Parties: titleCompany, closingAgent, additionalParties (plain text list of roles and names).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"transactionType\": {\"type\": \"string\"}, \"closingDate\": {\"type\": \"string\"}, \"fileNumber\": {\"type\": \"string\"}, \"propertyType\": {\"type\": \"string\"}, \"propertyStreet\": {\"type\": \"string\"}, \"propertyCity\": {\"type\": \"string\"}, \"propertyState\": {\"type\": \"string\"}, \"propertyZip\": {\"type\": \"string\"}, \"propertyCounty\": {\"type\": \"string\"}, \"purchasePrice\": {\"type\": \"number\"}, \"paymentMethod\": {\"type\": \"string\"}, \"financingType\": {\"type\": \"string\"}, \"buyerType\": {\"type\": \"string\"}, \"buyerLegalName\": {\"type\": \"string\"}, \"buyerAddress\": {\"type\": \"string\"}, \"buyerTinLast4\": {\"type\": \"string\"}, \"buyerFormationState\": {\"type\": \"string\"}, \"buyerFormationDate\": {\"type\": \"string\"}, \"beneficialOwnersSummary\": {\"type\": \"string\"}, \"beneficialOwnersCount\": {\"type\": \"number\"}, \"sellerType\": {\"type\": \"string\"}, \"sellerLegalName\": {\"type\": \"string\"}, \"sellerAddress\": {\"type\": \"string\"}, \"titleCompany\": {\"type\": \"string\"}, \"closingAgent\": {\"type\": \"string\"}, \"additionalParties\": {\"type\": \"string\"}}, \"required\": [\"transactionType\", \"purchasePrice\"], \"additionalProperties\": false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract FinCEN Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        880,
+        280
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const tx = $input.first().json.data || $input.first().json;\nconst triggerData = $('New Transaction').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\nconst fileNumMatch = fileName.match(/^([A-Z0-9-]+)/i);\nconst fileNumber = tx.fileNumber || (fileNumMatch ? fileNumMatch[1] : 'Unknown');\n\n// Property address from flat fields\nconst propertyAddress = [tx.propertyStreet, tx.propertyCity, tx.propertyState, tx.propertyZip]\n  .filter(Boolean).join(', ') || 'N/A';\n\nconst purchasePrice = parseFloat(tx.purchasePrice) || 0;\nconst paymentMethod = tx.paymentMethod || 'Unknown';\nconst financingType = tx.financingType || 'Unknown';\nconst buyerType     = tx.buyerType     || 'Individual';\nconst buyerName     = tx.buyerLegalName|| 'Unknown';\nconst sellerName    = tx.sellerLegalName|| 'Unknown';\n\n// Entity check\nconst entityTypes = ['llc','corporation','corp','inc','trust','partnership','lp','llp'];\nconst isEntity = entityTypes.some(t => buyerType.toLowerCase().includes(t));\n\n// Non-financed check\n// Non-financed = explicitly cash/none, AND not a known financed type\nconst financedTypes = ['conventional','fha','va','usda','financed','mortgage','loan'];\nconst isFinancedByLender = financedTypes.some(t => (financingType||'').toLowerCase().includes(t));\nconst isNonFinanced = !isFinancedByLender && ['none','cash','all-cash','non-financed'].some(t =>\n  (financingType || '').toLowerCase().includes(t) ||\n  (paymentMethod  || '').toLowerCase() === 'cash' ||\n  (paymentMethod  || '').toLowerCase() === 'wire'\n);\n\nconst isResidential = (tx.propertyType || '').toLowerCase().includes('residential');\n\n// FinCEN reporting determination\nlet isReportable  = false;\nconst reportReason = [];\n\nif (isNonFinanced && isResidential) {\n  if (isEntity) {\n    isReportable = true;\n    reportReason.push('Entity buyer in non-financed residential transaction');\n  }\n  if (purchasePrice >= 300000) {\n    isReportable = true;\n    reportReason.push(`Amount $${purchasePrice.toLocaleString()} meets threshold`);\n  }\n  if ((paymentMethod||'').toLowerCase().includes('cash') && purchasePrice >= 100000) {\n    isReportable = true;\n    reportReason.push('Cash payment method');\n  }\n}\n\n// Data gaps\nconst dataGaps = [];\nif (isEntity && (tx.beneficialOwnersCount || 0) === 0)\n  dataGaps.push('Missing beneficial owner info for entity buyer');\nif (!tx.buyerTinLast4 || tx.buyerTinLast4 === 'N/A')\n  dataGaps.push('Missing buyer TIN/SSN');\n\nconst reportStatus = isReportable\n  ? (dataGaps.length > 0 ? 'Reportable - Data Needed' : 'Ready to Report')\n  : 'Not Reportable';\n\nreturn [{ json: {\n  fileNumber,\n  transactionType:       tx.transactionType        || 'Unknown',\n  closingDate:           tx.closingDate             || 'N/A',\n  propertyType:          tx.propertyType            || 'N/A',\n  propertyAddress,\n  propertyCounty:        tx.propertyCounty          || 'N/A',\n  propertyState:         tx.propertyState           || 'N/A',\n  purchasePrice,\n  paymentMethod,\n  financingType,\n  isNonFinanced,\n  buyerType,\n  isEntityBuyer:         isEntity,\n  buyerName,\n  buyerAddress:          tx.buyerAddress            || 'N/A',\n  buyerTIN:              tx.buyerTinLast4            || 'N/A',\n  buyerFormationState:   tx.buyerFormationState     || 'N/A',\n  beneficialOwnerCount:  tx.beneficialOwnersCount   || 0,\n  beneficialOwnerSummary:tx.beneficialOwnersSummary || 'None',\n  sellerType:            tx.sellerType              || 'N/A',\n  sellerName,\n  sellerAddress:         tx.sellerAddress           || 'N/A',\n  titleCompany:          tx.titleCompany            || 'N/A',\n  closingAgent:          tx.closingAgent            || 'N/A',\n  additionalParties:     tx.additionalParties       || 'None',\n  isReportable,\n  reportReason:          reportReason.join('; ')    || 'Does not meet reporting criteria',\n  reportStatus,\n  dataGaps:              dataGaps.join('; ')        || 'None',\n  fileName,\n  fileId,\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "determine-reporting",
+      "name": "Check Reporting",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "FinCEN Report Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Transactions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "File #": "={{ $json.fileNumber }}",
+            "Property": "={{ $json.propertyAddress }}",
+            "Transaction Type": "={{ $json.transactionType }}",
+            "Amount": "={{ $json.purchasePrice }}",
+            "Payment": "={{ $json.paymentMethod }}",
+            "Buyer Type": "={{ $json.buyerType }}",
+            "Buyer Name": "={{ $json.buyerName }}",
+            "Beneficial Owner": "={{ $json.primaryBOName }}",
+            "Seller": "={{ $json.sellerName }}",
+            "Reportable": "={{ $json.isReportable }}",
+            "Report Status": "={{ $json.reportStatus }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "File #",
+              "displayName": "File #",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property",
+              "displayName": "Property",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Transaction Type",
+              "displayName": "Transaction Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payment",
+              "displayName": "Payment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Buyer Type",
+              "displayName": "Buyer Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Buyer Name",
+              "displayName": "Buyer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Beneficial Owner",
+              "displayName": "Beneficial Owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Seller",
+              "displayName": "Seller",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reportable",
+              "displayName": "Reportable",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Report Status",
+              "displayName": "Report Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        280
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "fincen-reporting"
+        },
+        "text": "=\ud83c\udfdb\ufe0f *FinCEN Transaction Analysis*\n\n*File:* {{ $('Check Reporting').item.json.fileNumber }}\n*Status:* {{ $('Check Reporting').item.json.reportStatus }}\n\n\ud83c\udfe0 *Property:*\n{{ $('Check Reporting').item.json.propertyAddress }}\n\u2022 Type: {{ $('Check Reporting').item.json.propertyType }}\n\u2022 County: {{ $('Check Reporting').item.json.propertyCounty }}\n\n\ud83d\udcb0 *Transaction:*\n\u2022 Type: {{ $('Check Reporting').item.json.transactionType }}\n\u2022 Amount: ${{ $('Check Reporting').item.json.purchasePrice.toLocaleString() }}\n\u2022 Payment: {{ $('Check Reporting').item.json.paymentMethod }}\n\u2022 Financing: {{ $('Check Reporting').item.json.financingType }}\n\u2022 Closing Date: {{ $('Check Reporting').item.json.closingDate }}\n\n\ud83d\udc64 *Buyer:*\n\u2022 Type: {{ $('Check Reporting').item.json.buyerType }} {{ $('Check Reporting').item.json.isEntityBuyer ? '(Entity)' : '(Individual)' }}\n\u2022 Name: {{ $('Check Reporting').item.json.buyerName }}\n\u2022 Address: {{ $('Check Reporting').item.json.buyerAddress }}\n\u2022 TIN (last 4): {{ $('Check Reporting').item.json.buyerTIN }}\n\n\ud83c\udfe2 *Beneficial Owners ({{ $('Check Reporting').item.json.beneficialOwnerCount }}):*\n{{ $('Check Reporting').item.json.beneficialOwnerSummary }}\n\u2022 Primary BO: {{ $('Check Reporting').item.json.primaryBOName }}\n\n\ud83d\udc64 *Seller:*\n\u2022 Type: {{ $('Check Reporting').item.json.sellerType }}\n\u2022 Name: {{ $('Check Reporting').item.json.sellerName }}\n\n\ud83d\udccb *FinCEN Determination:*\n\u2022 Reportable: {{ $('Check Reporting').item.json.isReportable ? 'YES' : 'NO' }}\n\u2022 Reason: {{ $('Check Reporting').item.json.reportReason }}\n\n\u26a0\ufe0f *Data Gaps:*\n{{ $('Check Reporting').item.json.dataGaps }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Check Reporting').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1480,
+        280
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Transaction": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract FinCEN Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract FinCEN Data": {
+      "main": [
+        [
+          {
+            "node": "Check Reporting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Reporting": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
