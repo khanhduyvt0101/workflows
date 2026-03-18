@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-57_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-58_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 57 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 58 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3634,6 +3634,48 @@ Automate the tedious process of validating real estate closing packages. This wo
 - Modify the discrepancy count threshold for "Failed" vs "Review Required" status (currently 3+)
 - Extend the extraction prompt to capture additional fields specific to your closing packages
 - Add email notifications alongside Slack for critical validation failures
+
+</details>
+
+<details>
+<summary><strong>🏠 FinCEN Real Estate Reporter</strong> - Automate FinCEN reporting for real estate closings | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/fincen-real-estate-reporter.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/fincen-real-estate-reporter.json">📋 Open</a></summary>
+
+Streamline FinCEN compliance for real estate transactions by automatically extracting closing document data, identifying beneficial owners for entity buyers, and determining reportability. Eliminates manual review of closing packages and ensures no reportable transaction slips through the cracks.
+
+#### Who is this for?
+- Title companies processing high volumes of closings
+- Real estate attorneys handling entity purchases
+- Closing agents responsible for FinCEN compliance
+
+#### How it works
+1. **New Transaction** - Watches a Google Drive folder for new closing documents (polls every minute)
+2. **Download Document** - Downloads the uploaded closing document from Google Drive
+3. **Extract FinCEN Data** - Uses PDF Vector AI to extract buyer, seller, property, transaction, and beneficial ownership data from the document
+4. **Check Reporting** - Evaluates FinCEN reporting criteria: entity buyer status, non-financed residential transactions, purchase price thresholds ($300K+), and cash payment detection ($100K+). Identifies data gaps for entity buyers missing beneficial owner information
+5. **Log to Sheets** - Appends transaction details, reportability status, and processing date to a Google Sheets log
+6. **Send to Slack** - Posts a detailed FinCEN transaction analysis to Slack including property, buyer, seller, beneficial owner info, and reporting determination
+
+#### Services used
+- Google Drive (trigger and document download)
+- PDF Vector (AI-powered document data extraction)
+- Code / JavaScript (FinCEN reporting logic and threshold checks)
+- Google Sheets (transaction logging)
+- Slack (alert notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set your folder ID in the trigger node
+4. Create a Google Sheet with columns: File # | Property | Transaction Type | Amount | Payment | Buyer Type | Buyer Name | Beneficial Owner | Seller | Reportable | Report Status | Processed Date
+5. Configure Google Sheets OAuth2 credentials and set the spreadsheet ID
+6. Configure Slack OAuth2 credentials and set the channel ID
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the purchase price reporting threshold (currently $300K for non-financed residential, $100K for cash)
+- Add additional entity type keywords in the Check Reporting code node
+- Extend the extraction prompt to capture additional closing document fields
+- Add email notifications alongside Slack for high-priority reportable transactions
 
 </details>
 
