@@ -1,0 +1,420 @@
+{
+  "name": "Accreditation Document Assembler",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🏛️ Accreditation Document Assembler\n\n### What this workflow does\n1. Watches Google Drive folder for institutional documents\n2. Parses policies, reports, syllabi into clean text\n3. Extracts compliance indicators and evidence\n4. AI maps evidence to accreditation standards\n5. Identifies documentation gaps\n6. Logs findings to Google Sheets\n7. Sends Slack alert with gap analysis\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for accreditation docs\n3. Create a Google Sheet with these columns:\n   Document | Type | Standards Addressed | Evidence Found | Gaps Identified | Compliance Score | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Institutional effectiveness offices\n- Accreditation coordinators\n- Academic affairs teams",
+        "height": 520,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 Parallel Processing\n\nParse and Standards Mapping run at\nthe same time from the same PDF",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Accreditation Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Document",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "parse",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "options": {
+          "llmMode": "auto"
+        }
+      },
+      "id": "pdfvector-parse",
+      "name": "Parse Document",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Analyze this institutional document for accreditation compliance evidence.\n\n**DOCUMENT CLASSIFICATION:**\nIdentify document type:\n- Policy document\n- Assessment report\n- Course syllabus\n- Strategic plan\n- Annual report\n- Meeting minutes\n- Faculty handbook\n- Student handbook\n- Catalog\n- Other (specify)\n\n**ACCREDITATION STANDARDS MAPPING:**\nMap content to common accreditation standards (HLC, SACSCOC, MSCHE, WASC, AACSB, ABET):\n\n1. MISSION & INTEGRITY\n   - Evidence of mission statement\n   - Evidence of ethical operations\n   - Evidence of governance\n\n2. STUDENT ACHIEVEMENT\n   - Evidence of learning outcomes\n   - Evidence of assessment data\n   - Evidence of student success metrics\n\n3. CURRICULUM & INSTRUCTION\n   - Evidence of program requirements\n   - Evidence of faculty qualifications\n   - Evidence of instructional quality\n\n4. RESOURCES & PLANNING\n   - Evidence of financial stability\n   - Evidence of facilities\n   - Evidence of strategic planning\n\n5. CONTINUOUS IMPROVEMENT\n   - Evidence of assessment processes\n   - Evidence of data-driven decisions\n   - Evidence of improvement actions\n\nFor each standard area:\n- Relevant evidence found (YES/NO)\n- Specific quotes or data points\n- Strength of evidence (STRONG/MODERATE/WEAK)\n- Page/section reference\n\n**DOCUMENTATION GAPS:**\nIdentify missing elements:\n- What required evidence is NOT present?\n- What additional documentation would strengthen compliance?\n- Priority level (HIGH/MEDIUM/LOW)\n\n**COMPLIANCE SCORE:**\nOverall document value for accreditation (1-10)\n\n**CROSS-REFERENCE RECOMMENDATIONS:**\nWhat other documents should this be linked to?"
+      },
+      "id": "pdfvector-analyze",
+      "name": "Standards Mapping",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from Merge\nconst allItems = $input.all();\n\n// Parse result from first item\nconst parseItem = allItems[0]?.json || {};\nconst fullText = parseItem.markdown || parseItem.text || '';\nconst pageCount = parseItem.pageCount || 0;\n\n// Analysis from second item\nconst analysisItem = allItems[1]?.json || {};\nconst standardsMapping = analysisItem.markdown || analysisItem.answer || analysisItem.text || '';\n\n// Get trigger data\nconst triggerData = $('New Document').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Identify document type\nlet docType = 'Unknown';\nconst typeMatch = standardsMapping.match(/document type[:\\s]+([^\\n]+)/i);\nif (typeMatch) docType = typeMatch[1].trim();\n\n// Count standards with evidence\nconst standardAreas = ['MISSION', 'STUDENT ACHIEVEMENT', 'CURRICULUM', 'RESOURCES', 'CONTINUOUS IMPROVEMENT'];\nlet standardsAddressed = [];\nlet standardsGaps = [];\n\nstandardAreas.forEach(area => {\n  const areaRegex = new RegExp(area + '[^]*?(YES|NO)', 'i');\n  const match = standardsMapping.match(areaRegex);\n  if (match && match[1].toUpperCase() === 'YES') {\n    standardsAddressed.push(area);\n  } else {\n    standardsGaps.push(area);\n  }\n});\n\n// Count evidence strength\nlet strongEvidence = (standardsMapping.match(/STRONG/gi) || []).length;\nlet moderateEvidence = (standardsMapping.match(/MODERATE/gi) || []).length;\nlet weakEvidence = (standardsMapping.match(/WEAK/gi) || []).length;\n\n// Count gaps by priority\nlet highGaps = (standardsMapping.match(/HIGH.*?priority/gi) || []).length;\nlet mediumGaps = (standardsMapping.match(/MEDIUM.*?priority/gi) || []).length;\n\n// Extract compliance score\nlet complianceScore = 5;\nconst scoreMatch = standardsMapping.match(/compliance score[:\\s]*(\\d+)/i) ||\n                   standardsMapping.match(/overall.*?(\\d+).*?(?:out of|\\/).*?10/i);\nif (scoreMatch) complianceScore = parseInt(scoreMatch[1]);\n\n// Determine overall status\nlet status = 'Acceptable';\nif (complianceScore >= 8) status = 'Strong Evidence';\nelse if (complianceScore >= 6) status = 'Adequate';\nelse if (complianceScore >= 4) status = 'Needs Improvement';\nelse status = 'Critical Gaps';\n\nreturn [{\n  json: {\n    fileName: fileName,\n    fileId: fileId,\n    documentType: docType,\n    pageCount: pageCount,\n    textLength: fullText.length,\n    standardsAddressed: standardsAddressed.join(', ') || 'None identified',\n    standardsAddressedCount: standardsAddressed.length,\n    standardsGaps: standardsGaps.join(', ') || 'None',\n    standardsGapsCount: standardsGaps.length,\n    strongEvidence: strongEvidence,\n    moderateEvidence: moderateEvidence,\n    weakEvidence: weakEvidence,\n    highPriorityGaps: highGaps,\n    mediumPriorityGaps: mediumGaps,\n    complianceScore: complianceScore,\n    status: status,\n    standardsMapping: standardsMapping,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-data",
+      "name": "Format Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Accreditation Evidence"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Documents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Document": "={{ $json.fileName }}",
+            "Type": "={{ $json.documentType }}",
+            "Pages": "={{ $json.pageCount }}",
+            "Standards Addressed": "={{ $json.standardsAddressed }}",
+            "Standards Count": "={{ $json.standardsAddressedCount }}",
+            "Gaps": "={{ $json.standardsGaps }}",
+            "Compliance Score": "={{ $json.complianceScore }}",
+            "Status": "={{ $json.status }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Document",
+              "displayName": "Document",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pages",
+              "displayName": "Pages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Standards Addressed",
+              "displayName": "Standards Addressed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Standards Count",
+              "displayName": "Standards Count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Gaps",
+              "displayName": "Gaps",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Compliance Score",
+              "displayName": "Compliance Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "accreditation"
+        },
+        "text": "=🏛️ *Accreditation Document Analyzed*\n\n*Document:* {{ $('Format Analysis').item.json.fileName }}\n*Type:* {{ $('Format Analysis').item.json.documentType }}\n*Pages:* {{ $('Format Analysis').item.json.pageCount }}\n\n📊 *Standards Coverage:*\n• Standards Addressed: {{ $('Format Analysis').item.json.standardsAddressedCount }}/5\n• Areas Covered: {{ $('Format Analysis').item.json.standardsAddressed }}\n\n✅ *Evidence Quality:*\n• Strong Evidence: {{ $('Format Analysis').item.json.strongEvidence }}\n• Moderate Evidence: {{ $('Format Analysis').item.json.moderateEvidence }}\n• Weak Evidence: {{ $('Format Analysis').item.json.weakEvidence }}\n\n⚠️ *Gaps Identified:*\n• Areas Missing: {{ $('Format Analysis').item.json.standardsGaps }}\n• High Priority Gaps: {{ $('Format Analysis').item.json.highPriorityGaps }}\n\n📈 *Compliance Score:* *{{ $('Format Analysis').item.json.complianceScore }}/10*\n*Status:* {{ $('Format Analysis').item.json.status }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Format Analysis').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Document": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Parse Document",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Standards Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Document": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Standards Mapping": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Analysis": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
