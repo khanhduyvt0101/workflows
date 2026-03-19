@@ -3450,7 +3450,7 @@ Automate your resume screening process with AI-powered analysis. This workflow w
 1. Import the workflow JSON into n8n
 2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the PDF Vector credentials
 3. Create a Google Drive folder for incoming resumes and update the folder ID in the "New Resume" trigger node
-4. Create a Google Sheet with columns: Candidate, Email, Current Title, Experience Years, Match Score, Recommendation, Top Strengths, Critical Gaps, Suggestions, File Name, Processed Date
+4. Create a Google Sheet with columns: Candidate, Email, Current Title, Experience Years, Match Score, Recommendation, Top Strengths, Missing Skills, Suggestions, File Name, Processed Date
 5. Update the spreadsheet ID in the "Log to Sheets" node
 6. Configure Google Drive and Google Sheets OAuth2 credentials
 7. Connect your Slack workspace and set the channel ID in the "Send to Slack" node
