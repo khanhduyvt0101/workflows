@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-58_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-59_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 58 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 59 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3676,6 +3676,50 @@ Streamline FinCEN compliance for real estate transactions by automatically extra
 - Add additional entity type keywords in the Check Reporting code node
 - Extend the extraction prompt to capture additional closing document fields
 - Add email notifications alongside Slack for high-priority reportable transactions
+
+</details>
+
+<details>
+<summary><strong>🎓 International Transcript Evaluator</strong> - Evaluate foreign transcripts with AI-powered GPA conversion and credential verification | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/international-transcript-evaluator.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/international-transcript-evaluator.json">📋 Open</a></summary>
+
+Automate the evaluation of international academic transcripts with AI-powered grade conversion and credential verification. This workflow watches a Google Drive folder for uploaded transcript PDFs, extracts student and academic data, converts foreign grading scales to the US 4.0 GPA system, flags potential credential issues, and delivers a complete evaluation summary via Slack.
+
+#### Who is this for?
+- University admissions offices processing international applications
+- Credential evaluation services (WES, ECE alternatives)
+- International student services departments
+
+#### How it works
+1. **New Transcript** - Google Drive trigger watches a folder for newly uploaded transcript PDFs
+2. **Download Transcript** - Downloads the PDF file for processing
+3. **Extract Transcript** - PDF Vector extracts structured data (student info, institution, grades, courses, credits) using AI
+4. **Grade Analysis** - PDF Vector performs deep credential analysis including grade conversion, course equivalency mapping, and verification flags (runs in parallel with extraction)
+5. **Merge Results** - Combines extracted data and grade analysis into a single dataset
+6. **Format Evaluation** - JavaScript code converts foreign GPA scales (10-point, 100-point, 5-point, 7-point) to US 4.0 scale, maps degree types to US equivalents, and parses credential flags
+7. **Log to Sheets** - Appends evaluation results to a Google Sheets tracking spreadsheet
+8. **Send to Slack** - Posts a formatted summary with GPA conversion, credential status, and a link to the original transcript
+
+#### Services used
+- Google Drive (trigger and file download for transcript PDFs)
+- PDF Vector (AI-powered data extraction and grade analysis)
+- Google Sheets (evaluation logging and tracking)
+- Slack (notification with evaluation summary)
+- Code / JavaScript (GPA scale conversion and data formatting)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set the folder ID for transcript uploads
+4. Create a Google Sheet with columns: Student Name, Institution, Country, Degree, Major, Original GPA, Converted GPA, Total Credits, Credential Status, Evaluation Date
+5. Configure Google Sheets OAuth2 credentials and set the spreadsheet ID
+6. Configure Slack OAuth2 credentials and set the target channel
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust GPA conversion formulas in the Format Evaluation code node for specific country scales
+- Add additional credential verification keywords (fraud, suspicious, unaccredited) for stricter screening
+- Extend the Google Sheets columns to capture more fields like honors, language of instruction, or degree equivalency
+- Add email notifications alongside Slack for high-priority credential flags
 
 </details>
 
