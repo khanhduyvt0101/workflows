@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-59_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-60_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 59 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 60 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3720,6 +3720,52 @@ Automate the evaluation of international academic transcripts with AI-powered gr
 - Add additional credential verification keywords (fraud, suspicious, unaccredited) for stricter screening
 - Extend the Google Sheets columns to capture more fields like honors, language of instruction, or degree equivalency
 - Add email notifications alongside Slack for high-priority credential flags
+
+</details>
+
+<details>
+<summary><strong>👤 Resume Job Match Scorer</strong> - Score resumes against job descriptions with AI-powered analysis | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/resume-job-match-scorer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/resume-job-match-scorer.json">📋 Open</a></summary>
+
+Score candidate resumes against specific job descriptions automatically. This workflow watches a Google Drive folder for resume PDFs, extracts structured candidate data, scores them against your custom job requirements, and delivers match reports to Google Sheets and Slack. Easily customize the target job by updating the prompt — perfect for screening candidates across different roles.
+
+#### Who is this for?
+- Recruiters screening candidates for specific open positions
+- Career coaches helping clients optimize resumes for target roles
+- HR teams matching applicants to multiple job openings
+
+#### How it works
+1. **New Resume** - Google Drive trigger watches a designated folder for newly uploaded resume PDFs (polls every minute)
+2. **Download Resume** - Downloads the PDF file from Google Drive for processing
+3. **Extract Resume** - PDF Vector extracts structured candidate information including name, email, skills, experience, education, certifications, seniority level, and more
+4. **Score Match** - PDF Vector scores the resume against your custom job title and requirements, returning a match score (0-100), recommendation, top strengths, missing skills, and improvement suggestions
+5. **Merge** - Combines the extracted resume data and match analysis into a single data stream
+6. **Format Results** - JavaScript code node parses the analysis and combines all data into a unified result object
+7. **Log to Sheets** - Appends the candidate assessment to a Google Sheets spreadsheet for tracking
+8. **Send to Slack** - Posts a formatted summary with match score, strengths, missing skills, and a link to the resume
+
+#### Services used
+- Google Drive (trigger for new resumes and file download)
+- PDF Vector (resume data extraction and job match scoring)
+- Google Sheets (logging assessment results)
+- Slack (team notifications with candidate match reports)
+- Code / JavaScript (data formatting and score parsing)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the PDF Vector credentials
+3. Create a Google Drive folder for incoming resumes and update the folder ID in the "New Resume" trigger node
+4. Open the "Score Match" node and update the JOB TITLE and JOB REQUIREMENTS with your target role and full job description
+5. Create a Google Sheet with columns: Candidate, Email, Current Title, Experience Years, Match Score, Recommendation, Top Strengths, Missing Skills, Suggestions, File Name, Processed Date
+6. Update the spreadsheet ID in the "Log to Sheets" node
+7. Configure Google Drive and Google Sheets OAuth2 credentials
+8. Connect your Slack workspace and set the channel ID in the "Send to Slack" node
+9. Activate the workflow
+
+#### Customizing this workflow
+- Update the job title and full job description in the "Score Match" node prompt to match any open position
+- Add additional extraction fields in the "Extract Resume" schema for industry-specific qualifications
+- Extend the Slack message format or add email notifications for high-scoring candidates
+- Add conditional routing to automatically flag candidates above a certain match score threshold
 
 </details>
 
