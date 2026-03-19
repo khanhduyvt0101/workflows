@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-60_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-61_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 60 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 61 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3766,6 +3766,51 @@ Score candidate resumes against specific job descriptions automatically. This wo
 - Add additional extraction fields in the "Extract Resume" schema for industry-specific qualifications
 - Extend the Slack message format or add email notifications for high-scoring candidates
 - Add conditional routing to automatically flag candidates above a certain match score threshold
+
+</details>
+
+<details>
+<summary><strong>🎓 Accreditation Document Assembler</strong> - AI-powered accreditation evidence mapping and gap analysis | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/accreditation-document-assembler.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/accreditation-document-assembler.json">📋 Open</a></summary>
+
+Automatically analyze institutional documents for accreditation compliance by mapping evidence to major accreditation standards (HLC, SACSCOC, MSCHE, WASC, AACSB, ABET). The workflow watches a Google Drive folder, parses uploaded documents, identifies compliance indicators, scores evidence strength, and flags documentation gaps — saving accreditation teams hours of manual review.
+
+#### Who is this for?
+- Institutional effectiveness offices preparing for accreditation visits
+- Accreditation coordinators managing evidence collection
+- Academic affairs teams tracking compliance across departments
+
+#### How it works
+1. **New Document** - Google Drive trigger watches a designated folder for newly uploaded institutional documents
+2. **Download Document** - Retrieves the file from Google Drive for processing
+3. **Parse Document** - PDF Vector extracts clean text and metadata from the document (runs in parallel)
+4. **Standards Mapping** - PDF Vector AI analyzes the document against 5 accreditation standard areas: Mission & Integrity, Student Achievement, Curriculum & Instruction, Resources & Planning, and Continuous Improvement (runs in parallel)
+5. **Merge Results** - Combines parsed text and standards analysis into a single data set
+6. **Format Analysis** - JavaScript processes the AI output to extract compliance scores, evidence strength counts, gap priorities, and overall status
+7. **Log to Sheets** - Appends findings to a Google Sheet with document type, standards addressed, gaps, compliance score, and status
+8. **Send to Slack** - Posts a detailed gap analysis alert including standards coverage, evidence quality breakdown, and a direct link to the document
+
+#### Services used
+- Google Drive (document intake and monitoring)
+- PDF Vector (document parsing and AI-powered standards mapping)
+- Google Sheets (compliance evidence tracking log)
+- Slack (gap analysis notifications)
+- Code/JavaScript (evidence scoring and data formatting)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Create a Google Drive folder for accreditation documents and update the folder ID in the "New Document" trigger
+4. Create a Google Sheet with columns: Document, Type, Pages, Standards Addressed, Standards Count, Gaps, Compliance Score, Status, Processed Date
+5. Update the spreadsheet ID in the "Log to Sheets" node
+6. Configure Google Drive and Google Sheets OAuth2 credentials
+7. Connect your Slack workspace and set the channel ID in the "Send to Slack" node
+8. Activate the workflow
+
+#### Customizing this workflow
+- Modify the standards mapping prompt to focus on your specific accrediting body (e.g., AACSB for business schools, ABET for engineering programs)
+- Adjust the compliance score thresholds in the Format Analysis node to match your institution's requirements
+- Add additional notification channels (email, Microsoft Teams) for critical gaps
+- Extend the Google Sheet schema to track cross-reference recommendations between documents
 
 </details>
 
