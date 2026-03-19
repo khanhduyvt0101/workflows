@@ -1,0 +1,429 @@
+{
+  "name": "International Transcript Evaluator",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83c\udf93 International Transcript Evaluator\n\n### What this workflow does\n1. Watches Google Drive folder for transcript PDFs\n2. Extracts courses, grades, credits, institution info\n3. AI converts foreign grades to US GPA scale\n4. Maps courses to US equivalencies\n5. Flags potential credential issues\n6. Logs evaluation to Google Sheets\n7. Sends Slack summary with GPA conversion\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for transcript uploads\n3. Create a Google Sheet with these columns:\n   Student Name | Institution | Country | Original GPA | Converted GPA | Total Credits | Credential Issues | Evaluation Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Admissions offices\n- Credential evaluation services\n- International student services",
+        "height": 520,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udd00 Parallel Processing\n\nExtract and Grade Analysis run at the\nsame time from the same PDF",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "International Transcripts"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Transcript",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Transcript",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract academic transcript data as flat fields only \u2014 no nested objects or arrays. Extract: studentName, studentId, dateOfBirth, countryOfOrigin. Institution: institutionName, institutionCity, institutionCountry. Academic: degreeType (Bachelor/Master/PhD/Associate/Diploma/etc), major, minor, enrollmentYear, graduationYear, graduationStatus (completed/in-progress/withdrawn). Grades: originalGPA (number), gpaScale (e.g. 4.0 or 10.0 or 100 or 5.0), totalCredits (number), totalCourses (number). coursesSummary: plain text list of top 5 courses with grades (e.g. 'Calculus: A, Physics: B+'). honorsAwards: comma-separated list of honors, awards, or distinctions. languageOfInstruction, transcriptDate, isOfficial (true/false), registrarSignature (true/false).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"studentName\": {\"type\": \"string\"}, \"studentId\": {\"type\": \"string\"}, \"dateOfBirth\": {\"type\": \"string\"}, \"countryOfOrigin\": {\"type\": \"string\"}, \"institutionName\": {\"type\": \"string\"}, \"institutionCity\": {\"type\": \"string\"}, \"institutionCountry\": {\"type\": \"string\"}, \"degreeType\": {\"type\": \"string\"}, \"major\": {\"type\": \"string\"}, \"minor\": {\"type\": \"string\"}, \"enrollmentYear\": {\"type\": \"string\"}, \"graduationYear\": {\"type\": \"string\"}, \"graduationStatus\": {\"type\": \"string\"}, \"originalGPA\": {\"type\": \"number\"}, \"gpaSCale\": {\"type\": \"string\"}, \"totalCredits\": {\"type\": \"number\"}, \"totalCourses\": {\"type\": \"number\"}, \"coursesSummary\": {\"type\": \"string\"}, \"honorsAwards\": {\"type\": \"string\"}, \"languageOfInstruction\": {\"type\": \"string\"}, \"transcriptDate\": {\"type\": \"string\"}, \"isOfficial\": {\"type\": \"boolean\"}, \"registrarSignature\": {\"type\": \"boolean\"}}, \"required\": [\"studentName\", \"institutionName\"], \"additionalProperties\": false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Transcript",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Evaluate this international academic transcript and provide credential analysis:\n\n**GRADE CONVERSION:**\nIdentify the grading scale used and convert to US 4.0 GPA scale:\n- If percentage-based: Apply standard conversion (90-100=4.0, 80-89=3.0, etc.)\n- If letter grades: Map to US equivalents\n- If numerical scale (e.g., French 0-20, German 1-5): Apply appropriate conversion\n- If Indian percentage: Use standard India-to-US conversion\n\nProvide:\n1. Original grading system description\n2. Converted cumulative GPA (4.0 scale)\n3. Confidence level in conversion (HIGH/MEDIUM/LOW)\n4. Any courses that couldn't be converted and why\n\n**COURSE EQUIVALENCY:**\nFor each major course, suggest US course equivalency:\n- Course level (freshman/sophomore/junior/senior/graduate)\n- Credit hour equivalency (if different credit system)\n- Subject area classification\n\n**CREDENTIAL VERIFICATION FLAGS:**\nCheck for potential issues:\n- Unusual grade patterns (all same grades, sudden changes)\n- Missing required information\n- Inconsistent dates or sequences\n- Unaccredited or unrecognized institution indicators\n- Document appears altered or incomplete\n- Language consistency issues\n\nFor each flag:\n- Severity: CRITICAL / MODERATE / MINOR\n- Specific concern\n- Recommended verification action\n\n**OVERALL ASSESSMENT:**\n- Credential authenticity confidence (1-10)\n- Academic performance tier (Excellent/Good/Average/Below Average)\n- Admission recommendation notes\n- Any special considerations"
+      },
+      "id": "pdfvector-analyze",
+      "name": "Grade Analysis",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst extractItem = allItems[0]?.json || {};\nconst td = extractItem.data || extractItem;\n\nconst analysisItem = allItems[1]?.json || {};\nconst gradeAnalysis = analysisItem.answer || analysisItem.markdown || analysisItem.text || '';\n\nconst triggerData = $('New Transcript').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\n// GPA conversion to 4.0 scale\nconst originalGPA = parseFloat(td.originalGPA) || 0;\nconst gpaScale    = (td.gpaSCale || td.gpaScale || '4.0').toString();\nlet convertedGPA  = originalGPA;\n\nif (gpaScale.includes('10') && !gpaScale.includes('100')) {\n  // 10-point scale (e.g. Germany, Netherlands)\n  convertedGPA = parseFloat((originalGPA / 10 * 4).toFixed(2));\n} else if (gpaScale.includes('100') || originalGPA > 10) {\n  // Percentage scale (UK, Australia, India etc.)\n  // UK classification: 70+=4.0, 60-69=3.3, 50-59=2.7, 40-49=2.0, <40=0\n  if      (originalGPA >= 70) convertedGPA = 4.0;\n  else if (originalGPA >= 60) convertedGPA = parseFloat((3.3 + (originalGPA - 60) / 10 * 0.4).toFixed(2));\n  else if (originalGPA >= 50) convertedGPA = parseFloat((2.7 + (originalGPA - 50) / 10 * 0.6).toFixed(2));\n  else if (originalGPA >= 40) convertedGPA = parseFloat((2.0 + (originalGPA - 40) / 10 * 0.7).toFixed(2));\n  else convertedGPA = parseFloat((originalGPA / 40 * 2.0).toFixed(2));\n  convertedGPA = Math.max(0, Math.min(4, convertedGPA));\n} else if (gpaScale.includes('5')) {\n  // 5-point scale (Russia, some European countries)\n  convertedGPA = parseFloat((originalGPA / 5 * 4).toFixed(2));\n} else if (gpaScale.includes('7')) {\n  // 7-point scale (Denmark, some others)\n  convertedGPA = parseFloat((originalGPA / 7 * 4).toFixed(2));\n}\n// 4.0 scale - no conversion needed\n\n// Parse credential status from AI analysis\nconst analysisLower = gradeAnalysis.toLowerCase();\nlet credentialStatus = 'Verified';\nif (analysisLower.includes('fraud') || analysisLower.includes('suspicious'))\n  credentialStatus = 'Suspicious - Review';\nelse if (analysisLower.includes('incomplete') || analysisLower.includes('missing'))\n  credentialStatus = 'Incomplete';\nelse if (analysisLower.includes('unaccredited') || analysisLower.includes('not recognized'))\n  credentialStatus = 'Unaccredited Institution';\n\n// US equivalent degree\nlet usEquivalent = td.degreeType || 'N/A';\nconst deg = (td.degreeType || '').toLowerCase();\nif (deg.includes('bachelor') || deg.includes('licence') || deg.includes('licenciatura'))\n  usEquivalent = \"Bachelor's Degree\";\nelse if (deg.includes('master') || deg.includes('magister') || deg.includes('maestr\u00eda'))\n  usEquivalent = \"Master's Degree\";\nelse if (deg.includes('phd') || deg.includes('doctorate') || deg.includes('doktor'))\n  usEquivalent = \"Doctoral Degree\";\nelse if (deg.includes('associate') || deg.includes('diploma'))\n  usEquivalent = 'Associate Degree / Diploma';\n\nreturn [{ json: {\n  studentName:       td.studentName        || 'Unknown',\n  studentId:         td.studentId          || 'N/A',\n  dateOfBirth:       td.dateOfBirth        || 'N/A',\n  countryOfOrigin:   td.countryOfOrigin    || 'N/A',\n  institutionName:   td.institutionName    || 'N/A',\n  institutionCountry:td.institutionCountry || 'N/A',\n  degreeType:        td.degreeType         || 'N/A',\n  usEquivalent,\n  major:             td.major              || 'N/A',\n  minor:             td.minor              || 'N/A',\n  enrollmentYear:    td.enrollmentYear     || 'N/A',\n  graduationYear:    td.graduationYear     || 'N/A',\n  graduationStatus:  td.graduationStatus   || 'N/A',\n  originalGPA,\n  gpaScale,\n  convertedGPA,\n  totalCredits:      td.totalCredits       || 0,\n  totalCourses:      td.totalCourses       || 0,\n  coursesSummary:    td.coursesSummary     || 'N/A',\n  honorsAwards:      td.honorsAwards       || 'None',\n  languageOfInstruction: td.languageOfInstruction || 'N/A',\n  isOfficial:        td.isOfficial   ? 'Yes' : 'No',\n  registrarSignature:td.registrarSignature ? 'Yes' : 'No',\n  credentialStatus,\n  gradeAnalysis,\n  fileName,\n  fileId,\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "format-data",
+      "name": "Format Evaluation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Transcript Evaluations"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Evaluations"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Student Name": "={{ $json.studentName }}",
+            "Institution": "={{ $json.institutionName }}",
+            "Country": "={{ $json.institutionCountry }}",
+            "Degree": "={{ $json.degree }}",
+            "Major": "={{ $json.major }}",
+            "Original GPA": "={{ $json.originalGPA }}",
+            "Converted GPA": "={{ $json.convertedGPA }}",
+            "Total Credits": "={{ $json.totalCredits }}",
+            "Credential Status": "={{ $json.credentialStatus }}",
+            "Evaluation Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Student Name",
+              "displayName": "Student Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Institution",
+              "displayName": "Institution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Country",
+              "displayName": "Country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Degree",
+              "displayName": "Degree",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Major",
+              "displayName": "Major",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Original GPA",
+              "displayName": "Original GPA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Converted GPA",
+              "displayName": "Converted GPA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Credits",
+              "displayName": "Total Credits",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Credential Status",
+              "displayName": "Credential Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Evaluation Date",
+              "displayName": "Evaluation Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "admissions"
+        },
+        "text": "=\ud83c\udf93 *International Transcript Evaluated*\n\n*Student:* {{ $('Format Evaluation').item.json.studentName }}\n*Student ID:* {{ $('Format Evaluation').item.json.studentId }}\n\n\ud83c\udfeb *Institution:*\n\u2022 Name: {{ $('Format Evaluation').item.json.institutionName }}\n\u2022 Location: {{ $('Format Evaluation').item.json.institutionCity }}, {{ $('Format Evaluation').item.json.institutionCountry }}\n\n\ud83d\udcda *Academic Record:*\n\u2022 Degree: {{ $('Format Evaluation').item.json.degree }}\n\u2022 Major: {{ $('Format Evaluation').item.json.major }}\n\u2022 Courses: {{ $('Format Evaluation').item.json.courseCount }}\n\u2022 Credits: {{ $('Format Evaluation').item.json.totalCredits }}\n\n\ud83d\udcca *GPA Conversion:*\n\u2022 Original: {{ $('Format Evaluation').item.json.originalGPA }} ({{ $('Format Evaluation').item.json.gradingScale }} scale)\n\u2022 Converted: *{{ $('Format Evaluation').item.json.convertedGPA }}* (4.0 scale)\n\n\u26a0\ufe0f *Credential Check:*\n\u2022 Status: *{{ $('Format Evaluation').item.json.credentialStatus }}*\n\u2022 Critical Flags: {{ $('Format Evaluation').item.json.criticalFlags }}\n\u2022 Moderate Flags: {{ $('Format Evaluation').item.json.moderateFlags }}\n\n\ud83c\udfc6 *Honors:* {{ $('Format Evaluation').item.json.honors }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Evaluation').item.json.fileId }}/view|View Transcript>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Transcript": {
+      "main": [
+        [
+          {
+            "node": "Download Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Transcript": {
+      "main": [
+        [
+          {
+            "node": "Extract Transcript",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Grade Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Transcript": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Grade Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Evaluation": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
