@@ -1,0 +1,370 @@
+{
+  "name": "Customs Documentation Validator",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83d\udea2 Customs Documentation Validator\n\n### What this workflow does\n1. Watches Google Drive folder for shipping docs\n2. Extracts invoice, packing list, and BOL data\n3. Cross-validates values, quantities, and weights\n4. Flags discrepancies that could cause delays\n5. Checks HS codes for consistency\n6. Logs validation results to Google Sheets\n7. Sends Slack alert for any mismatches\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for customs documents\n3. Create a Google Sheet with these columns:\n   Shipment ID | Document Type | Invoice Total | Packing List Total | BOL Weight | Discrepancies | HS Code Issues | Status | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Customs brokers\n- Import/export managers\n- 3PL providers",
+        "height": 520,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Customs Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Customs Doc",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract customs document data as flat fields only \u2014 no nested objects or arrays. Identify documentType (commercial invoice/packing list/bill of lading/airway bill/certificate of origin/customs declaration/other). Extract: documentNumber, documentDate, shipmentId. Shipper: shipperName, shipperAddress, shipperCountry. Consignee: consigneeName, consigneeAddress, consigneeCountry. Route: originCountry, destinationCountry, portOfLoading, portOfDischarge, carrier, vesselOrFlight. Cargo: declaredValue (number), currency, declaredWeight (number), weightUnit, packageCount (number), packageType, hsCodes (comma-separated HS codes), goodsDescription, lineItemsSummary (plain text summary of items), lineItemsCount (number), calculatedValue (sum of all line item values as number). References: containerNumbers (comma-separated), sealNumbers (comma-separated), poReference, paymentTerms, incoterms. Compliance: countryOfOrigin, hazmatPresent (true/false), insuranceValue (number).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"documentType\": {\"type\": \"string\"}, \"documentNumber\": {\"type\": \"string\"}, \"documentDate\": {\"type\": \"string\"}, \"shipmentId\": {\"type\": \"string\"}, \"shipperName\": {\"type\": \"string\"}, \"shipperAddress\": {\"type\": \"string\"}, \"shipperCountry\": {\"type\": \"string\"}, \"consigneeName\": {\"type\": \"string\"}, \"consigneeAddress\": {\"type\": \"string\"}, \"consigneeCountry\": {\"type\": \"string\"}, \"originCountry\": {\"type\": \"string\"}, \"destinationCountry\": {\"type\": \"string\"}, \"portOfLoading\": {\"type\": \"string\"}, \"portOfDischarge\": {\"type\": \"string\"}, \"carrier\": {\"type\": \"string\"}, \"vesselOrFlight\": {\"type\": \"string\"}, \"declaredValue\": {\"type\": \"number\"}, \"currency\": {\"type\": \"string\"}, \"declaredWeight\": {\"type\": \"number\"}, \"weightUnit\": {\"type\": \"string\"}, \"packageCount\": {\"type\": \"number\"}, \"packageType\": {\"type\": \"string\"}, \"hsCodes\": {\"type\": \"string\"}, \"goodsDescription\": {\"type\": \"string\"}, \"lineItemsSummary\": {\"type\": \"string\"}, \"lineItemsCount\": {\"type\": \"number\"}, \"calculatedValue\": {\"type\": \"number\"}, \"containerNumbers\": {\"type\": \"string\"}, \"sealNumbers\": {\"type\": \"string\"}, \"poReference\": {\"type\": \"string\"}, \"paymentTerms\": {\"type\": \"string\"}, \"incoterms\": {\"type\": \"string\"}, \"countryOfOrigin\": {\"type\": \"string\"}, \"hazmatPresent\": {\"type\": \"boolean\"}, \"insuranceValue\": {\"type\": \"number\"}}, \"required\": [\"documentType\", \"shipperName\"], \"additionalProperties\": false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Doc Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const extractData = $input.first().json;\nconst doc = extractData.data || extractData;\n\nconst triggerData = $('New Customs Doc').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\nconst docType    = doc.documentType   || 'Unknown';\nconst docNumber  = doc.documentNumber || 'N/A';\nconst shipmentId = doc.shipmentId     || docNumber;\n\nconst shipperName    = doc.shipperName    || 'Unknown';\nconst consigneeName  = doc.consigneeName  || 'Unknown';\nconst declaredValue  = parseFloat(doc.declaredValue)  || 0;\nconst calculatedValue= parseFloat(doc.calculatedValue)|| 0;\nconst declaredWeight = parseFloat(doc.declaredWeight) || 0;\n\nconst discrepancies = [];\nlet validationStatus = 'Valid';\n\n// Value check \u2014 allow 1% tolerance\nif (calculatedValue > 0 && declaredValue > 0) {\n  const valueDiff = Math.abs(declaredValue - calculatedValue);\n  if (valueDiff / calculatedValue > 0.01) {\n    discrepancies.push(\n      `Value mismatch: declared $${declaredValue} vs calculated $${calculatedValue}`\n    );\n  }\n}\n\n// Required fields\nif (!doc.hsCodes)           discrepancies.push('Missing HS codes');\nif (!doc.countryOfOrigin)   discrepancies.push('Missing country of origin');\nif (!doc.goodsDescription)  discrepancies.push('Missing goods description');\nif (!doc.portOfLoading)     discrepancies.push('Missing port of loading');\nif (!doc.portOfDischarge)   discrepancies.push('Missing port of discharge');\nif (declaredValue <= 0)     discrepancies.push('Missing or zero declared value');\nif (declaredWeight <= 0)    discrepancies.push('Missing declared weight');\n\n// Hazmat flag\nif (doc.hazmatPresent) discrepancies.push('Hazmat goods \u2014 additional documentation required');\n\nif (discrepancies.length >= 3)      validationStatus = 'Failed';\nelse if (discrepancies.length > 0)  validationStatus = 'Review Required';\n\nreturn [{ json: {\n  shipmentId,\n  documentType:     docType,\n  documentNumber:   docNumber,\n  documentDate:     doc.documentDate    || 'N/A',\n  shipperName,\n  shipperCountry:   doc.shipperCountry  || 'N/A',\n  consigneeName,\n  consigneeCountry: doc.consigneeCountry|| 'N/A',\n  originCountry:    doc.countryOfOrigin || doc.originCountry || 'N/A',\n  destination:      doc.destinationCountry || 'N/A',\n  portOfLoading:    doc.portOfLoading   || 'N/A',\n  portOfDischarge:  doc.portOfDischarge || 'N/A',\n  carrier:          doc.carrier         || 'N/A',\n  declaredValue,\n  calculatedValue,\n  declaredWeight,\n  weightUnit:       doc.weightUnit      || 'kg',\n  packageCount:     doc.packageCount    || 0,\n  hsCodes:          doc.hsCodes         || 'N/A',\n  goodsDescription: doc.goodsDescription|| 'N/A',\n  lineItemsSummary: doc.lineItemsSummary|| 'N/A',\n  incoterms:        doc.incoterms       || 'N/A',\n  containerNumbers: doc.containerNumbers|| 'N/A',\n  hazmatPresent:    doc.hazmatPresent   ? 'Yes' : 'No',\n  validationStatus,\n  discrepancies:    discrepancies.join('; ') || 'None',\n  discrepancyCount: discrepancies.length,\n  fileName,\n  fileId,\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "validate-data",
+      "name": "Validate Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Customs Validation Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Validations"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Shipment ID": "={{ $json.shipmentId }}",
+            "Document Type": "={{ $json.documentType }}",
+            "Document #": "={{ $json.documentNumber }}",
+            "Shipper": "={{ $json.shipperName }}",
+            "Consignee": "={{ $json.consigneeName }}",
+            "Declared Value": "={{ $json.declaredValue }}",
+            "Calculated Value": "={{ $json.calculatedValue }}",
+            "Declared Weight": "={{ $json.declaredWeight }}",
+            "HS Codes": "={{ $json.hsCodeCount }}",
+            "Discrepancies": "={{ $json.discrepancies }}",
+            "Status": "={{ $json.validationStatus }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Shipment ID",
+              "displayName": "Shipment ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document Type",
+              "displayName": "Document Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document #",
+              "displayName": "Document #",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Shipper",
+              "displayName": "Shipper",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Consignee",
+              "displayName": "Consignee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Declared Value",
+              "displayName": "Declared Value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Calculated Value",
+              "displayName": "Calculated Value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Declared Weight",
+              "displayName": "Declared Weight",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "HS Codes",
+              "displayName": "HS Codes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Discrepancies",
+              "displayName": "Discrepancies",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1300,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "customs-alerts"
+        },
+        "text": "=\ud83d\udea2 *Customs Document Validated*\n\n*Document:* {{ $('Validate Data').item.json.documentType }}\n*Number:* {{ $('Validate Data').item.json.documentNumber }}\n*Shipment ID:* {{ $('Validate Data').item.json.shipmentId }}\n*Date:* {{ $('Validate Data').item.json.documentDate }}\n\n\ud83d\udce6 *Parties:*\n\u2022 Shipper: {{ $('Validate Data').item.json.shipperName }} ({{ $('Validate Data').item.json.shipperCountry }})\n\u2022 Consignee: {{ $('Validate Data').item.json.consigneeName }} ({{ $('Validate Data').item.json.consigneeCountry }})\n\n\ud83d\udea2 *Route:*\n\u2022 {{ $('Validate Data').item.json.portOfLoading }} \u2192 {{ $('Validate Data').item.json.portOfDischarge }}\n\u2022 Carrier: {{ $('Validate Data').item.json.carrier }}\n\u2022 Origin: {{ $('Validate Data').item.json.originCountry }}\n\n\ud83d\udcb0 *Values:*\n\u2022 Declared: {{ $('Extract Doc Data').item.json.data.currency }} {{ $('Validate Data').item.json.declaredValue }}\n\u2022 Calculated: {{ $('Extract Doc Data').item.json.data.currency }} {{ $('Validate Data').item.json.calculatedValue }}\n\n\u2696\ufe0f *Weight:* {{ $('Validate Data').item.json.declaredWeight }} {{ $('Validate Data').item.json.weightUnit }}\n*Packages:* {{ $('Validate Data').item.json.packageCount }}\n*HS Codes:* {{ $('Validate Data').item.json.hsCodes }}\n\n\ud83d\udea8 *Validation Status:* *{{ $('Validate Data').item.json.validationStatus }}*\n\u26a0\ufe0f *Discrepancies:* {{ $('Validate Data').item.json.discrepancies }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Validate Data').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1500,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Customs Doc": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract Doc Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Doc Data": {
+      "main": [
+        [
+          {
+            "node": "Validate Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Data": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

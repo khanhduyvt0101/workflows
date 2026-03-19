@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-61_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-62_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 61 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 62 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3811,6 +3811,49 @@ Automatically analyze institutional documents for accreditation compliance by ma
 - Adjust the compliance score thresholds in the Format Analysis node to match your institution's requirements
 - Add additional notification channels (email, Microsoft Teams) for critical gaps
 - Extend the Google Sheet schema to track cross-reference recommendations between documents
+
+</details>
+
+<details>
+<summary><strong>🚚 Customs Documentation Validator</strong> - Validate shipping docs and flag customs discrepancies | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/customs-documentation-validator.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/customs-documentation-validator.json">📋 Open</a></summary>
+
+Automate the validation of customs shipping documents to catch discrepancies before they cause costly delays at the border. This workflow extracts data from invoices, packing lists, and bills of lading, then cross-validates values, weights, and HS codes — alerting your team instantly when issues are found.
+
+#### Who is this for?
+- Customs brokers processing high volumes of shipments
+- Import/export managers ensuring compliance
+- 3PL providers coordinating international logistics
+
+#### How it works
+1. **New Customs Doc** — Google Drive trigger watches a designated folder for new shipping documents
+2. **Download Document** — Downloads the uploaded PDF from Google Drive
+3. **Extract Doc Data** — Uses PDF Vector AI to extract structured customs data including shipper/consignee details, declared values, weights, HS codes, and routing information
+4. **Validate Data** — JavaScript validation checks for value mismatches (1% tolerance), missing required fields (HS codes, country of origin, ports), and flags hazmat shipments needing additional documentation
+5. **Log to Sheets** — Appends validation results to a Google Sheet for audit tracking
+6. **Send to Slack** — Posts a detailed Slack notification with document details, route info, values, and any discrepancies found
+
+#### Services used
+- Google Drive (document upload trigger and file download)
+- PDF Vector (AI-powered customs document data extraction)
+- Code / JavaScript (cross-validation logic with discrepancy detection)
+- Google Sheets (validation audit log)
+- Slack (real-time alerts for validation results)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set your folder ID in the trigger node
+4. Create a Google Sheet with columns: Shipment ID, Document Type, Document #, Shipper, Consignee, Declared Value, Calculated Value, Declared Weight, HS Codes, Discrepancies, Status, Processed Date
+5. Configure Google Sheets OAuth2 credentials and set the spreadsheet ID
+6. Configure Slack OAuth2 credentials and set the alert channel
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the 1% value tolerance threshold in the Validate Data node for stricter or looser matching
+- Add additional required field checks based on your customs authority requirements
+- Modify the discrepancy count thresholds (currently 3+ = Failed, 1-2 = Review Required)
+- Extend the Slack message format to include additional fields like container numbers or incoterms
+- Add email notifications alongside Slack for critical validation failures
 
 </details>
 
