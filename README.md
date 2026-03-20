@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-62_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-63_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 62 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 63 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3854,6 +3854,51 @@ Automate the validation of customs shipping documents to catch discrepancies bef
 - Modify the discrepancy count thresholds (currently 3+ = Failed, 1-2 = Review Required)
 - Extend the Slack message format to include additional fields like container numbers or incoterms
 - Add email notifications alongside Slack for critical validation failures
+
+</details>
+
+<details>
+<summary><strong>📋 Supplier Certificate Monitor</strong> - Monitor supplier certificates for expiration and compliance gaps | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/supplier-certificate-monitor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/supplier-certificate-monitor.json">📋 Open</a></summary>
+
+Automate supplier certificate tracking and compliance monitoring. When new certificates (ISO, GMP, HACCP, BRC, SQF, etc.) are uploaded to Google Drive, this workflow extracts key details, performs AI-powered compliance analysis, calculates expiration timelines, and alerts your team via Slack.
+
+#### Who is this for?
+- Procurement teams managing supplier qualifications
+- Quality managers tracking certification compliance
+- Supplier relationship managers monitoring renewal deadlines
+
+#### How it works
+1. **New Certificate** - Google Drive trigger watches a folder for newly uploaded supplier certificate PDFs
+2. **Download Certificate** - Downloads the certificate file for processing
+3. **Extract Certificate** - AI extracts structured data: certificate type, supplier info, dates, scope, audit findings, and grade
+4. **Compliance Check** - AI analyzes the certificate for validity, scope coverage, certification body verification, audit findings, compliance gaps, and risk assessment (runs in parallel with extraction)
+5. **Merge Results** - Combines extracted data and compliance analysis
+6. **Format Analysis** - JavaScript calculates days until expiry, determines risk level (Low/Medium/High/Critical), and formats all data
+7. **Log to Sheets** - Appends supplier, certificate type, dates, status, and risk level to Google Sheets
+8. **Send to Slack** - Posts a detailed certificate summary with status, risk level, non-conformities, and a link to the original document
+
+#### Services used
+- Google Drive (certificate file monitoring and download)
+- PDF Vector (AI-powered certificate data extraction and compliance analysis)
+- Google Sheets (certificate tracking log)
+- Slack (expiration and compliance alerts)
+- Code/JavaScript (expiration calculation and risk assessment)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Create a Google Drive folder for supplier certificates and update the folder ID in the trigger node
+4. Create a Google Sheet with columns: Supplier, Country, Certificate Type, Cert Number, Issue Date, Expiration Date, Days Until Expiry, Status, Risk Level, Certifier, Processed Date
+5. Update the spreadsheet ID in the Log to Sheets node
+6. Connect your Slack workspace and set the target channel
+7. Configure Google Drive OAuth2 and Google Sheets OAuth2 credentials
+8. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the expiration thresholds in the Format Analysis node (currently 30 days = High, 90 days = Medium)
+- Add additional certificate types to the extraction prompt for industry-specific standards
+- Modify the Slack message format to highlight specific fields relevant to your compliance requirements
+- Add email notifications for critical-risk certificates alongside Slack alerts
 
 </details>
 
