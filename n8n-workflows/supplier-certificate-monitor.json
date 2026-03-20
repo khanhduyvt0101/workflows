@@ -1,0 +1,439 @@
+{
+  "name": "Supplier Certificate Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📋 Supplier Certificate Monitor\n\n### What this workflow does\n1. Watches Google Drive folder for supplier certificates\n2. Extracts certificate details (ISO, GMP, safety certs)\n3. Identifies expiration dates and coverage scope\n4. AI checks for compliance gaps\n5. Calculates days until expiration\n6. Logs to Google Sheets with status\n7. Sends Slack alert for expiring certificates\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for supplier certificates\n3. Create a Google Sheet with these columns:\n   Supplier | Certificate Type | Cert Number | Issue Date | Expiration Date | Days Until Expiry | Scope | Status | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Procurement teams\n- Quality managers\n- Supplier relationship managers",
+        "height": 520,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 Parallel Processing\n\nExtract and Compliance Check run at\nthe same time from the same PDF",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Supplier Certificates"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Certificate",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Certificate",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract supplier certificate data as flat fields only — no nested objects or arrays. Extract: certificateType (ISO 9001/ISO 14001/ISO 22000/GMP/HACCP/BRC/SQF/other), certificateNumber, certificateStatus (valid/suspended/withdrawn). Supplier: supplierName, supplierAddress, supplierCity, supplierCountry, supplierSiteCode. Certification body: certifierName, certifierAccreditation, certifierContact. Dates: issueDate (YYYY-MM-DD), expirationDate (YYYY-MM-DD), lastAuditDate, nextAuditDate. Scope: scopeDescription, standardVersion, productCategories (comma-separated), sitesCovered. Findings: exclusionsSummary, auditFindingsSummary, majorNonConformities (number), minorNonConformities (number), specialConditions. Other: auditorName, certificateGrade (A/B/C or Gold/Silver/Bronze etc).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"certificateType\": {\"type\": \"string\"}, \"certificateNumber\": {\"type\": \"string\"}, \"certificateStatus\": {\"type\": \"string\"}, \"supplierName\": {\"type\": \"string\"}, \"supplierAddress\": {\"type\": \"string\"}, \"supplierCity\": {\"type\": \"string\"}, \"supplierCountry\": {\"type\": \"string\"}, \"supplierSiteCode\": {\"type\": \"string\"}, \"certifierName\": {\"type\": \"string\"}, \"certifierAccreditation\": {\"type\": \"string\"}, \"certifierContact\": {\"type\": \"string\"}, \"issueDate\": {\"type\": \"string\"}, \"expirationDate\": {\"type\": \"string\"}, \"lastAuditDate\": {\"type\": \"string\"}, \"nextAuditDate\": {\"type\": \"string\"}, \"scopeDescription\": {\"type\": \"string\"}, \"standardVersion\": {\"type\": \"string\"}, \"productCategories\": {\"type\": \"string\"}, \"sitesCovered\": {\"type\": \"string\"}, \"exclusionsSummary\": {\"type\": \"string\"}, \"auditFindingsSummary\": {\"type\": \"string\"}, \"majorNonConformities\": {\"type\": \"number\"}, \"minorNonConformities\": {\"type\": \"number\"}, \"specialConditions\": {\"type\": \"string\"}, \"auditorName\": {\"type\": \"string\"}, \"certificateGrade\": {\"type\": \"string\"}}, \"required\": [\"certificateType\", \"supplierName\", \"expirationDate\"], \"additionalProperties\": false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Certificate",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Analyze this supplier compliance certificate for risk and coverage:\n\n**CERTIFICATE VALIDITY:**\n- Is this certificate currently valid based on dates shown?\n- How many days until expiration?\n- Is there evidence of recent surveillance audits?\n- Any signs the certificate may have been suspended or withdrawn?\n\n**SCOPE ASSESSMENT:**\n- Is the scope clearly defined?\n- Does the scope cover manufacturing/production processes?\n- Are there significant exclusions that limit usefulness?\n- Are all relevant sites/locations covered?\n\n**CERTIFICATION BODY VERIFICATION:**\n- Is the certification body recognizable/reputable?\n- Is there accreditation body information?\n- Any red flags about the certifier?\n\n**AUDIT FINDINGS:**\n- Were any major non-conformities found?\n- Are minor non-conformities being tracked?\n- Is there evidence of corrective actions?\n\n**COMPLIANCE GAPS:**\nFor typical supply chain requirements, identify any gaps:\n- Quality management (ISO 9001 or equivalent)\n- Environmental management (ISO 14001)\n- Occupational health & safety (ISO 45001)\n- Information security (ISO 27001) if handling data\n- Industry-specific (AS9100 for aerospace, IATF for automotive)\n\n**RISK ASSESSMENT:**\n- Overall certificate risk level: LOW / MEDIUM / HIGH / CRITICAL\n- Specific concerns\n- Recommended actions\n\n**RENEWAL URGENCY:**\n- Priority for renewal follow-up: URGENT / SOON / ROUTINE / OK"
+      },
+      "id": "pdfvector-analyze",
+      "name": "Compliance Check",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst extractItem = allItems[0]?.json || {};\nconst cert = extractItem.data || extractItem;\n\nconst analysisItem = allItems[1]?.json || {};\nconst complianceCheck = analysisItem.answer || analysisItem.markdown || analysisItem.text || '';\n\nconst triggerData = $('New Certificate').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\n// Expiration calculation\nconst expirationDate = cert.expirationDate || '';\nlet daysUntilExpiry = null;\nlet expiryStatus = 'Unknown';\nlet riskLevel = 'Unknown';\n\nif (expirationDate) {\n  const expDate = new Date(expirationDate);\n  const today   = new Date();\n  daysUntilExpiry = Math.floor((expDate - today) / (1000 * 60 * 60 * 24));\n\n  if (daysUntilExpiry < 0) {\n    expiryStatus = 'EXPIRED';\n    riskLevel = 'Critical';\n  } else if (daysUntilExpiry <= 30) {\n    expiryStatus = 'Expiring Soon (≤30 days)';\n    riskLevel = 'High';\n  } else if (daysUntilExpiry <= 90) {\n    expiryStatus = 'Expiring Soon (≤90 days)';\n    riskLevel = 'Medium';\n  } else {\n    expiryStatus = 'Valid';\n    riskLevel = 'Low';\n  }\n}\n\n// Override if certificate is suspended/withdrawn\nconst certStatus = (cert.certificateStatus || '').toLowerCase();\nif (certStatus.includes('suspend') || certStatus.includes('withdraw')) {\n  expiryStatus = 'SUSPENDED/WITHDRAWN';\n  riskLevel = 'Critical';\n}\n\n// Non-conformities risk bump\nconst majorNC = parseInt(cert.majorNonConformities) || 0;\nif (majorNC > 0 && riskLevel === 'Low') riskLevel = 'Medium';\nif (majorNC > 2) riskLevel = 'High';\n\n// Parse compliance notes from AI\nconst complianceNotes = complianceCheck.slice(0, 300) || 'N/A';\n\nreturn [{ json: {\n  supplierName:       cert.supplierName        || 'Unknown',\n  supplierCountry:    cert.supplierCountry     || 'N/A',\n  supplierCity:       cert.supplierCity        || 'N/A',\n  certificateType:    cert.certificateType     || 'Unknown',\n  certificateNumber:  cert.certificateNumber   || 'N/A',\n  certificateStatus:  cert.certificateStatus   || 'N/A',\n  issueDate:          cert.issueDate           || 'N/A',\n  expirationDate,\n  daysUntilExpiry,\n  expiryStatus,\n  riskLevel,\n  certifierName:      cert.certifierName       || 'N/A',\n  standardVersion:    cert.standardVersion     || 'N/A',\n  scopeDescription:   cert.scopeDescription    || 'N/A',\n  productCategories:  cert.productCategories   || 'N/A',\n  majorNonConformities: majorNC,\n  minorNonConformities: parseInt(cert.minorNonConformities) || 0,\n  auditFindingsSummary: cert.auditFindingsSummary || 'None',\n  certificateGrade:   cert.certificateGrade    || 'N/A',\n  complianceNotes,\n  fileName,\n  fileId,\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "format-data",
+      "name": "Format Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Supplier Certificates"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Certificates"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Supplier": "={{ $json.supplierName }}",
+            "Country": "={{ $json.supplierCountry }}",
+            "Certificate Type": "={{ $json.certificateType }}",
+            "Cert Number": "={{ $json.certificateNumber }}",
+            "Issue Date": "={{ $json.issueDate }}",
+            "Expiration Date": "={{ $json.expirationDate }}",
+            "Days Until Expiry": "={{ $json.daysUntilExpiry }}",
+            "Status": "={{ $json.expiryStatus }}",
+            "Risk Level": "={{ $json.riskLevel }}",
+            "Certifier": "={{ $json.certificationBody }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Supplier",
+              "displayName": "Supplier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Country",
+              "displayName": "Country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Certificate Type",
+              "displayName": "Certificate Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cert Number",
+              "displayName": "Cert Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Issue Date",
+              "displayName": "Issue Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Expiration Date",
+              "displayName": "Expiration Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Days Until Expiry",
+              "displayName": "Days Until Expiry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk Level",
+              "displayName": "Risk Level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Certifier",
+              "displayName": "Certifier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "supplier-compliance"
+        },
+        "text": "=🏅 *Supplier Certificate Processed*\n\n*Supplier:* {{ $('Format Analysis').item.json.supplierName }}\n*Country:* {{ $('Format Analysis').item.json.supplierCountry }}\n\n📋 *Certificate Details:*\n• Type: {{ $('Format Analysis').item.json.certificateType }}\n• Number: {{ $('Format Analysis').item.json.certificateNumber }}\n• Version: {{ $('Format Analysis').item.json.standardVersion }}\n• Certifier: {{ $('Format Analysis').item.json.certifierName }}\n• Grade: {{ $('Format Analysis').item.json.certificateGrade }}\n\n📅 *Validity:*\n• Issued: {{ $('Format Analysis').item.json.issueDate }}\n• Expires: {{ $('Format Analysis').item.json.expirationDate }}\n• Days Remaining: {{ $('Format Analysis').item.json.daysUntilExpiry }}\n\n🚦 *Status:* *{{ $('Format Analysis').item.json.expiryStatus }}*\n*Risk Level:* {{ $('Format Analysis').item.json.riskLevel }}\n\n⚠️ *Non-Conformities:*\n• Major: {{ $('Format Analysis').item.json.majorNonConformities }}\n• Minor: {{ $('Format Analysis').item.json.minorNonConformities }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Format Analysis').item.json.fileId }}/view|View Certificate>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Certificate": {
+      "main": [
+        [
+          {
+            "node": "Download Certificate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Certificate": {
+      "main": [
+        [
+          {
+            "node": "Extract Certificate",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Compliance Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Certificate": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compliance Check": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Analysis": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
