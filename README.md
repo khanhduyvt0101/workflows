@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-64_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-65_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 64 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 65 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3943,6 +3943,52 @@ Automatically detect and report changes between Bill of Materials revisions. Whe
 - Add additional fields to the Google Sheets log for tracking approval workflows or effectivity dates
 - Modify the Slack message template to highlight critical changes like safety-related component swaps
 - Add email notifications for high-impact changes (e.g., more than 10 components modified)
+
+</details>
+
+<details>
+<summary><strong>🏗️ Permit Application Classifier</strong> - AI-powered permit classification and routing | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/permit-application-classifier.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/permit-application-classifier.json">📋 Open</a></summary>
+
+Automate your permit application intake process with AI-powered classification. This workflow watches for new permit application PDFs, extracts all relevant details, classifies complexity and completeness, then routes applications to the appropriate path — fast-track approval, additional info request, or rejection notice — with full logging to Google Sheets.
+
+#### Who is this for?
+- Municipal permit offices
+- Building departments
+- Planning and zoning departments
+
+#### How it works
+1. **New Application (Google Drive Trigger)** monitors a folder for new permit application PDFs
+2. **Download Application** retrieves the PDF file from Google Drive
+3. **Extract Application (PDF Vector)** extracts structured data including application number, permit type, applicant info, project details, zoning, and contractor information
+4. **Classify Permit (PDF Vector)** classifies the application by complexity (simple/complex), completeness, zoning compliance, and environmental review requirements
+5. **Merge Results** combines extraction and classification data (both run in parallel)
+6. **Format Classification (Code)** parses and normalizes the AI classification response into structured fields
+7. **Route Application (If)** routes based on classification status:
+   - **COMPLETE** → Slack Fast Track approval notification
+   - **NEEDS_INFO** → Slack Request Info notification with missing items
+   - **REJECTED** → Slack Rejection notification with reasons
+8. **Log to Sheets** records all application details and classification results to Google Sheets
+
+#### Services used
+- Google Drive (trigger and file download for permit PDFs)
+- PDF Vector (AI-powered data extraction and permit classification)
+- Slack (routing notifications for approvals, info requests, and rejections)
+- Google Sheets (application logging and tracking)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure credentials
+3. Configure Google Drive OAuth2 credentials and update `YOUR_FOLDER_ID` in the trigger node
+4. Create a Google Sheet with columns: Application # | Date | Applicant | Permit Type | Address | Value | Complexity | Zoning Check | Env Review | Route To | Est. Days | Processed
+5. Update `YOUR_SPREADSHEET_ID` in the Log to Sheets node and configure Google Sheets credentials
+6. Update `YOUR_SLACK_CHANNEL_ID` in all three Slack nodes and configure Slack OAuth2 credentials
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the complexity thresholds in the Classify Permit prompt (e.g., change the $50K threshold for simple vs complex)
+- Add email notifications alongside Slack for applicant-facing communications
+- Modify the routing logic to add additional classification paths (e.g., expedited hearing)
+- Customize the Google Sheets columns to track additional permit-specific fields
 
 </details>
 

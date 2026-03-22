@@ -1,0 +1,642 @@
+{
+  "name": "Permit Application Classifier",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83c\udfd7\ufe0f Permit Application Classifier\n\n### What this workflow does\n1. Watches Google Drive for permit application PDFs\n2. Extracts all application details and project info\n3. AI classifies complexity and checks completeness\n4. Routes to three paths based on classification:\n   - COMPLETE: Fast-track approval notification\n   - NEEDS INFO: Auto-request for missing documents\n   - REJECTED: Denial notice with reasons\n5. Logs all applications to Google Sheets\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for permit applications\n3. Create a Google Sheet with these columns:\n   Application # | Date | Applicant | Permit Type | Address | Value | Complexity | Zoning Check | Env Review | Route To | Est. Days | Processed\n4. Update YOUR_FOLDER_ID in the Google Drive Trigger node\n5. Update YOUR_SPREADSHEET_ID in the Log to Sheets nodes\n6. Update YOUR_SLACK_CHANNEL_ID in the Slack nodes\n7. Connect Google Drive, Google Sheets, PDF Vector, and Slack credentials\n\n### Classification Logic\n- COMPLETE: All required docs present, meets zoning\n- NEEDS INFO: Missing documents or unclear details\n- REJECTED: Zoning violation or ineligible application\n\n### Perfect for\n- Municipal permit offices\n- Building departments\n- Planning departments",
+        "height": 600,
+        "width": 440,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udd00 Parallel Processing\nExtract and Classify run at the same time",
+        "height": 120,
+        "width": 240
+      },
+      "id": "sticky-820",
+      "name": "Sticky Note 820",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        820,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udd00 Routing\nComplete \u2192 Fast Track\nNeeds Info \u2192 Request Docs\nRejected \u2192 Denial",
+        "height": 120,
+        "width": 240
+      },
+      "id": "sticky-1560",
+      "name": "Sticky Note 1560",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Permit Applications"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Application",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        560,
+        360
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-dl",
+      "name": "Download Application",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        760,
+        360
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract permit application information: application number, application date, permit type (building/electrical/plumbing/mechanical/demolition/grading/sign/fence/deck/pool/solar/ADU/commercial/new construction/renovation/other), applicant name, applicant address, phone and email, property owner, project street address, city, state, zip, parcel number, zoning district, proposed use, project description, estimated cost, estimated start and end dates, square footage, number of floors, occupancy type, contractor name and license number, list of required documents, and list of any missing or incomplete documents.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"applicationNumber\": {\"type\": \"string\"}, \"applicationDate\": {\"type\": \"string\"}, \"permitType\": {\"type\": \"string\"}, \"applicantName\": {\"type\": \"string\"}, \"applicantAddress\": {\"type\": \"string\"}, \"applicantPhone\": {\"type\": \"string\"}, \"applicantEmail\": {\"type\": \"string\"}, \"propertyOwner\": {\"type\": \"string\"}, \"projectStreet\": {\"type\": \"string\"}, \"projectCity\": {\"type\": \"string\"}, \"projectState\": {\"type\": \"string\"}, \"projectZip\": {\"type\": \"string\"}, \"parcelNumber\": {\"type\": \"string\"}, \"zoning\": {\"type\": \"string\"}, \"proposedUse\": {\"type\": \"string\"}, \"projectDescription\": {\"type\": \"string\"}, \"estimatedCost\": {\"type\": \"number\"}, \"estimatedStartDate\": {\"type\": \"string\"}, \"estimatedEndDate\": {\"type\": \"string\"}, \"squareFootage\": {\"type\": \"number\"}, \"floors\": {\"type\": \"number\"}, \"occupancyType\": {\"type\": \"string\"}, \"contractorName\": {\"type\": \"string\"}, \"contractorLicense\": {\"type\": \"string\"}, \"requiredDocuments\": {\"type\": \"string\"}, \"missingDocuments\": {\"type\": \"string\"}}, \"required\": [\"applicationNumber\", \"permitType\", \"applicantName\"], \"additionalProperties\": false}"
+      },
+      "id": "pv-extract",
+      "name": "Extract Application",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        980,
+        260
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Classify this permit application:\n\nCOMPLEXITY: Rate as SIMPLE or COMPLEX\n- SIMPLE: Minor repairs, interior non-structural, single-family residential under $50K\n- COMPLEX: Structural changes, new construction, commercial, multi-family, over $50K\n\nCOMPLETENESS: Rate as COMPLETE, NEEDS_INFO, or REJECTED\n- COMPLETE: All required documents present, zoning compliant, no violations\n- NEEDS_INFO: Missing documents, unclear descriptions, or incomplete fields\n- REJECTED: Zoning violation, prohibited use, missing required licenses, or eligibility issues\n\nZONING_CHECK: PASS or FAIL\nENVIRONMENTAL_REVIEW: REQUIRED or NOT_REQUIRED (required if over 1 acre or sensitive area)\n\nMISSING_ITEMS: List each missing item\nREJECTION_REASONS: List each reason if rejected\n\nESTIMATED_REVIEW_DAYS: [number]\n\nFormat your response as:\nCLASSIFICATION: [COMPLETE/NEEDS_INFO/REJECTED]\nCOMPLEXITY: [SIMPLE/COMPLEX]\nZONING_CHECK: [PASS/FAIL]\nENVIRONMENTAL_REVIEW: [REQUIRED/NOT_REQUIRED]\nESTIMATED_REVIEW_DAYS: [number]\nMISSING_ITEMS: [list or None]\nREJECTION_REASONS: [list or None]\nROUTE_TO: [FAST_TRACK/STANDARD_REVIEW/EXPEDITED_HEARING]"
+      },
+      "id": "pv-classify",
+      "name": "Classify Permit",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        980,
+        460
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "merge-results",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst extractItem = allItems[0]?.json || {};\nconst appData = extractItem.data || extractItem;\nconst classifyItem = allItems[1]?.json || {};\nconst classification = classifyItem.answer || classifyItem.markdown || classifyItem.text || '';\n\nconst triggerData = $('New Application').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Parse classification response\nconst getField = (text, field) => {\n  const match = text.match(new RegExp(field + '[:\\\\s]+([^\\\\n]+)', 'i'));\n  return match ? match[1].trim() : 'N/A';\n};\n\nconst status = getField(classification, 'CLASSIFICATION');\nconst complexity = getField(classification, 'COMPLEXITY');\nconst zoningCheck = getField(classification, 'ZONING_CHECK');\nconst envReview = getField(classification, 'ENVIRONMENTAL_REVIEW');\nconst estDays = getField(classification, 'ESTIMATED_REVIEW_DAYS');\nconst routeTo = getField(classification, 'ROUTE_TO');\nconst missingItems = getField(classification, 'MISSING_ITEMS');\nconst rejectionReasons = getField(classification, 'REJECTION_REASONS');\n\n// Normalize status\nlet routingStatus = 'NEEDS_INFO';\nif (status.toUpperCase().includes('COMPLETE')) routingStatus = 'COMPLETE';\nelse if (status.toUpperCase().includes('REJECT')) routingStatus = 'REJECTED';\n\nreturn [{ json: {\n  applicationNumber: appData.applicationNumber || 'N/A',\n  applicationDate: appData.applicationDate || 'N/A',\n  applicantName: appData.applicantName || 'N/A',\n  applicantEmail: appData.applicantEmail || 'N/A',\n  permitType: appData.permitType || 'N/A',\n  projectAddress: `${appData.projectStreet || ''} ${appData.projectCity || ''}`.trim() || 'N/A',\n  estimatedCost: appData.estimatedCost || 0,\n  complexity, zoningCheck, envReview,\n  routeTo, estDays, missingItems, rejectionReasons,\n  routingStatus,\n  classification,\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "format-classification",
+      "name": "Format Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "your-channel"
+        },
+        "text": "=\u2705 *Permit Application - FAST TRACK APPROVED*\n\n*Application:* {{ $json.applicationNumber }}\n*Applicant:* {{ $json.applicantName }}\n*Type:* {{ $json.permitType }}\n*Address:* {{ $json.projectAddress }}\n*Value:* ${{ $json.estimatedCost }}\n\n\ud83d\udccb *Review Details:*\n\u2022 Complexity: {{ $json.complexity }}\n\u2022 Zoning: {{ $json.zoningCheck }}\n\u2022 Env Review: {{ $json.envReview }}\n\u2022 Route To: {{ $json.routeTo }}\n\u2022 Est. Days: {{ $json.estDays }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $json.fileId }}/view|View Application>",
+        "otherOptions": {}
+      },
+      "id": "slack-complete",
+      "name": "Slack Fast Track",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1840,
+        200
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "your-channel"
+        },
+        "text": "=\ud83d\udccb *Permit Application - ADDITIONAL INFO REQUIRED*\n\n*Application:* {{ $json.applicationNumber }}\n*Applicant:* {{ $json.applicantName }} ({{ $json.applicantEmail }})\n*Type:* {{ $json.permitType }}\n\n\u274c *Missing Items:*\n{{ $json.missingItems }}\n\nPlease contact the applicant to request missing documents.\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $json.fileId }}/view|View Application>",
+        "otherOptions": {}
+      },
+      "id": "slack-needs-info",
+      "name": "Slack Request Info",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1840,
+        380
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "your-channel"
+        },
+        "text": "=\ud83d\udeab *Permit Application - REJECTED*\n\n*Application:* {{ $json.applicationNumber }}\n*Applicant:* {{ $json.applicantName }}\n*Type:* {{ $json.permitType }}\n*Address:* {{ $json.projectAddress }}\n\n\u274c *Rejection Reasons:*\n{{ $json.rejectionReasons }}\n\n\ud83d\udccb *Zoning Check:* {{ $json.zoningCheck }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $json.fileId }}/view|View Application>",
+        "otherOptions": {}
+      },
+      "id": "slack-rejected",
+      "name": "Slack Rejection",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1840,
+        560
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Your Spreadsheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Application #": "={{ $('Format Classification').item.json.applicationNumber }}",
+            "Date": "={{ $('Format Classification').item.json.applicationDate }}",
+            "Applicant": "={{ $('Format Classification').item.json.applicantName }}",
+            "Permit Type": "={{ $('Format Classification').item.json.permitType }}",
+            "Address": "={{ $('Format Classification').item.json.projectAddress }}",
+            "Value": "={{ $('Format Classification').item.json.estimatedCost }}",
+            "Complexity": "={{ $('Format Classification').item.json.complexity }}",
+            "Zoning Check": "={{ $('Format Classification').item.json.zoningCheck }}",
+            "Env Review": "={{ $('Format Classification').item.json.envReview }}",
+            "Route To": "={{ $('Format Classification').item.json.routeTo }}",
+            "Est. Days": "={{ $('Format Classification').item.json.estDays }}",
+            "Processed": "={{ $('Format Classification').item.json.processedAt }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Application #",
+              "displayName": "Application #",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applicant",
+              "displayName": "Applicant",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Permit Type",
+              "displayName": "Permit Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Value",
+              "displayName": "Value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Complexity",
+              "displayName": "Complexity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Zoning Check",
+              "displayName": "Zoning Check",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Env Review",
+              "displayName": "Env Review",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Route To",
+              "displayName": "Route To",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Est. Days",
+              "displayName": "Est. Days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed",
+              "displayName": "Processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        2080,
+        380
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.routingStatus }}",
+              "rightValue": "COMPLETE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1ac0ce60-145b-4593-aeca-9658ab103751",
+      "name": "Route Application",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.routingStatus }}",
+              "rightValue": "INCOMPLETE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a0ddaaa2-e582-40ca-9bc1-5b39910254c2",
+      "name": "Is Incomplete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        480
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Application": {
+      "main": [
+        [
+          {
+            "node": "Download Application",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Application": {
+      "main": [
+        [
+          {
+            "node": "Extract Application",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Classify Permit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Application": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Permit": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Classification": {
+      "main": [
+        [
+          {
+            "node": "Route Application",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Application": {
+      "main": [
+        [
+          {
+            "node": "Slack Fast Track",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Incomplete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Fast Track": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Request Info": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Rejection": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Incomplete?": {
+      "main": [
+        [
+          {
+            "node": "Slack Request Info",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
