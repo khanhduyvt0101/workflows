@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-63_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-64_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 63 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 64 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3899,6 +3899,50 @@ Automate supplier certificate tracking and compliance monitoring. When new certi
 - Add additional certificate types to the extraction prompt for industry-specific standards
 - Modify the Slack message format to highlight specific fields relevant to your compliance requirements
 - Add email notifications for critical-risk certificates alongside Slack alerts
+
+</details>
+
+<details>
+<summary><strong>🔧 BOM Version Reconciler</strong> - Compare BOM revisions and flag component changes | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/bom-version-reconciler.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/bom-version-reconciler.json">📋 Open</a></summary>
+
+Automatically detect and report changes between Bill of Materials revisions. When a new BOM file lands in Google Drive, this workflow downloads both old and new versions, extracts component data using AI, compares them side-by-side, and sends a detailed change report to Slack with a log in Google Sheets.
+
+#### Who is this for?
+- Production engineers tracking BOM revision changes
+- Procurement managers monitoring component additions and removals
+- Manufacturing planners ensuring BOM accuracy across revisions
+
+#### How it works
+1. **New BOM File** - Google Drive trigger detects a new BOM file uploaded to a monitored folder
+2. **Download Old BOM** - Downloads the previous BOM revision from Google Drive
+3. **Download New BOM** - Downloads the newly uploaded BOM file in parallel
+4. **Extract Old BOM** - Uses PDF Vector AI to extract structured component data from the old BOM
+5. **Extract New BOM** - Uses PDF Vector AI to extract structured component data from the new BOM
+6. **Merge BOMs** - Combines both extraction results into a single data stream
+7. **Compare Versions** - JavaScript code compares part numbers, quantities, and specs to identify added, removed, and modified components
+8. **Log to Sheets** - Appends a detailed change record to Google Sheets with BOM ID, revision info, and change summary
+9. **Send to Slack** - Posts a formatted change report to Slack with component-level details and approval info
+
+#### Services used
+- Google Drive (trigger for new BOM files and downloading BOM documents)
+- PDF Vector (AI-powered extraction of structured BOM data from documents)
+- Google Sheets (logging change records for audit trail)
+- Slack (sending change summary notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and update `YOUR_BOM_FOLDER_ID` and `YOUR_PREVIOUS_BOM_FILE_ID`
+4. Create a Google Sheet with columns: BOM ID, Old Revision, New Revision, Product, Components Added, Components Removed, Qty Changes, Total Changes, Change Summary, Effectivity, Processed Date, Added Parts, Removed Parts
+5. Update `YOUR_SPREADSHEET_ID` in the Log to Sheets node and configure Google Sheets credentials
+6. Update `YOUR_SLACK_CHANNEL_ID` in the Send to Slack node and configure Slack OAuth2 credentials
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the part number parsing regex in the Compare Versions node to match your organization's part numbering scheme
+- Add additional fields to the Google Sheets log for tracking approval workflows or effectivity dates
+- Modify the Slack message template to highlight critical changes like safety-related component swaps
+- Add email notifications for high-impact changes (e.g., more than 10 components modified)
 
 </details>
 

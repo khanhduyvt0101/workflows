@@ -1,0 +1,496 @@
+{
+  "name": "BOM Version Reconciler",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83d\udd27 BOM Version Reconciler\n\n### What this workflow does\n1. Receives old and new BOM file IDs via webhook\n2. Downloads both BOM documents from Google Drive in parallel\n3. Extracts component data from each version\n4. Compares revisions and identifies all changes\n5. Flags added, removed, and modified components\n6. Logs differences to Google Sheets\n7. Sends Slack alert with change summary\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Sheet with these columns:\n   BOM ID | Old Revision | New Revision | Product | Components Added | Components Removed | Qty Changes | Spec Changes | Total Changes | Change Summary | Processed Date\n3. Update YOUR_SPREADSHEET_ID in the Log to Sheets node\n4. Update YOUR_SLACK_CHANNEL_ID in the Send to Slack node\n5. Connect Google Drive, Google Sheets, PDF Vector, and Slack credentials\n6. Activate the workflow and copy the webhook URL\n\n### How to trigger\nPOST to webhook URL:\n{\n  \"oldBomFileId\": \"DRIVE_FILE_ID\",\n  \"newBomFileId\": \"DRIVE_FILE_ID\"\n}\n\n### Perfect for\n- Production engineers\n- Procurement managers\n- Manufacturing planners",
+        "height": 580,
+        "width": 440,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udd00 Parallel Processing\nOld BOM and New BOM extract at the same time",
+        "height": 120,
+        "width": 240
+      },
+      "id": "sticky-620",
+      "name": "Sticky Note 620",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        620,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_BOM_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "BOM Files"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "New BOM File",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        560,
+        360
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "YOUR_PREVIOUS_BOM_FILE_ID",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "dl-old-bom",
+      "name": "Download Old BOM",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        760,
+        260
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('New BOM File').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "dl-new-bom",
+      "name": "Download New BOM",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        760,
+        460
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract Bill of Materials information from this BOM document: BOM ID or part number, revision number, revision date, product name, product number, product description, prepared by, approved by, approval date, effectivity date, BOM type, total number of components, and a detailed summary of all components including item number, part number, description, quantity, unit of measure, material specification, and supplier for each component.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"bomId\": {\"type\": \"string\"}, \"revision\": {\"type\": \"string\"}, \"revisionDate\": {\"type\": \"string\"}, \"productName\": {\"type\": \"string\"}, \"productNumber\": {\"type\": \"string\"}, \"productDescription\": {\"type\": \"string\"}, \"preparedBy\": {\"type\": \"string\"}, \"approvedBy\": {\"type\": \"string\"}, \"approvalDate\": {\"type\": \"string\"}, \"effectivityDate\": {\"type\": \"string\"}, \"bomType\": {\"type\": \"string\"}, \"totalComponents\": {\"type\": \"number\"}, \"componentsSummary\": {\"type\": \"string\"}}, \"required\": [\"bomId\", \"productName\"], \"additionalProperties\": false}"
+      },
+      "id": "ext-old-bom",
+      "name": "Extract Old BOM",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        980,
+        260
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract Bill of Materials information from this BOM document: BOM ID or part number, revision number, revision date, product name, product number, product description, prepared by, approved by, approval date, effectivity date, BOM type, total number of components, and a detailed summary of all components including item number, part number, description, quantity, unit of measure, material specification, and supplier for each component.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"bomId\": {\"type\": \"string\"}, \"revision\": {\"type\": \"string\"}, \"revisionDate\": {\"type\": \"string\"}, \"productName\": {\"type\": \"string\"}, \"productNumber\": {\"type\": \"string\"}, \"productDescription\": {\"type\": \"string\"}, \"preparedBy\": {\"type\": \"string\"}, \"approvedBy\": {\"type\": \"string\"}, \"approvalDate\": {\"type\": \"string\"}, \"effectivityDate\": {\"type\": \"string\"}, \"bomType\": {\"type\": \"string\"}, \"totalComponents\": {\"type\": \"number\"}, \"componentsSummary\": {\"type\": \"string\"}}, \"required\": [\"bomId\", \"productName\"], \"additionalProperties\": false}"
+      },
+      "id": "ext-new-bom",
+      "name": "Extract New BOM",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        980,
+        460
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "merge-boms",
+      "name": "Merge BOMs",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst oldRaw = allItems[0]?.json || {};\nconst newRaw = allItems[1]?.json || {};\nconst oldBom = oldRaw.data || oldRaw;\nconst newBom = newRaw.data || newRaw;\n\n// Basic info\nconst bomId       = newBom.bomId       || oldBom.bomId       || 'N/A';\nconst productName = newBom.productName || oldBom.productName || 'N/A';\nconst oldRevision = oldBom.revision    || 'N/A';\nconst newRevision = newBom.revision    || 'N/A';\n\n// Parse componentsSummary into part-number sets\n// Expected format from Extract: \"PART-001: desc qty; PART-002: desc qty; ...\"\n// We extract part numbers (tokens that look like part numbers: contain dash + digits/letters)\nfunction extractParts(summary) {\n  if (!summary) return new Map();\n  const parts = new Map();\n  const lines = summary.split(/[\\n;]+/).map(s => s.trim()).filter(Boolean);\n  lines.forEach(line => {\n    const tokens = line.split(/[\\s:,|]+/);\n    // Part number must: start with letters, contain a dash, have letters on both sides\n    // e.g. MCU-STM32F4, CAP-0402-10U, IC-MPU6050, PCB-2LAYER\n    // NOT: TYPE-C, 24-PIN, SOT-23-5, 6-AXIS, 2-LAYER (start with digit or too short)\n    const partNum = tokens.find(t =>\n      t.length >= 8 &&  // real part numbers are usually 8+ chars\n      /^[A-Z]{2,}[-][A-Z0-9]{2,}/i.test(t) &&  // 2+ letters, dash, 2+ chars\n      !/^(EA|PCS|KG|SMD|REV|BOM|SOT|SMT|DIP|QFP|LITE|TYPE|SIDE|WIRE)[-]/i.test(t)\n    );\n    if (partNum) {\n      // Qty: number followed by EA/PCS or just standalone number after part desc\n      const qtyMatch = line.match(/(\\d+)\\s*(?:EA|PCS|each)/i) ||\n                       line.match(/Qty[:\\s]+(\\d+)/i) ||\n                       line.match(/,\\s*(\\d{1,4})\\s*,/);\n      const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;\n      parts.set(partNum.toUpperCase(), { line: line.trim(), qty });\n    }\n  });\n  return parts;\n}\n\nconst oldParts = extractParts(oldBom.componentsSummary);\nconst newParts = extractParts(newBom.componentsSummary);\n\n// Find added, removed, changed\nconst addedList   = [];\nconst removedList = [];\nconst changedList = [];\n\n// Check for removed or changed\noldParts.forEach((oldVal, partNum) => {\n  if (!newParts.has(partNum)) {\n    removedList.push(partNum);\n  } else {\n    const newVal = newParts.get(partNum);\n    if (oldVal.qty !== newVal.qty) {\n      changedList.push(`${partNum}: qty ${oldVal.qty}\u2192${newVal.qty}`);\n    }\n  }\n});\n\n// Check for added\nnewParts.forEach((newVal, partNum) => {\n  if (!oldParts.has(partNum)) {\n    addedList.push(partNum);\n  }\n});\n\n// Fallback to count-based if part parsing yielded nothing\nconst oldCount = parseInt(oldBom.totalComponents) || 0;\nconst newCount = parseInt(newBom.totalComponents) || 0;\n\nlet added   = addedList.length;\nlet removed = removedList.length;\nlet specQtyChanges = changedList.length;\n\n// If parsing found nothing, fall back to count diff\nif (added === 0 && removed === 0 && oldCount !== newCount) {\n  const diff = newCount - oldCount;\n  added   = diff > 0 ? diff : 0;\n  removed = diff < 0 ? Math.abs(diff) : 0;\n}\n\nconst totalChanges = added + removed + specQtyChanges;\n\nconst changeParts = [\n  added   > 0 ? `${added} added (${addedList.join(', ') || 'see BOM'})`           : '',\n  removed > 0 ? `${removed} removed (${removedList.join(', ') || 'see BOM'})`     : '',\n  specQtyChanges > 0 ? `${specQtyChanges} qty/spec changes (${changedList.join(', ')})` : ''\n].filter(Boolean);\n\nconst changeSummary = changeParts.join('; ') || 'No changes detected';\n\nreturn [{ json: {\n  bomId, productName,\n  productNumber:   newBom.productNumber   || oldBom.productNumber   || 'N/A',\n  oldRevision,     newRevision,\n  oldRevisionDate: oldBom.revisionDate    || 'N/A',\n  newRevisionDate: newBom.revisionDate    || 'N/A',\n  oldComponents:   oldCount,\n  newComponents:   newCount,\n  componentsAdded:   added,\n  componentsRemoved: removed,\n  addedPartNumbers:  addedList.join(', ')   || 'None',\n  removedPartNumbers:removedList.join(', ') || 'None',\n  specChanges:       specQtyChanges,\n  specChangeDetails: changedList.join('; ') || 'None',\n  totalChanges,\n  changeSummary,\n  preparedBy:     newBom.preparedBy     || 'N/A',\n  approvedBy:     newBom.approvedBy     || 'N/A',\n  effectivityDate:newBom.effectivityDate|| 'N/A',\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "compare-boms",
+      "name": "Compare Versions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Your Spreadsheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "BOM ID": "={{ $json.bomId }}",
+            "Old Revision": "={{ $json.oldRevision }}",
+            "New Revision": "={{ $json.newRevision }}",
+            "Product": "={{ $json.productName }}",
+            "Components Added": "={{ $json.componentsAdded }}",
+            "Components Removed": "={{ $json.componentsRemoved }}",
+            "Qty Changes": "={{ $json.specChanges }}",
+            "Total Changes": "={{ $json.totalChanges }}",
+            "Change Summary": "={{ $json.changeSummary }}",
+            "Effectivity": "={{ $json.effectivityDate }}",
+            "Processed Date": "={{ $json.processedAt }}",
+            "Added Parts": "={{ $json.addedPartNumbers }}",
+            "Removed Parts": "={{ $json.removedPartNumbers }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "BOM ID",
+              "displayName": "BOM ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Old Revision",
+              "displayName": "Old Revision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "New Revision",
+              "displayName": "New Revision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Product",
+              "displayName": "Product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Components Added",
+              "displayName": "Components Added",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Components Removed",
+              "displayName": "Components Removed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Qty Changes",
+              "displayName": "Qty Changes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Changes",
+              "displayName": "Total Changes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Change Summary",
+              "displayName": "Change Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Effectivity",
+              "displayName": "Effectivity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Added Parts",
+              "displayName": "Added Parts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Removed Parts",
+              "displayName": "Removed Parts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1600,
+        360
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "your-channel"
+        },
+        "text": "=\ud83d\udd27 *BOM Version Change Report*\n\n*Product:* {{ $('Compare Versions').item.json.productName }} ({{ $('Compare Versions').item.json.productNumber }})\n*BOM ID:* {{ $('Compare Versions').item.json.bomId }}\n\n\ud83d\udccb *Revision Change:*\n\u2022 Old: Rev {{ $('Compare Versions').item.json.oldRevision }} ({{ $('Compare Versions').item.json.oldRevisionDate }})\n\u2022 New: Rev {{ $('Compare Versions').item.json.newRevision }} ({{ $('Compare Versions').item.json.newRevisionDate }})\n\n\ud83d\udcca *Component Changes:*\n\u2022 Added ({{ $('Compare Versions').item.json.componentsAdded }}): {{ $('Compare Versions').item.json.addedPartNumbers }}\n\u2022 Removed ({{ $('Compare Versions').item.json.componentsRemoved }}): {{ $('Compare Versions').item.json.removedPartNumbers }}\n\u2022 Qty/Spec Changes ({{ $('Compare Versions').item.json.specChanges }}): {{ $('Compare Versions').item.json.specChangeDetails }}\n\u2022 Total Changes: {{ $('Compare Versions').item.json.totalChanges }}\n\n\ud83d\udcdd *Summary:* {{ $('Compare Versions').item.json.changeSummary }}\n\n\ud83d\udc64 *Approval:*\n\u2022 Prepared By: {{ $('Compare Versions').item.json.preparedBy }}\n\u2022 Approved By: {{ $('Compare Versions').item.json.approvedBy }}\n\u2022 Effectivity: {{ $('Compare Versions').item.json.effectivityDate }}",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1800,
+        360
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New BOM File": {
+      "main": [
+        [
+          {
+            "node": "Download Old BOM",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download New BOM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Old BOM": {
+      "main": [
+        [
+          {
+            "node": "Extract Old BOM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download New BOM": {
+      "main": [
+        [
+          {
+            "node": "Extract New BOM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Old BOM": {
+      "main": [
+        [
+          {
+            "node": "Merge BOMs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract New BOM": {
+      "main": [
+        [
+          {
+            "node": "Merge BOMs",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge BOMs": {
+      "main": [
+        [
+          {
+            "node": "Compare Versions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare Versions": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
