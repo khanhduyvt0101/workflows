@@ -1,0 +1,361 @@
+{
+  "name": "Tax Form Batch Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83d\uddc2\ufe0f Tax Form Batch Processor\n\n### What this workflow does\n1. Watches Google Drive folder for new tax form PDFs\n2. Downloads and extracts data from each form\n3. Classifies form type (W-2, 1099-NEC, 1099-INT, etc.)\n4. Logs every form to Google Sheets\n5. Sends Slack notification with form summary\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for tax form PDFs\n3. Create a Google Sheet with these columns:\n   Form Type | Tax Year | Taxpayer Name | SSN Last 4 | Payer/Employer | Total Income | Federal Withheld | State Withheld | Status | Issues | Processed Date\n4. Update YOUR_TAX_FOLDER_ID in the New Tax File node\n5. Update YOUR_SPREADSHEET_ID in the Log to Sheets node\n6. Update YOUR_SLACK_CHANNEL_ID in the Send to Slack node\n7. Connect Google Drive, Google Sheets, PDF Vector, and Slack credentials\n\n### How to use\nUpload any tax form PDF to your Google Drive folder.\nThe workflow triggers automatically within 1 minute.\n\n### Perfect for\n- Tax preparers\n- Accounting firms\n- Payroll departments\n\n### Template by PDF Vector\npdfvector.com/integrations/n8n",
+        "height": 560,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('New Tax File').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-dl",
+      "name": "Download Form",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        740,
+        380
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Identify and extract this tax form. First determine the form type (W-2, 1099-NEC, 1099-MISC, 1099-INT, 1099-DIV, 1099-B, 1099-R, 1099-K, K-1, 1040, W-9, or other), then extract: form type, tax year, payer name, payer TIN, payer address, recipient name, recipient TIN last 4 digits only, recipient address, wages, non-employee compensation, interest income, dividend income, capital gains, total income (sum of all income fields), federal income tax withheld, state income tax withheld, state name, social security wages, social security withheld, Medicare wages, Medicare withheld.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"formType\": {\"type\": \"string\"}, \"taxYear\": {\"type\": \"string\"}, \"payerName\": {\"type\": \"string\"}, \"payerTin\": {\"type\": \"string\"}, \"payerAddress\": {\"type\": \"string\"}, \"recipientName\": {\"type\": \"string\"}, \"recipientTinLast4\": {\"type\": \"string\"}, \"recipientAddress\": {\"type\": \"string\"}, \"wages\": {\"type\": \"number\"}, \"nonemployeeComp\": {\"type\": \"number\"}, \"interest\": {\"type\": \"number\"}, \"dividends\": {\"type\": \"number\"}, \"capitalGains\": {\"type\": \"number\"}, \"totalIncome\": {\"type\": \"number\"}, \"federalWithheld\": {\"type\": \"number\"}, \"stateWithheld\": {\"type\": \"number\"}, \"stateName\": {\"type\": \"string\"}, \"socialSecurityWages\": {\"type\": \"number\"}, \"socialSecurityWithheld\": {\"type\": \"number\"}, \"medicareWages\": {\"type\": \"number\"}, \"medicareWithheld\": {\"type\": \"number\"}}, \"required\": [\"formType\", \"taxYear\", \"recipientName\"], \"additionalProperties\": false}"
+      },
+      "id": "pv-extract",
+      "name": "Extract Tax Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        960,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const extractData = $input.first().json;\nconst taxData = extractData.data || extractData;\n\nconst triggerData = $('New Tax File').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\nconst formType = taxData.formType || 'Unknown';\nconst taxYear = taxData.taxYear || 'N/A';\n\nconst totalIncome = taxData.totalIncome ||\n  (taxData.wages || 0) + (taxData.nonemployeeComp || 0) +\n  (taxData.interest || 0) + (taxData.dividends || 0) +\n  (taxData.capitalGains || 0);\n\nconst federalWithheld = taxData.federalWithheld || 0;\nconst stateWithheld = taxData.stateWithheld || 0;\n\n// Basic validation\nconst issues = [];\nif (!taxData.recipientName) issues.push('Missing recipient name');\nif (!taxData.recipientTinLast4) issues.push('Missing TIN');\nif (totalIncome === 0) issues.push('Zero income - verify');\nif (taxYear === 'N/A') issues.push('Tax year not found');\n\nconst status = issues.length === 0 ? 'OK' : issues.length <= 1 ? 'REVIEW' : 'ERROR';\n\nreturn [{ json: {\n  fileName, fileId,\n  formType, taxYear,\n  recipientName: taxData.recipientName || 'N/A',\n  recipientTinLast4: taxData.recipientTinLast4 || 'N/A',\n  payerName: taxData.payerName || 'N/A',\n  totalIncome: totalIncome.toFixed(2),\n  federalWithheld: federalWithheld.toFixed(2),\n  stateWithheld: stateWithheld.toFixed(2),\n  stateName: taxData.stateName || 'N/A',\n  status,\n  issues: issues.join('; ') || 'None',\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "process-tax",
+      "name": "Process Tax Form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Your Spreadsheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Form Type": "={{ $json.formType }}",
+            "Tax Year": "={{ $json.taxYear }}",
+            "Taxpayer Name": "={{ $json.recipientName }}",
+            "SSN Last 4": "={{ $json.recipientTinLast4 }}",
+            "Payer/Employer": "={{ $json.payerName }}",
+            "Total Income": "={{ $json.totalIncome }}",
+            "Federal Withheld": "={{ $json.federalWithheld }}",
+            "State Withheld": "={{ $json.stateWithheld }}",
+            "Status": "={{ $json.status }}",
+            "Issues": "={{ $json.issues }}",
+            "Processed Date": "={{ $json.processedAt }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Form Type",
+              "displayName": "Form Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tax Year",
+              "displayName": "Tax Year",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Taxpayer Name",
+              "displayName": "Taxpayer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SSN Last 4",
+              "displayName": "SSN Last 4",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payer/Employer",
+              "displayName": "Payer/Employer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Income",
+              "displayName": "Total Income",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Federal Withheld",
+              "displayName": "Federal Withheld",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "State Withheld",
+              "displayName": "State Withheld",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Issues",
+              "displayName": "Issues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1400,
+        380
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "your-channel"
+        },
+        "text": "=\ud83d\uddc2\ufe0f *Tax Document Processed*\n\n*Document:* {{ $('Process Tax Form').item.json.formType }}\n*Tax Year:* {{ $('Process Tax Form').item.json.taxYear }}\n\n\ud83d\udc64 *Taxpayer:* {{ $('Process Tax Form').item.json.recipientName }}\n*Payer/Employer:* {{ $('Process Tax Form').item.json.payerName }}\n\n\ud83d\udcb0 *Amounts:*\n\u2022 Total Income: ${{ $('Process Tax Form').item.json.totalIncome }}\n\u2022 Federal Withheld: ${{ $('Process Tax Form').item.json.federalWithheld }}\n\u2022 State Withheld: ${{ $('Process Tax Form').item.json.stateWithheld }}\n\n\ud83d\udccb *Status:* {{ $('Process Tax Form').item.json.status }}\n{{ $('Process Tax Form').item.json.issues ? '\u26a0\ufe0f Issues: ' + $('Process Tax Form').item.json.issues : '\u2705 No issues' }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Process Tax Form').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-batch",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1620,
+        380
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_TAX_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Tax Forms Folder"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "380c661f-39bc-4f56-bb3a-528f9737703e",
+      "name": "New Tax File",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        520,
+        380
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Tax File": {
+      "main": [
+        [
+          {
+            "node": "Download Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Form": {
+      "main": [
+        [
+          {
+            "node": "Extract Tax Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Tax Data": {
+      "main": [
+        [
+          {
+            "node": "Process Tax Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Tax Form": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
