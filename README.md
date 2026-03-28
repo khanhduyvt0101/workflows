@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-65_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-66_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 65 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 66 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -3989,6 +3989,48 @@ Automate your permit application intake process with AI-powered classification. 
 - Add email notifications alongside Slack for applicant-facing communications
 - Modify the routing logic to add additional classification paths (e.g., expedited hearing)
 - Customize the Google Sheets columns to track additional permit-specific fields
+
+</details>
+
+<details>
+<summary><strong>💰 Tax Form Batch Processor</strong> - Automatically extract and classify tax form PDFs | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/tax-form-batch-processor.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/tax-form-batch-processor.json">📋 Open</a></summary>
+
+Streamline tax season by automating the intake and classification of tax documents. Upload W-2s, 1099s, and other tax forms to Google Drive and let AI extract all key financial data, validate it, and log everything to a spreadsheet with Slack notifications.
+
+#### Who is this for?
+- Tax preparers processing high volumes of client documents
+- Accounting firms managing multiple clients' tax forms
+- Payroll departments tracking W-2s and withholding data
+
+#### How it works
+1. **New Tax File** - Google Drive trigger watches a designated folder for new PDF uploads (polls every minute)
+2. **Download Form** - Downloads the uploaded tax form PDF from Google Drive
+3. **Extract Tax Data** - PDF Vector AI identifies the form type (W-2, 1099-NEC, 1099-INT, 1099-DIV, 1099-B, 1099-R, 1099-K, K-1, 1040, W-9) and extracts all financial fields including income, withholdings, and taxpayer information
+4. **Process Tax Form** - JavaScript code validates the extracted data, calculates totals, flags missing fields, and assigns a status (OK, REVIEW, or ERROR)
+5. **Log to Sheets** - Appends a row to Google Sheets with form type, tax year, taxpayer name, income totals, withholdings, status, and any issues found
+6. **Send to Slack** - Posts a formatted summary to Slack with the form type, amounts, status, and a direct link to the document in Google Drive
+
+#### Services used
+- Google Drive (trigger and file download)
+- PDF Vector (AI-powered tax form extraction and classification)
+- Code / JavaScript (data validation and income calculation)
+- Google Sheets (structured logging of all processed forms)
+- Slack (real-time notifications with form summaries)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure credentials
+3. Configure Google Drive OAuth2 credentials and update `YOUR_TAX_FOLDER_ID` in the New Tax File trigger node
+4. Create a Google Sheet with columns: Form Type | Tax Year | Taxpayer Name | SSN Last 4 | Payer/Employer | Total Income | Federal Withheld | State Withheld | Status | Issues | Processed Date
+5. Update `YOUR_SPREADSHEET_ID` in the Log to Sheets node and configure Google Sheets credentials
+6. Update `YOUR_SLACK_CHANNEL_ID` in the Send to Slack node and configure Slack OAuth2 credentials
+7. Activate the workflow
+
+#### Customizing this workflow
+- Add support for additional form types by extending the extraction prompt (e.g., Schedule C, Schedule D)
+- Modify the validation logic in the Process Tax Form node to add custom business rules
+- Route forms with ERROR status to a separate review queue or different Slack channel
+- Add email notifications for high-value forms or forms with missing data
 
 </details>
 
