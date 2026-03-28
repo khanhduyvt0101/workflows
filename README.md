@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-67_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-68_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 67 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 68 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -4073,6 +4073,52 @@ Automatically organize your personal tax documents as they arrive. This workflow
 - Add support for state-specific tax forms by extending the extraction prompt
 - Route high-value documents or self-employment income to a separate Slack channel for priority review
 - Add quarterly estimated tax payment reminders based on accumulated 1099 income
+
+</details>
+
+<details>
+<summary><strong>\ud83d\udee1\ufe0f Insurance Policy Analyzer</strong> - Extract and analyze insurance policy PDFs for coverage gaps, expiry tracking, and adequacy ratings | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/insurance-policy-analyzer.json">\u2b07\ufe0f Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/insurance-policy-analyzer.json">\ud83d\udccb Open</a></summary>
+
+Automatically process insurance policy PDFs dropped into a Google Drive folder. The workflow extracts structured policy data (type, limits, deductibles, dates) and runs an AI-powered coverage adequacy analysis in parallel, then logs results to Google Sheets and sends a detailed Slack summary with coverage rating and gap count.
+
+#### Who is this for?
+- Insurance agents managing multiple client policies
+- Risk managers tracking corporate insurance portfolios
+- Finance teams monitoring policy renewals and coverage adequacy
+
+#### How it works
+1. **New Policy** - Google Drive trigger watches a designated folder for new insurance policy PDF uploads
+2. **Download Policy** - Downloads the uploaded PDF file from Google Drive
+3. **Extract Policy** - Uses PDF Vector AI to extract structured data: policy type, insurer, policy number, named insured, coverage limits, deductibles, premiums, dates, exclusions, and endorsements
+4. **Coverage Analysis** - Simultaneously uses PDF Vector AI to analyze coverage adequacy, identify gaps, rate limits, and provide prioritized recommendations
+5. **Merge Results** - Combines the structured extraction and coverage analysis outputs
+6. **Format Analysis** - JavaScript code calculates days until expiry, extracts coverage rating and gap count, and assembles the final data object
+7. **Log to Sheets** - Appends a row to Google Sheets with policy type, insurer, limits, deductible, premium, dates, days left, gaps found, and coverage rating
+8. **Send to Slack** - Posts a formatted summary to Slack with policy details, coverage info, validity dates, rating, and a link to the original document
+
+#### Services used
+- Google Drive (trigger for new policy uploads and file download)
+- PDF Vector (AI-powered data extraction and coverage analysis)
+- Google Sheets (policy tracking spreadsheet)
+- Slack (notification with analysis summary)
+- Code / JavaScript (expiry calculation and data formatting)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the PDF Vector credential
+3. Configure Google Drive OAuth2 credentials
+4. Create a Google Drive folder for policy documents and replace `YOUR_POLICIES_FOLDER_ID` in the New Policy node
+5. Create a Google Sheet with columns: Policy Type, Insurer, Policy #, Insured, Primary Limit, Deductible, Premium, Frequency, Effective, Expires, Days Left, Gaps Found, Coverage Rating, Processed
+6. Replace `YOUR_SPREADSHEET_ID` in the Log to Sheets node
+7. Configure Slack OAuth2 credentials and replace `YOUR_SLACK_CHANNEL_ID` in the Send to Slack node
+8. Configure Google Sheets OAuth2 credentials
+9. Activate the workflow
+
+#### Customizing this workflow
+- Add email notifications alongside Slack for urgent policies expiring within 30 days
+- Extend the extraction prompt to capture additional coverage types specific to your industry
+- Add conditional routing to flag policies with a POOR coverage rating for immediate review
+- Include premium benchmarking by comparing extracted premiums against industry averages
 
 </details>
 
