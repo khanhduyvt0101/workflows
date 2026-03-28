@@ -1,0 +1,370 @@
+{
+  "name": "Personal Tax Document Organizer",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83d\udcbc Personal Tax Document Organizer\n\n### What this workflow does\n1. Watches Google Drive folder for tax documents\n2. Identifies document type (W-2, 1099, receipts)\n3. Extracts income and deduction details\n4. Categorizes expenses for tax filing\n5. Aggregates totals by category\n6. Logs to Google Sheets tax tracker\n7. Sends Slack summary with tax prep status\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for your tax documents\n3. Create a Google Sheet with these columns:\n   Doc Type | Source | Category | Amount | Deductible | Tax Year | Notes | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Individual taxpayers\n- Freelancers\n- Self-employed professionals",
+        "height": 520,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Tax Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Document",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract tax-related information from this personal document. First identify the document type, then extract relevant fields.\n\nDocument types to identify:\n- W-2 (employee wages)\n- 1099-NEC (freelance/contractor income)\n- 1099-INT (bank interest)\n- 1099-DIV (dividends)\n- 1099-B (brokerage/stock sales)\n- 1099-R (retirement distributions)\n- 1099-K (payment card transactions)\n- K-1 (partnership/S-corp income)\n- Mortgage interest statement (1098)\n- Student loan interest (1098-E)\n- Tuition statement (1098-T)\n- Health insurance (1095-A/B/C)\n- Charitable donation receipt\n- Medical expense receipt\n- Business expense receipt\n- Home office expense\n- Vehicle/mileage log\n- Property tax statement\n- Other tax document\n\nExtract: document type, tax year, payer or source name, recipient name, total amount, category (income/deduction/credit), subcategory (wages/self-employment/interest/dividends/capital-gains/medical/charitable/business/education/mortgage/property-tax/other), is deductible (true/false), deduction type if applicable (above-the-line/itemized/business), date of transaction or statement, description or memo, quantity if applicable (like mileage), any limitations or notes.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\"},\"taxYear\":{\"type\":\"string\"},\"source\":{\"type\":\"string\"},\"recipientName\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"},\"category\":{\"type\":\"string\"},\"subcategory\":{\"type\":\"string\"},\"isDeductible\":{\"type\":\"boolean\"},\"deductionType\":{\"type\":\"string\"},\"transactionDate\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unitOfMeasure\":{\"type\":\"string\"},\"limitations\":{\"type\":\"string\"},\"formBox\":{\"type\":\"string\"},\"accountNumber\":{\"type\":\"string\"}},\"required\":[\"documentType\",\"amount\"],\"additionalProperties\":false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Tax Info",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get extracted data\nconst extractData = $input.first().json;\nconst taxData = extractData.data || extractData;\n\n// Get trigger data\nconst triggerData = $('New Document').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Document info\nconst docType = taxData.documentType || 'Unknown';\nconst taxYear = taxData.taxYear || new Date().getFullYear().toString();\nconst source = taxData.source || 'Unknown';\nconst recipientName = taxData.recipientName || 'N/A';\n\n// Amount and category\nconst amount = taxData.amount || 0;\nconst category = taxData.category || 'Other';\nconst subcategory = taxData.subcategory || 'Other';\nconst isDeductible = taxData.isDeductible || false;\nconst deductionType = taxData.deductionType || 'N/A';\n\n// Additional details\nconst transactionDate = taxData.transactionDate || 'N/A';\nconst description = taxData.description || '';\nconst quantity = taxData.quantity || 0;\nconst unitOfMeasure = taxData.unitOfMeasure || '';\n\n// Determine tax impact\nlet taxImpact = 'Neutral';\nlet estimatedTaxEffect = 0;\n\nif (category.toLowerCase().includes('income')) {\n  taxImpact = 'Taxable Income';\n  // Rough estimate at 25% marginal rate\n  estimatedTaxEffect = amount * 0.25;\n} else if (isDeductible) {\n  taxImpact = 'Tax Deduction';\n  // Estimate tax savings at 25% marginal rate\n  estimatedTaxEffect = amount * -0.25;\n}\n\n// Categorize for Schedule C if self-employment\nlet scheduleCategory = 'N/A';\nif (subcategory.toLowerCase().includes('self-employment') || \n    docType.toLowerCase().includes('1099-nec') ||\n    subcategory.toLowerCase().includes('business')) {\n  scheduleCategory = 'Schedule C';\n} else if (subcategory.toLowerCase().includes('capital')) {\n  scheduleCategory = 'Schedule D';\n} else if (subcategory.toLowerCase().includes('rental')) {\n  scheduleCategory = 'Schedule E';\n}\n\n// Filing status helper\nlet filingNote = '';\nif (docType.includes('1099-NEC') && amount > 600) {\n  filingNote = 'Self-employment tax applies';\n} else if (docType.includes('1099-B')) {\n  filingNote = 'Report on Schedule D';\n} else if (isDeductible && deductionType === 'itemized') {\n  filingNote = 'Only if itemizing deductions';\n}\n\nreturn [{\n  json: {\n    fileName: fileName,\n    fileId: fileId,\n    documentType: docType,\n    taxYear: taxYear,\n    source: source,\n    recipientName: recipientName,\n    amount: amount,\n    category: category,\n    subcategory: subcategory,\n    isDeductible: isDeductible,\n    deductionType: deductionType,\n    taxImpact: taxImpact,\n    estimatedTaxEffect: estimatedTaxEffect.toFixed(2),\n    scheduleCategory: scheduleCategory,\n    transactionDate: transactionDate,\n    description: description.substring(0, 200),\n    quantity: quantity,\n    unitOfMeasure: unitOfMeasure,\n    filingNote: filingNote,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-data",
+      "name": "Categorize Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Personal Tax Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Documents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Doc Type": "={{ $json.documentType }}",
+            "Tax Year": "={{ $json.taxYear }}",
+            "Source": "={{ $json.source }}",
+            "Category": "={{ $json.category }}",
+            "Subcategory": "={{ $json.subcategory }}",
+            "Amount": "={{ $json.amount }}",
+            "Deductible": "={{ $json.isDeductible }}",
+            "Tax Impact": "={{ $json.taxImpact }}",
+            "Est. Tax Effect": "={{ $json.estimatedTaxEffect }}",
+            "Schedule": "={{ $json.scheduleCategory }}",
+            "Notes": "={{ $json.filingNote }}",
+            "Processed": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Doc Type",
+              "displayName": "Doc Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tax Year",
+              "displayName": "Tax Year",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Subcategory",
+              "displayName": "Subcategory",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deductible",
+              "displayName": "Deductible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tax Impact",
+              "displayName": "Tax Impact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Est. Tax Effect",
+              "displayName": "Est. Tax Effect",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Schedule",
+              "displayName": "Schedule",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed",
+              "displayName": "Processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1300,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "personal-finance"
+        },
+        "text": "=\ud83d\udcbc *Tax Document Processed*\n\n*Document:* {{ $('Categorize Document').item.json.documentType }}\n*Tax Year:* {{ $('Categorize Document').item.json.taxYear }}\n\n\ud83d\udcc4 *Details:*\n\u2022 Source: {{ $('Categorize Document').item.json.source }}\n\u2022 Amount: ${{ $('Categorize Document').item.json.amount }}\n\u2022 Category: {{ $('Categorize Document').item.json.category }} / {{ $('Categorize Document').item.json.subcategory }}\n\n\ud83d\udcb0 *Tax Impact:*\n\u2022 Type: {{ $('Categorize Document').item.json.taxImpact }}\n\u2022 Deductible: {{ $('Categorize Document').item.json.isDeductible ? 'Yes' : 'No' }}\n\u2022 Est. Tax Effect: ${{ $('Categorize Document').item.json.estimatedTaxEffect }}\n\n\ud83d\udccb *Filing Info:*\n\u2022 Schedule: {{ $('Categorize Document').item.json.scheduleCategory }}\n{{ $('Categorize Document').item.json.filingNote ? '\u26a0\ufe0f Note: ' + $('Categorize Document').item.json.filingNote : '' }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Categorize Document').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1500,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Document": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract Tax Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Tax Info": {
+      "main": [
+        [
+          {
+            "node": "Categorize Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Document": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

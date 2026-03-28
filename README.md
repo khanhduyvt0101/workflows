@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-66_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-67_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 66 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 67 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -4031,6 +4031,48 @@ Streamline tax season by automating the intake and classification of tax documen
 - Modify the validation logic in the Process Tax Form node to add custom business rules
 - Route forms with ERROR status to a separate review queue or different Slack channel
 - Add email notifications for high-value forms or forms with missing data
+
+</details>
+
+<details>
+<summary><strong>💰 Personal Tax Document Organizer</strong> - Auto-categorize tax documents with AI extraction and filing insights | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/personal-tax-document-organizer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/personal-tax-document-organizer.json">📋 Open</a></summary>
+
+Automatically organize your personal tax documents as they arrive. This workflow watches a Google Drive folder, uses AI to identify document types (W-2, 1099, receipts, etc.), extracts income and deduction details, estimates tax impact, and logs everything to a spreadsheet with Slack notifications.
+
+#### Who is this for?
+- Individual taxpayers preparing for tax season
+- Freelancers and independent contractors tracking income and expenses
+- Self-employed professionals managing multiple income sources
+
+#### How it works
+1. **New Document** - Google Drive trigger watches a designated folder for new tax documents
+2. **Download Document** - Downloads the uploaded file for processing
+3. **Extract Tax Info** - PDF Vector AI extracts structured data including document type, amounts, categories, and deduction eligibility from 20+ form types (W-2, 1099-NEC, 1099-INT, 1098, receipts, etc.)
+4. **Categorize Document** - JavaScript logic determines tax impact, estimates tax effect at 25% marginal rate, assigns IRS schedule categories (C, D, E), and generates filing notes
+5. **Log to Sheets** - Appends a row to Google Sheets with document type, amounts, tax impact, schedule category, and processing date
+6. **Send to Slack** - Posts a formatted summary with document details, tax impact assessment, and a link to view the original document
+
+#### Services used
+- Google Drive (watch folder and download tax documents)
+- PDF Vector (AI-powered extraction of tax data from documents)
+- Code / JavaScript (tax categorization, impact estimation, and schedule assignment)
+- Google Sheets (tax document tracking spreadsheet)
+- Slack (real-time notifications with tax prep status)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure credentials
+3. Create a Google Drive folder for tax documents and update `YOUR_FOLDER_ID` in the New Document trigger node
+4. Create a Google Sheet with columns: Doc Type | Tax Year | Source | Category | Subcategory | Amount | Deductible | Tax Impact | Est. Tax Effect | Schedule | Notes | Processed
+5. Update `YOUR_SPREADSHEET_ID` in the Log to Sheets node and configure Google Sheets credentials
+6. Update `YOUR_SLACK_CHANNEL_ID` in the Send to Slack node and configure Slack OAuth2 credentials
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the estimated marginal tax rate (default 25%) in the Categorize Document node for more accurate tax effect estimates
+- Add support for state-specific tax forms by extending the extraction prompt
+- Route high-value documents or self-employment income to a separate Slack channel for priority review
+- Add quarterly estimated tax payment reminders based on accumulated 1099 income
 
 </details>
 
