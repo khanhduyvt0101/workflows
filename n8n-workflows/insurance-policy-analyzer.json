@@ -1,0 +1,463 @@
+{
+  "name": "Insurance Policy Analyzer",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83d\udee1\ufe0f Insurance Policy Analyzer\n\n### What this workflow does\n1. Watches Google Drive folder for insurance policy PDFs\n2. Extracts policy type, coverage limits, deductibles, and dates\n3. Calculates days until expiry and coverage rating\n4. Identifies coverage gaps via AI analysis\n5. Logs to Google Sheets and sends Slack report\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Drive folder for policy documents\n3. Create Google Sheet with columns:\\n   Policy Type | Insurer | Policy # | Insured | Primary Limit | Deductible | Premium | Frequency | Effective | Expires | Days Left | Gaps Found | Coverage Rating | Processed\n4. Update YOUR_POLICIES_FOLDER_ID in New Policy node\n5. Update YOUR_SPREADSHEET_ID and YOUR_SLACK_CHANNEL_ID\n\n### Perfect for\n- Insurance agents\n- Risk managers\n- Finance teams tracking policy renewals",
+        "height": 500,
+        "width": 340,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udd00 Parallel Processing\nExtract and Coverage Analysis run at the same time",
+        "height": 120,
+        "width": 240
+      },
+      "id": "sticky-900",
+      "name": "Sticky Note 900",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        900,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_POLICIES_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Insurance Policies"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "New Policy",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        520,
+        380
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "http-download",
+      "name": "Download Policy",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        740,
+        380
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract insurance policy details. First identify the policy type (health/auto/homeowners/renters/life/disability/umbrella/business liability/professional liability/other). Then extract: policy type, insurance company name, policy number, named insured, insured address, effective date, expiration date, premium amount, premium frequency, agent name, phone and email, deductible amount and type, primary coverage limit, liability coverage limit, comprehensive coverage amount, collision coverage amount, medical coverage amount, uninsured motorist coverage, additional insureds listed, key exclusions, and any special conditions or endorsements.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"policyType\": {\"type\": \"string\"}, \"insurer\": {\"type\": \"string\"}, \"policyNumber\": {\"type\": \"string\"}, \"namedInsured\": {\"type\": \"string\"}, \"insuredAddress\": {\"type\": \"string\"}, \"effectiveDate\": {\"type\": \"string\"}, \"expirationDate\": {\"type\": \"string\"}, \"premiumAmount\": {\"type\": \"number\"}, \"premiumFrequency\": {\"type\": \"string\"}, \"agentName\": {\"type\": \"string\"}, \"agentPhone\": {\"type\": \"string\"}, \"agentEmail\": {\"type\": \"string\"}, \"deductibleAmount\": {\"type\": \"number\"}, \"deductibleType\": {\"type\": \"string\"}, \"primaryCoverageLimit\": {\"type\": \"number\"}, \"liabilityCoverage\": {\"type\": \"number\"}, \"comprehensiveCoverage\": {\"type\": \"number\"}, \"collisionCoverage\": {\"type\": \"number\"}, \"medicalCoverage\": {\"type\": \"number\"}, \"uninsuredMotoristCoverage\": {\"type\": \"number\"}, \"additionalInsureds\": {\"type\": \"string\"}, \"exclusions\": {\"type\": \"string\"}, \"specialConditions\": {\"type\": \"string\"}}, \"required\": [\"policyType\", \"insurer\", \"policyNumber\", \"namedInsured\"], \"additionalProperties\": false}"
+      },
+      "id": "pv-extract",
+      "name": "Extract Policy",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        960,
+        280
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Analyze this insurance policy for coverage adequacy:\n\n1. PRIMARY COVERAGE - Rate: ADEQUATE / LOW / VERY LOW\n   - Are limits sufficient for typical claims?\n   - How does the deductible compare to industry standard?\n\n2. GAPS AND RISKS - List each:\n   - Missing coverages for this policy type\n   - Exclusions that create significant exposure\n   - Limits that appear too low\n\n3. COST ANALYSIS:\n   - Is the premium reasonable for the coverage level?\n   - Any premium reduction opportunities?\n\n4. RECOMMENDATIONS - List top 3:\n   - Priority 1: [Critical gap to address]\n   - Priority 2: [Important improvement]\n   - Priority 3: [Optional enhancement]\n\n5. OVERALL RATING: EXCELLENT / GOOD / ADEQUATE / POOR\n\n6. GAPS COUNT: [number]"
+      },
+      "id": "pv-ask",
+      "name": "Coverage Analysis",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        960,
+        480
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "merge-results",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1180,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst triggerData = $('New Policy').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\nconst extractItem = allItems[0]?.json || {};\nconst policyData = extractItem.data || extractItem;\nconst analysisItem = allItems[1]?.json || {};\nconst coverageAnalysis = analysisItem.answer || analysisItem.markdown || analysisItem.text || '';\n\n// Days until expiry\nlet daysLeft = 0;\nif (policyData.expirationDate && policyData.expirationDate !== 'N/A') {\n  const expiry = new Date(policyData.expirationDate);\n  const today = new Date();\n  if (!isNaN(expiry.getTime())) {\n    daysLeft = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));\n  }\n}\n\n// Extract rating and gap count from analysis\nconst ratingMatch = coverageAnalysis.match(/OVERALL RATING[:\\s]+([A-Z]+)/i);\nconst coverageRating = ratingMatch ? ratingMatch[1] : 'N/A';\nconst gapMatch = coverageAnalysis.match(/GAPS COUNT[:\\s]+(\\d+)/i);\nconst gapsFound = gapMatch ? parseInt(gapMatch[1]) : (coverageAnalysis.match(/gap/gi) || []).length;\n\nreturn [{ json: {\n  // Policy data\n  policyType: policyData.policyType || 'N/A',\n  insurer: policyData.insurer || 'N/A',\n  policyNumber: policyData.policyNumber || 'N/A',\n  namedInsured: policyData.namedInsured || 'N/A',\n  insuredAddress: policyData.insuredAddress || 'N/A',\n  effectiveDate: policyData.effectiveDate || 'N/A',\n  expirationDate: policyData.expirationDate || 'N/A',\n  daysLeft,\n  premiumAmount: policyData.premiumAmount || 0,\n  premiumFrequency: policyData.premiumFrequency || 'N/A',\n  deductibleAmount: policyData.deductibleAmount || 0,\n  deductibleType: policyData.deductibleType || 'N/A',\n  primaryCoverageLimit: policyData.primaryCoverageLimit || 0,\n  liabilityCoverage: policyData.liabilityCoverage || 0,\n  exclusions: policyData.exclusions || 'None listed',\n  additionalInsureds: policyData.additionalInsureds || 'None',\n  agentName: policyData.agentName || 'N/A',\n  // Analysis\n  coverageAnalysis,\n  coverageRating,\n  gapsFound,\n  fileName,\n  fileId,\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "format-analysis",
+      "name": "Format Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Your Spreadsheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Policy Type": "={{ $json.policyType }}",
+            "Insurer": "={{ $json.insurer }}",
+            "Policy #": "={{ $json.policyNumber }}",
+            "Insured": "={{ $json.namedInsured }}",
+            "Primary Limit": "={{ $json.primaryCoverageLimit }}",
+            "Deductible": "={{ $json.deductibleAmount }}",
+            "Premium": "={{ $json.premiumAmount }}",
+            "Frequency": "={{ $json.premiumFrequency }}",
+            "Effective": "={{ $json.effectiveDate }}",
+            "Expires": "={{ $json.expirationDate }}",
+            "Days Left": "={{ $json.daysLeft }}",
+            "Gaps Found": "={{ $json.gapsFound }}",
+            "Coverage Rating": "={{ $json.coverageRating }}",
+            "Processed": "={{ $json.processedAt }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Policy Type",
+              "displayName": "Policy Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Insurer",
+              "displayName": "Insurer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Policy #",
+              "displayName": "Policy #",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Insured",
+              "displayName": "Insured",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Primary Limit",
+              "displayName": "Primary Limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deductible",
+              "displayName": "Deductible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Premium",
+              "displayName": "Premium",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Frequency",
+              "displayName": "Frequency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Effective",
+              "displayName": "Effective",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Expires",
+              "displayName": "Expires",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Days Left",
+              "displayName": "Days Left",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Gaps Found",
+              "displayName": "Gaps Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Coverage Rating",
+              "displayName": "Coverage Rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed",
+              "displayName": "Processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1600,
+        280
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "insurance"
+        },
+        "text": "=\ud83d\udee1\ufe0f *Insurance Policy Analyzed*\n\n*Policy Type:* {{ $('Format Analysis').item.json.policyType }}\n*Insurer:* {{ $('Format Analysis').item.json.insurer }}\n*Policy #:* {{ $('Format Analysis').item.json.policyNumber }}\n*Insured:* {{ $('Format Analysis').item.json.namedInsured }}\n\n\ud83d\udcb0 *Coverage:*\n\u2022 Primary Limit: ${{ $('Format Analysis').item.json.primaryCoverageLimit }}\n\u2022 Deductible: ${{ $('Format Analysis').item.json.deductibleAmount }}\n\u2022 Premium: ${{ $('Format Analysis').item.json.premiumAmount }} / {{ $('Format Analysis').item.json.premiumFrequency }}\n\n\ud83d\udcc5 *Validity:*\n\u2022 Effective: {{ $('Format Analysis').item.json.effectiveDate }}\n\u2022 Expires: {{ $('Format Analysis').item.json.expirationDate }}\n\u2022 Days Left: {{ $('Format Analysis').item.json.daysLeft }}\n\n\ud83d\udd0d *Coverage Rating:* {{ $('Format Analysis').item.json.coverageRating }}\n\u26a0\ufe0f *Gaps Found:* {{ $('Format Analysis').item.json.gapsFound }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Analysis').item.json.fileId }}/view|View Policy>",
+        "otherOptions": {}
+      },
+      "id": "d8e3e664-849b-4c8b-bdbc-45263e369219",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1600,
+        480
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Policy": {
+      "main": [
+        [
+          {
+            "node": "Download Policy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Policy": {
+      "main": [
+        [
+          {
+            "node": "Extract Policy",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Coverage Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Policy": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coverage Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Analysis": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
