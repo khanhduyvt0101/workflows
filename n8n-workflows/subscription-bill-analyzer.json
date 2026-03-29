@@ -1,0 +1,429 @@
+{
+  "name": "Subscription Bill Analyzer",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 💳 Subscription Bill Analyzer\n\n### What this workflow does\n1. Watches Google Drive for bills/statements\n2. Extracts subscription charges and recurring fees\n3. Identifies all active subscriptions\n4. AI finds savings opportunities and unused services\n5. Calculates annual spending by category\n6. Logs to Google Sheets subscription tracker\n7. Sends Slack alert with savings recommendations\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for bills/statements\n3. Create a Google Sheet with columns:\n   Service | Category | Monthly Cost | Annual Cost | Last Used | Status | Savings Tip | Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Anyone tracking subscriptions\n- Families managing budgets\n- Small businesses cutting costs",
+        "height": 540,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 Parallel Processing\n\nExtract and Savings Analysis\nrun at the same time",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Bills and Statements"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Bill",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract subscription and billing information from this bank statement, credit card bill, or utility bill. Return flat fields only — no nested objects or arrays. documentType (bank statement/credit card bill/utility bill/other), statementDate, accountHolder, accountEnding (last 4 digits), statementPeriodStart, statementPeriodEnd, totalAmount, previousBalance, payments, newCharges. For subscriptions: scan ALL transactions and identify recurring charges (streaming, software, memberships, SaaS, utilities). subscriptionCount (number of unique subscriptions found), subscriptionNames (comma-separated list of all subscription names), subscriptionAmounts (comma-separated amounts matching subscriptionNames), monthlySubTotal (sum of all subscription charges), annualSubTotal (monthlySubTotal * 12), hasDuplicates (true if same service charged twice), duplicateNames (comma-separated names of duplicates or 'None'), unusedSubscriptions (subscriptions that appear rarely or seem unused, comma-separated or 'None'), potentialSavings (estimated monthly savings if duplicates/unused removed), largestSubscription (name of most expensive subscription), largestAmount (amount of largest subscription).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"documentType\": {\"type\": \"string\"}, \"statementDate\": {\"type\": \"string\"}, \"accountHolder\": {\"type\": \"string\"}, \"accountEnding\": {\"type\": \"string\"}, \"statementPeriodStart\": {\"type\": \"string\"}, \"statementPeriodEnd\": {\"type\": \"string\"}, \"totalAmount\": {\"type\": \"number\"}, \"previousBalance\": {\"type\": \"number\"}, \"payments\": {\"type\": \"number\"}, \"newCharges\": {\"type\": \"number\"}, \"subscriptionCount\": {\"type\": \"number\"}, \"subscriptionNames\": {\"type\": \"string\"}, \"subscriptionAmounts\": {\"type\": \"string\"}, \"monthlySubTotal\": {\"type\": \"number\"}, \"annualSubTotal\": {\"type\": \"number\"}, \"hasDuplicates\": {\"type\": \"boolean\"}, \"duplicateNames\": {\"type\": \"string\"}, \"unusedSubscriptions\": {\"type\": \"string\"}, \"potentialSavings\": {\"type\": \"number\"}, \"largestSubscription\": {\"type\": \"string\"}, \"largestAmount\": {\"type\": \"number\"}}, \"required\": [\"documentType\", \"statementDate\", \"totalAmount\"], \"additionalProperties\": false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Subscriptions",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Analyze this bill or statement and provide money-saving recommendations:\n\n**SUBSCRIPTION AUDIT:**\n\n1. IDENTIFY ALL RECURRING CHARGES:\n- List every subscription, membership, and recurring fee\n- Include the amount and frequency for each\n- Calculate the annual cost for each\n\n2. CATEGORY BREAKDOWN:\n- Group subscriptions by category (streaming, software, fitness, etc.)\n- Calculate total monthly spending per category\n- Calculate total annual spending\n\n3. POTENTIAL DUPLICATES:\n- Are there multiple streaming services? (Netflix + Hulu + Disney+ = $40+/month)\n- Multiple cloud storage services?\n- Multiple music services?\n- Similar services that overlap?\n\n4. SAVINGS OPPORTUNITIES:\n- Which subscriptions have annual plans that are cheaper?\n- Are there family or group plans available?\n- Student or senior discounts available?\n- Competitor services that cost less?\n- Services that could be shared with family?\n- Free alternatives that exist?\n\n5. UNUSED SERVICE INDICATORS:\n- Any services that might not be actively used?\n- Services at premium tiers that could be downgraded?\n- Trial periods that converted to paid?\n\n6. PRICE INCREASE DETECTION:\n- Any charges higher than typical for this service?\n- Recent price increases?\n\n7. RECOMMENDATIONS:\n- Priority 1: Cancel immediately (likely unused)\n- Priority 2: Downgrade plan\n- Priority 3: Switch to annual billing\n- Priority 4: Find cheaper alternative\n- Priority 5: Negotiate or call for retention offer\n\n**SAVINGS SUMMARY:**\n- Total current monthly subscription spend: $X\n- Potential monthly savings: $X\n- Potential annual savings: $X\n- Confidence level: HIGH/MEDIUM/LOW"
+      },
+      "id": "pdfvector-analyze",
+      "name": "Savings Analysis",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst extractItem = allItems[0]?.json || {};\nconst billData = extractItem.data || extractItem;\n\nconst analysisItem = allItems[1]?.json || {};\nconst savingsAnalysis = analysisItem.answer || analysisItem.markdown || analysisItem.text || '';\n\nconst triggerData = $('New Bill').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\n// Document info\nconst docType        = billData.documentType  || 'Statement';\nconst statementDate  = billData.statementDate || 'N/A';\nconst accountHolder  = billData.accountHolder || 'N/A';\nconst accountEnding  = billData.accountEnding || 'N/A';\nconst totalAmount    = parseFloat(billData.totalAmount) || 0;\n\n// Flat subscription fields from schema\nconst subscriptionCount  = parseInt(billData.subscriptionCount) || 0;\nconst subscriptionNames  = billData.subscriptionNames  || 'None found';\nconst subscriptionAmounts= billData.subscriptionAmounts|| 'N/A';\nconst monthlySubTotal    = parseFloat(billData.monthlySubTotal) || 0;\nconst annualSubTotal     = parseFloat(billData.annualSubTotal)  || monthlySubTotal * 12;\nconst hasDuplicates      = billData.hasDuplicates || false;\nconst duplicateNames     = billData.duplicateNames || 'None';\nconst unusedSubscriptions= billData.unusedSubscriptions || 'None';\nconst potentialSavings   = parseFloat(billData.potentialSavings) || 0;\nconst largestSubscription= billData.largestSubscription || 'N/A';\nconst largestAmount      = parseFloat(billData.largestAmount) || 0;\n\n// Count cancel/downgrade from AI analysis\nlet cancelCount    = (savingsAnalysis.match(/cancel/gi) || []).length;\nlet downgradeCount = (savingsAnalysis.match(/downgrade/gi) || []).length;\n\nreturn [{ json: {\n  fileName,\n  fileId,\n  documentType:              docType,\n  statementDate,\n  accountHolder,\n  accountEnding,\n  totalBillAmount:           totalAmount,\n  subscriptionCount,\n  subscriptionNames,\n  subscriptionAmounts,\n  totalMonthlySubscriptions: monthlySubTotal.toFixed(2),\n  totalAnnualSubscriptions:  annualSubTotal.toFixed(2),\n  hasDuplicateServices:      hasDuplicates,\n  duplicateNames,\n  unusedSubscriptions,\n  largestSubscription,\n  largestAmount,\n  potentialMonthlySavings:   potentialSavings.toFixed(2),\n  potentialAnnualSavings:    (potentialSavings * 12).toFixed(2),\n  cancelRecommendations:     cancelCount,\n  downgradeRecommendations:  downgradeCount,\n  savingsAnalysis:           savingsAnalysis.slice(0, 500),\n  processedAt:               new Date().toISOString()\n}}];"
+      },
+      "id": "format-data",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Subscription Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Analysis"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Statement Date": "={{ $json.statementDate }}",
+            "Document Type": "={{ $json.documentType }}",
+            "Account": "={{ $json.accountEnding }}",
+            "Total Bill": "={{ $json.totalBillAmount }}",
+            "Subscriptions Found": "={{ $json.subscriptionCount }}",
+            "Monthly Sub Spend": "={{ $json.totalMonthlySubscriptions }}",
+            "Annual Sub Spend": "={{ $json.totalAnnualSubscriptions }}",
+            "Potential Savings": "={{ $json.potentialMonthlySavings }}",
+            "Has Duplicates": "={{ $json.hasDuplicateServices }}",
+            "Processed": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Statement Date",
+              "displayName": "Statement Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document Type",
+              "displayName": "Document Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Account",
+              "displayName": "Account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Bill",
+              "displayName": "Total Bill",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Subscriptions Found",
+              "displayName": "Subscriptions Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Monthly Sub Spend",
+              "displayName": "Monthly Sub Spend",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Annual Sub Spend",
+              "displayName": "Annual Sub Spend",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Potential Savings",
+              "displayName": "Potential Savings",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Has Duplicates",
+              "displayName": "Has Duplicates",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed",
+              "displayName": "Processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "budget"
+        },
+        "text": "=💳 *Subscription Analysis Complete*\n\n*Document:* {{ $('Format Results').item.json.documentType }}\n*Statement Date:* {{ $('Format Results').item.json.statementDate }}\n*Account:* ****{{ $('Format Results').item.json.accountEnding }}\n\n📊 *Subscription Summary:*\n• Subscriptions Found: {{ $('Format Results').item.json.subscriptionCount }}\n• Monthly Spending: ${{ $('Format Results').item.json.totalMonthlySubscriptions }}\n• Annual Spending: ${{ $('Format Results').item.json.totalAnnualSubscriptions }}\n• Largest: {{ $('Format Results').item.json.largestSubscription }} (${{ $('Format Results').item.json.largestAmount }}/mo)\n\n📋 *All Subscriptions:* {{ $('Format Results').item.json.subscriptionNames }}\n\n⚠️ *Duplicates:* {{ $('Format Results').item.json.duplicateNames }}\n🔕 *Possibly Unused:* {{ $('Format Results').item.json.unusedSubscriptions }}\n\n💰 *Savings Opportunity:*\n• Potential Monthly Savings: ${{ $('Format Results').item.json.potentialMonthlySavings }}\n• Potential Annual Savings: ${{ $('Format Results').item.json.potentialAnnualSavings }}\n\n🔗 <https://drive.google.com/file/d/{{ $('Format Results').item.json.fileId }}/view|View Statement>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Bill": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract Subscriptions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Savings Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Subscriptions": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Savings Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
