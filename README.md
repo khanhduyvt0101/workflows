@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-68_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-69_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 68 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 69 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -4118,6 +4118,50 @@ Stop manually reviewing insurance policies page by page. This workflow watches a
 - Add email notifications alongside Slack for critical findings like expiring policies or poor coverage ratings
 - Create a separate sheet tab for each policy type to organize tracking
 - Add a conditional node to flag policies expiring within 30 days for urgent renewal follow-up
+
+</details>
+
+<details>
+<summary><strong>💳 Subscription Bill Analyzer</strong> - Analyze bills for subscriptions, duplicates, and savings opportunities | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/subscription-bill-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/subscription-bill-analyzer.json">📋 Open</a></summary>
+
+Stop overpaying for subscriptions you forgot about. This workflow automatically scans your bank statements and credit card bills, identifies every recurring charge, flags duplicate services and unused subscriptions, and calculates exactly how much you could save each month.
+
+#### Who is this for?
+- Anyone wanting to track and reduce subscription spending
+- Families managing household budgets across multiple accounts
+- Small businesses looking to cut unnecessary SaaS and service costs
+
+#### How it works
+1. **New Bill** monitors a Google Drive folder for new bank statements or credit card bills
+2. **Download Document** retrieves the uploaded file for processing
+3. **Extract Subscriptions** uses AI to identify all recurring charges, subscription names, amounts, duplicates, and potential savings from the document (runs in parallel with step 4)
+4. **Savings Analysis** performs a deep AI audit of the bill — categorizes subscriptions, finds duplicates, suggests cheaper alternatives, and prioritizes cancellation/downgrade recommendations (runs in parallel with step 3)
+5. **Merge Results** combines the structured extraction data with the savings analysis
+6. **Format Results** consolidates all data into a unified summary with monthly/annual totals, savings estimates, and recommendation counts
+7. **Log to Sheets** appends the analysis to a Google Sheets subscription tracker for historical tracking
+8. **Send to Slack** delivers a formatted alert with subscription summary, duplicates, unused services, and savings opportunities
+
+#### Services used
+- Google Drive (monitors folder for new bills/statements)
+- PDF Vector (AI-powered subscription extraction and savings analysis)
+- Google Sheets (logs analysis results to subscription tracker)
+- Slack (sends savings recommendations and subscription summary)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials
+4. Create a Google Drive folder for bills/statements and update `YOUR_FOLDER_ID` in the New Bill node
+5. Configure Google Sheets OAuth2 credentials
+6. Create a Google Sheet with columns: Statement Date, Document Type, Account, Total Bill, Subscriptions Found, Monthly Sub Spend, Annual Sub Spend, Potential Savings, Has Duplicates, Processed — then update `YOUR_SPREADSHEET_ID`
+7. Configure Slack OAuth2 credentials and update `YOUR_SLACK_CHANNEL_ID`
+8. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the extraction prompt to focus on specific subscription categories (e.g., streaming only, SaaS tools only)
+- Add a conditional node to send urgent alerts when monthly subscription spending exceeds a threshold
+- Create separate sheet tabs for each account or card to track spending independently
+- Add email notifications alongside Slack for high-savings alerts or duplicate service warnings
 
 </details>
 
