@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-71_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-72_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 71 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 72 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -4256,6 +4256,56 @@ Navigate the home buying process with confidence. This workflow automatically an
 - Extend the document type detection to handle additional real estate documents like title commitments or survey reports
 - Add a second Slack channel for urgent issues vs. routine document summaries
 - Integrate with a project management tool to automatically create tasks for items requiring buyer action
+
+</details>
+
+<details>
+<summary><strong>🎓 Student Application Manager</strong> - Automatically process and track college/graduate school application documents | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/student-application-manager.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/student-application-manager.json">📋 Open</a></summary>
+
+Stay on top of every application document without the spreadsheet chaos. This workflow watches a Google Drive folder for new application files — transcripts, test scores, essays, recommendation letters — extracts key data using AI, searches academic databases for helpful resources, and logs everything to a centralized Google Sheets tracker with deadline alerts sent to Slack.
+
+#### Who is this for?
+- College applicants managing multiple school applications
+- Graduate school applicants tracking complex document requirements
+- Parents helping their children organize application materials
+- High school counselors overseeing student applications
+- Education consultants managing multiple client applications
+
+#### How it works
+1. **New Document** - Google Drive trigger watches your application documents folder for newly uploaded files
+2. **Download Document** - Downloads the file from Google Drive for processing
+3. **Extract App Data** - PDF Vector AI extracts structured data including document type, student name, GPA, test scores, essay details, recommendation info, and deadline tracking
+4. **Research Resources** - Simultaneously searches academic databases (Semantic Scholar, Google Scholar) for relevant application essay research and writing resources
+5. **Merge Results** - Combines the extracted document data with academic search results
+6. **Format App Data** - JavaScript code processes all data, calculates days until deadline, determines urgency status (🔴 URGENT / 🟡 SOON / 🟢 OK), and formats the complete application profile
+7. **Log to Sheets** - Appends a row to Google Sheets with student name, school, document type, status, deadline, GPA, test scores, and processing date
+8. **Send to Slack** - Posts a detailed summary to Slack including academic profile, deadline status, document completeness, and a link to view the original document
+
+#### Google Sheets structure
+| Student | School | Doc Type | Status | Deadline | Days Left | GPA | Test Type | Test Score | App Type | Processed |
+|---------|--------|----------|--------|----------|-----------|-----|-----------|------------|----------|-----------|
+
+#### Services used
+- Google Drive (trigger and file download for application documents)
+- PDF Vector (AI document extraction and academic database search)
+- Google Sheets (centralized application tracking spreadsheet)
+- Slack (deadline alerts and document processing notifications)
+- Code / JavaScript (data formatting, deadline calculation, urgency scoring)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the PDF Vector credentials
+3. Configure Google Drive OAuth2 credentials and set the folder ID to your application documents folder
+4. Create a Google Sheet with columns: Student, School, Doc Type, Status, Deadline, Days Left, GPA, Test Type, Test Score, App Type, Processed
+5. Configure Google Sheets OAuth2 credentials and set the spreadsheet ID
+6. Configure Slack OAuth2 credentials and select the target channel
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the deadline urgency thresholds (currently 7 days for urgent, 30 days for soon) in the Format App Data code node
+- Add additional document types to the extraction prompt for specialized programs (e.g., portfolio, audition recordings)
+- Create separate Slack channels for different urgency levels — urgent deadlines vs. routine processing
+- Add a conditional node to send email alerts when deadlines are within 48 hours
 
 </details>
 

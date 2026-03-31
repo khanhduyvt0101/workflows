@@ -1,0 +1,446 @@
+{
+  "name": "Student Application Manager",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83c\udf93 Student Application Manager\n\n### What this workflow does\n1. Watches Google Drive folder for application docs\n2. Extracts data from transcripts, test scores, essays\n3. Identifies document type and key information\n4. Searches academic databases for essay research\n5. Tracks submission requirements by school\n6. Logs to Google Sheets application tracker\n7. Sends Slack summary with status\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for application docs\n3. Create a Google Sheet with these columns:\n   School | Document Type | Status | GPA | Test Score | Deadline | Missing Items | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- College applicants\n- Graduate school applicants\n- Parents helping with applications",
+        "height": 540,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udd00 Parallel Processing\n\nExtract and Academic Search run at\nthe same time for efficiency",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Application Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Document",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract student application document data as flat fields only \u2014 no nested objects or arrays. documentType (transcript/test scores/recommendation letter/personal essay/application form/financial aid/other), studentName, studentDOB, studentEmail, studentPhone, targetSchool, applicationDeadline (YYYY-MM-DD), applicationType (Early Decision/Early Action/Regular Decision/Rolling), documentStatus (complete/incomplete/pending). Transcript: gpaWeighted, gpaUnweighted, gpaScale (4.0/5.0/100), classRank, classSize, rigorousCourses (comma-separated AP/IB courses), graduationDate. Test scores: testType (SAT/ACT/TOEFL/GRE/other), totalScore, maxScore, satEvidenceReading, satMath, actComposite. Recommendation: recommenderName, recommenderTitle, recommendationStrength (strong/moderate/weak). Essay: essayPrompt (first 100 chars), essayWordCount, essayTheme. Financial aid: aidRequested (true/false), expectedFamilyContrib, scholarshipsApplied. Overall: completenessScore (0-100), missingDocuments (comma-separated), strengthAreas (comma-separated), concernAreas (comma-separated).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"documentType\": {\"type\": \"string\"}, \"studentName\": {\"type\": \"string\"}, \"studentDOB\": {\"type\": \"string\"}, \"studentEmail\": {\"type\": \"string\"}, \"studentPhone\": {\"type\": \"string\"}, \"targetSchool\": {\"type\": \"string\"}, \"applicationDeadline\": {\"type\": \"string\"}, \"applicationType\": {\"type\": \"string\"}, \"documentStatus\": {\"type\": \"string\"}, \"gpaWeighted\": {\"type\": \"number\"}, \"gpaUnweighted\": {\"type\": \"number\"}, \"gpaScale\": {\"type\": \"string\"}, \"classRank\": {\"type\": \"number\"}, \"classSize\": {\"type\": \"number\"}, \"rigorousCourses\": {\"type\": \"string\"}, \"graduationDate\": {\"type\": \"string\"}, \"testType\": {\"type\": \"string\"}, \"totalScore\": {\"type\": \"number\"}, \"maxScore\": {\"type\": \"number\"}, \"satEvidenceReading\": {\"type\": \"number\"}, \"satMath\": {\"type\": \"number\"}, \"actComposite\": {\"type\": \"number\"}, \"recommenderName\": {\"type\": \"string\"}, \"recommenderTitle\": {\"type\": \"string\"}, \"recommendationStrength\": {\"type\": \"string\"}, \"essayPrompt\": {\"type\": \"string\"}, \"essayWordCount\": {\"type\": \"number\"}, \"essayTheme\": {\"type\": \"string\"}, \"aidRequested\": {\"type\": \"boolean\"}, \"expectedFamilyContrib\": {\"type\": \"number\"}, \"scholarshipsApplied\": {\"type\": \"string\"}, \"completenessScore\": {\"type\": \"number\"}, \"missingDocuments\": {\"type\": \"string\"}, \"strengthAreas\": {\"type\": \"string\"}, \"concernAreas\": {\"type\": \"string\"}}, \"required\": [\"studentName\", \"documentType\"], \"additionalProperties\": false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract App Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "academic",
+        "operation": "search",
+        "query": "college application essay personal statement writing tips research",
+        "providers": [
+          "semantic-scholar",
+          "google-scholar"
+        ],
+        "limit": 5,
+        "additionalFields": {
+          "yearFrom": 2020,
+          "yearTo": 2026
+        }
+      },
+      "id": "pdfvector-search",
+      "name": "Research Resources",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from Merge\nconst allItems = $input.all();\n\n// Extract data from first item\nconst extractItem = allItems[0]?.json || {};\nconst appData = extractItem.data || extractItem;\n\n// Academic search from second item\nconst searchItem = allItems[1]?.json || {};\nconst searchResults = searchItem.results || [];\n\n// Get trigger data\nconst triggerData = $('New Document').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Document info\nconst docType = appData.documentType || 'Unknown';\nconst studentName = appData.studentName || 'Unknown';\nconst targetSchool = appData.targetSchool || 'Not specified';\nconst deadline = appData.applicationDeadline || 'N/A';\nconst appType = appData.applicationType || 'N/A';\n\n// Calculate days until deadline\nlet daysUntilDeadline = 'N/A';\nlet deadlineStatus = 'Unknown';\nif (deadline && deadline !== 'N/A') {\n  try {\n    const deadlineDate = new Date(deadline);\n    const today = new Date();\n    const diffTime = deadlineDate - today;\n    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));\n    daysUntilDeadline = diffDays;\n    \n    if (diffDays < 0) deadlineStatus = '\ud83d\udd34 PASSED';\n    else if (diffDays <= 7) deadlineStatus = '\ud83d\udd34 URGENT';\n    else if (diffDays <= 30) deadlineStatus = '\ud83d\udfe1 SOON';\n    else deadlineStatus = '\ud83d\udfe2 OK';\n  } catch (e) {}\n}\n\n// Transcript data\nconst transcript = appData.transcript || {};\nconst gpaWeighted = transcript.gpaWeighted || 0;\nconst gpaUnweighted = transcript.gpaUnweighted || 0;\nconst gpaScale = transcript.gpaScale || 4.0;\nconst classRank = transcript.classRank || 0;\nconst classSize = transcript.classSize || 0;\nconst apCourses = transcript.apCourses || 0;\nconst ibCourses = transcript.ibCourses || 0;\nconst honorsCourses = transcript.honorsCourses || 0;\nconst rigorousCourses = apCourses + ibCourses + honorsCourses;\n\n// Test score data\nconst testScore = appData.testScore || {};\nconst testType = testScore.testType || 'N/A';\nconst totalScore = testScore.totalScore || 0;\nconst maxScore = testScore.maxScore || 0;\nconst testDate = testScore.testDate || 'N/A';\nconst sections = testScore.sections || [];\nconst sectionSummary = sections.map(s => `${s.name}: ${s.score}`).join(', ') || 'N/A';\n\n// Recommendation data\nconst rec = appData.recommendation || {};\nconst recommenderName = rec.recommenderName || 'N/A';\nconst recommenderTitle = rec.recommenderTitle || 'N/A';\nconst strengths = rec.strengths || [];\n\n// Essay data\nconst essay = appData.essay || {};\nconst essayPrompt = essay.prompt || 'N/A';\nconst wordCount = essay.wordCount || 0;\nconst essayTheme = essay.theme || 'N/A';\n\n// Financial aid\nconst finAid = appData.financialAid || {};\nconst efc = finAid.efc || 0;\n\n// Academic resources found\nconst resourceCount = searchResults.length;\nconst topResources = searchResults.slice(0, 3).map(r => r.title).join('; ') || 'None found';\n\n// Determine document status\nlet docStatus = 'Received';\nif (docType.toLowerCase().includes('transcript') && gpaWeighted > 0) docStatus = 'Complete';\nelse if (docType.toLowerCase().includes('test') && totalScore > 0) docStatus = 'Complete';\nelse if (docType.toLowerCase().includes('recommendation')) docStatus = 'Received';\nelse if (docType.toLowerCase().includes('essay') && wordCount > 0) docStatus = 'Draft';\n\nreturn [{\n  json: {\n    fileName: fileName,\n    fileId: fileId,\n    documentType: docType,\n    studentName: studentName,\n    targetSchool: targetSchool,\n    applicationDeadline: deadline,\n    daysUntilDeadline: daysUntilDeadline,\n    deadlineStatus: deadlineStatus,\n    applicationType: appType,\n    docStatus: docStatus,\n    gpaWeighted: gpaWeighted,\n    gpaUnweighted: gpaUnweighted,\n    gpaScale: gpaScale,\n    classRank: classRank > 0 ? `${classRank}/${classSize}` : 'N/A',\n    rigorousCourses: rigorousCourses,\n    testType: testType,\n    totalScore: totalScore,\n    maxScore: maxScore,\n    testDate: testDate,\n    sectionScores: sectionSummary,\n    recommenderName: recommenderName,\n    recommenderTitle: recommenderTitle,\n    strengths: strengths.slice(0, 3).join(', ') || 'N/A',\n    essayPrompt: essayPrompt.substring(0, 100),\n    wordCount: wordCount,\n    essayTheme: essayTheme,\n    efc: efc,\n    resourceCount: resourceCount,\n    topResources: topResources.substring(0, 200),\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-data",
+      "name": "Format App Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Application Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Documents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Student": "={{ $json.studentName }}",
+            "School": "={{ $json.targetSchool }}",
+            "Doc Type": "={{ $json.documentType }}",
+            "Status": "={{ $json.docStatus }}",
+            "Deadline": "={{ $json.applicationDeadline }}",
+            "Days Left": "={{ $json.daysUntilDeadline }}",
+            "GPA": "={{ $json.gpaWeighted }}",
+            "Test Type": "={{ $json.testType }}",
+            "Test Score": "={{ $json.totalScore }}",
+            "App Type": "={{ $json.applicationType }}",
+            "Processed": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Student",
+              "displayName": "Student",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "School",
+              "displayName": "School",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Doc Type",
+              "displayName": "Doc Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deadline",
+              "displayName": "Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Days Left",
+              "displayName": "Days Left",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "GPA",
+              "displayName": "GPA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Test Type",
+              "displayName": "Test Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Test Score",
+              "displayName": "Test Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "App Type",
+              "displayName": "App Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed",
+              "displayName": "Processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "applications"
+        },
+        "text": "=\ud83c\udf93 *Application Document Processed*\n\n*Document:* {{ $('Format App Data').item.json.documentType }}\n*Student:* {{ $('Format App Data').item.json.studentName }}\n*Target School:* {{ $('Format App Data').item.json.targetSchool }}\n\n\ud83d\udcc5 *Deadline:*\n\u2022 Date: {{ $('Format App Data').item.json.applicationDeadline }}\n\u2022 Days Left: {{ $('Format App Data').item.json.daysUntilDeadline }}\n\u2022 Status: {{ $('Format App Data').item.json.deadlineStatus }}\n\n\ud83d\udcca *Academic Profile:*\n\u2022 GPA: {{ $('Format App Data').item.json.gpaWeighted }} (weighted) / {{ $('Format App Data').item.json.gpaUnweighted }} (unweighted)\n\u2022 Class Rank: {{ $('Format App Data').item.json.classRank }}\n\u2022 Test: {{ $('Format App Data').item.json.testType }} \u2014 {{ $('Format App Data').item.json.totalScore }}\n\u2022 Scores: {{ $('Format App Data').item.json.sectionScores }}\n\u2022 Rigorous Courses: {{ $('Format App Data').item.json.rigorousCourses }}\n\n\ud83d\udccb *Document Status:*\n\u2022 Status: {{ $('Format App Data').item.json.docStatus }}\n\u2022 Strengths: {{ $('Format App Data').item.json.strengths }}\n\u2022 Recommender: {{ $('Format App Data').item.json.recommenderName }} ({{ $('Format App Data').item.json.recommenderTitle }})\n\n\ud83d\udcda *Resources Found:*\n\u2022 Count: {{ $('Format App Data').item.json.resourceCount }}\n\u2022 Top: {{ $('Format App Data').item.json.topResources }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format App Data').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Document": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract App Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Research Resources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract App Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Resources": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format App Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format App Data": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
