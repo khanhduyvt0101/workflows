@@ -1,0 +1,459 @@
+{
+  "name": "Pet Medical Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83d\udc3e Pet Medical Records Tracker\n\n### What this workflow does\n1. Watches Google Drive for pet medical documents\n2. Extracts vaccinations, medications, diagnoses\n3. Tracks vaccination expiration dates\n4. AI analyzes health trends and care recommendations\n5. Logs to Google Sheets pet health tracker\n6. Sends Slack alerts for upcoming vaccinations\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for pet records\n3. Create a Google Sheet with columns:\n   Pet Name | Species | Vaccine | Date Given | Expires | Status | Vet | Notes | Processed\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Pet owners (70% of households!)\n- Multi-pet families\n- Pet sitters and boarding facilities",
+        "height": 540,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udd00 Parallel Processing\n\nExtract and Health Analysis\nrun at the same time",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Pet Medical Records"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Pet Record",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract pet medical record data as flat fields only \u2014 no nested objects or arrays. Pet info: petName, species (dog/cat/bird/rabbit/other), breed, age, weight (with unit), sex, color, microchipNumber. Owner: ownerName, ownerPhone, ownerEmail, ownerAddress. Clinic: clinicName, vetName, clinicPhone. Visit: visitDate (YYYY-MM-DD), visitReason, diagnosis, treatment, notes. Vaccinations: vaccinesGiven (comma-separated vaccines given today), vaccinesDueSoon (comma-separated vaccines due within 90 days with dates), vaccinesExpired (comma-separated expired vaccines), vaccinesUpToDate (true/false \u2014 are ALL required vaccines current), rabiesExpiry (YYYY-MM-DD or N/A), dhppExpiry (YYYY-MM-DD or N/A), bordetellaExpiry (YYYY-MM-DD or N/A). Medications: currentMedications (comma-separated medication names), medicationDosages (comma-separated dosages). Lab/procedures: labResultsSummary (plain text summary), proceduresDone (comma-separated). Follow-up: nextAppointmentDate (YYYY-MM-DD), nextAppointmentReason, followUpInstructions, healthStatus (Excellent/Good/Fair/Poor/Critical).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"petName\": {\"type\": \"string\"}, \"species\": {\"type\": \"string\"}, \"breed\": {\"type\": \"string\"}, \"age\": {\"type\": \"string\"}, \"weight\": {\"type\": \"string\"}, \"sex\": {\"type\": \"string\"}, \"color\": {\"type\": \"string\"}, \"microchipNumber\": {\"type\": \"string\"}, \"ownerName\": {\"type\": \"string\"}, \"ownerPhone\": {\"type\": \"string\"}, \"ownerEmail\": {\"type\": \"string\"}, \"ownerAddress\": {\"type\": \"string\"}, \"clinicName\": {\"type\": \"string\"}, \"vetName\": {\"type\": \"string\"}, \"clinicPhone\": {\"type\": \"string\"}, \"visitDate\": {\"type\": \"string\"}, \"visitReason\": {\"type\": \"string\"}, \"diagnosis\": {\"type\": \"string\"}, \"treatment\": {\"type\": \"string\"}, \"notes\": {\"type\": \"string\"}, \"vaccinesGiven\": {\"type\": \"string\"}, \"vaccinesDueSoon\": {\"type\": \"string\"}, \"vaccinesExpired\": {\"type\": \"string\"}, \"vaccinesUpToDate\": {\"type\": \"boolean\"}, \"rabiesExpiry\": {\"type\": \"string\"}, \"dhppExpiry\": {\"type\": \"string\"}, \"bordetellaExpiry\": {\"type\": \"string\"}, \"currentMedications\": {\"type\": \"string\"}, \"medicationDosages\": {\"type\": \"string\"}, \"labResultsSummary\": {\"type\": \"string\"}, \"proceduresDone\": {\"type\": \"string\"}, \"nextAppointmentDate\": {\"type\": \"string\"}, \"nextAppointmentReason\": {\"type\": \"string\"}, \"followUpInstructions\": {\"type\": \"string\"}, \"healthStatus\": {\"type\": \"string\"}}, \"required\": [\"petName\", \"visitDate\"], \"additionalProperties\": false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Pet Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Analyze this pet medical record and provide health insights:\n\n**VACCINATION STATUS:**\n- Which vaccinations are up to date?\n- Which vaccinations are due or overdue?\n- Are all core vaccinations covered for this pet's species?\n- For dogs: Rabies, DHPP, Bordetella - are these current?\n- For cats: Rabies, FVRCP - are these current?\n\n**MEDICATION REVIEW:**\n- Any ongoing medications that need refills soon?\n- Potential interactions between medications?\n- Are there any medications that should have follow-up tests?\n\n**HEALTH CONCERNS:**\n- Any diagnoses that require ongoing monitoring?\n- Weight assessment - is the pet at a healthy weight for breed?\n- Any lab results that are concerning?\n- Signs of chronic conditions developing?\n\n**PREVENTIVE CARE:**\n- Is this pet due for dental cleaning?\n- Heartworm/flea/tick prevention status?\n- When is the next recommended checkup?\n- Age-appropriate screenings needed?\n\n**COST CONSIDERATIONS:**\n- Upcoming expected expenses (vaccines, medications, procedures)\n- Is pet insurance recommended based on health history?\n\n**CARE RECOMMENDATIONS:**\n- Priority 1: Urgent actions needed\n- Priority 2: Schedule within 30 days\n- Priority 3: Monitor and address at next visit\n\n**SUMMARY:**\n- Overall health status: EXCELLENT / GOOD / FAIR / NEEDS ATTENTION\n- Next action date and reason\n- Estimated cost of upcoming care"
+      },
+      "id": "pdfvector-analyze",
+      "name": "Health Analysis",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst extractItem = allItems[0]?.json || {};\nconst petData = extractItem.data || extractItem;\n\nconst analysisItem = allItems[1]?.json || {};\nconst healthAnalysis = analysisItem.answer || analysisItem.markdown || analysisItem.text || '';\n\nconst triggerData = $('New Pet Record').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\n// Check vaccine expiry alerts\nconst today = new Date();\nfunction daysUntil(dateStr) {\n  if (!dateStr || dateStr === 'N/A') return null;\n  const d = new Date(dateStr);\n  if (isNaN(d)) return null;\n  return Math.ceil((d - today) / (1000 * 60 * 60 * 24));\n}\n\nconst rabiesDays     = daysUntil(petData.rabiesExpiry);\nconst dhppDays       = daysUntil(petData.dhppExpiry);\nconst bordetellaDays = daysUntil(petData.bordetellaExpiry);\n\nconst urgentAlerts = [];\n[\n  { name: 'Rabies',     days: rabiesDays,     expiry: petData.rabiesExpiry },\n  { name: 'DHPP',       days: dhppDays,       expiry: petData.dhppExpiry },\n  { name: 'Bordetella', days: bordetellaDays, expiry: petData.bordetellaExpiry }\n].forEach(v => {\n  if (v.days !== null) {\n    if (v.days < 0)  urgentAlerts.push(`${v.name} EXPIRED (${v.expiry})`);\n    else if (v.days <= 30) urgentAlerts.push(`${v.name} due in ${v.days} days`);\n  }\n});\n\nconst alertLevel = urgentAlerts.length > 0 ? 'ACTION NEEDED' : 'All Good';\n\nreturn [{ json: {\n  fileName, fileId,\n  petName:               petData.petName              || 'Unknown',\n  species:               petData.species              || 'N/A',\n  breed:                 petData.breed                || 'N/A',\n  age:                   petData.age                  || 'N/A',\n  weight:                petData.weight               || 'N/A',\n  ownerName:             petData.ownerName            || 'N/A',\n  ownerPhone:            petData.ownerPhone           || 'N/A',\n  clinicName:            petData.clinicName           || 'N/A',\n  vetName:               petData.vetName              || 'N/A',\n  visitDate:             petData.visitDate            || 'N/A',\n  visitReason:           petData.visitReason          || 'N/A',\n  diagnosis:             petData.diagnosis            || 'None',\n  treatment:             petData.treatment            || 'None',\n  vaccinesGiven:         petData.vaccinesGiven        || 'None',\n  vaccinesUpToDate:      petData.vaccinesUpToDate     ? 'Yes' : 'No',\n  vaccinesDueSoon:       petData.vaccinesDueSoon      || 'None',\n  vaccinesExpired:       petData.vaccinesExpired      || 'None',\n  rabiesExpiry:          petData.rabiesExpiry         || 'N/A',\n  dhppExpiry:            petData.dhppExpiry           || 'N/A',\n  bordetellaExpiry:      petData.bordetellaExpiry     || 'N/A',\n  currentMedications:    petData.currentMedications   || 'None',\n  medicationDosages:     petData.medicationDosages    || 'N/A',\n  labResultsSummary:     petData.labResultsSummary    || 'None',\n  proceduresDone:        petData.proceduresDone       || 'None',\n  healthStatus:          petData.healthStatus         || 'N/A',\n  nextAppointmentDate:   petData.nextAppointmentDate  || 'N/A',\n  nextAppointmentReason: petData.nextAppointmentReason|| 'N/A',\n  followUpInstructions:  petData.followUpInstructions || 'None',\n  urgentAlerts:          urgentAlerts.join('; ')      || 'None',\n  alertLevel,\n  healthAnalysis:        healthAnalysis.slice(0, 400),\n  processedAt:           new Date().toISOString()\n}}];"
+      },
+      "id": "format-data",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Pet Health Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Records"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Pet Name": "={{ $json.petName }}",
+            "Species": "={{ $json.species }}",
+            "Breed": "={{ $json.breed }}",
+            "Weight": "={{ $json.weight }}",
+            "Visit Date": "={{ $json.visitDate }}",
+            "Vet": "={{ $json.vetName }}",
+            "Vaccines Up-to-Date": "={{ $json.vaccinesUpToDate }}",
+            "Vaccines Expired": "={{ $json.vaccinesExpired }}",
+            "Vaccines Due Soon": "={{ $json.vaccinesDueSoon }}",
+            "Medications": "={{ $json.currentMedications }}",
+            "Health Status": "={{ $json.healthStatus }}",
+            "Next Appt": "={{ $json.nextAppointmentDate }}",
+            "Processed": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Pet Name",
+              "displayName": "Pet Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Species",
+              "displayName": "Species",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Breed",
+              "displayName": "Breed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Weight",
+              "displayName": "Weight",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Visit Date",
+              "displayName": "Visit Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vet",
+              "displayName": "Vet",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vaccines Up-to-Date",
+              "displayName": "Vaccines Up-to-Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vaccines Expired",
+              "displayName": "Vaccines Expired",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vaccines Due Soon",
+              "displayName": "Vaccines Due Soon",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Medications",
+              "displayName": "Medications",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Health Status",
+              "displayName": "Health Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Next Appt",
+              "displayName": "Next Appt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed",
+              "displayName": "Processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "pet-care"
+        },
+        "text": "=\ud83d\udc3e *Pet Medical Record Processed*\n\n*Pet:* {{ $('Format Results').item.json.petName }} ({{ $('Format Results').item.json.species }} - {{ $('Format Results').item.json.breed }})\n*Age/Weight:* {{ $('Format Results').item.json.age }} / {{ $('Format Results').item.json.weight }}\n*Owner:* {{ $('Format Results').item.json.ownerName }} ({{ $('Format Results').item.json.ownerPhone }})\n\n\ud83c\udfe5 *Visit Details:*\n\u2022 Date: {{ $('Format Results').item.json.visitDate }}\n\u2022 Clinic: {{ $('Format Results').item.json.clinicName }} \u2014 Dr. {{ $('Format Results').item.json.vetName }}\n\u2022 Reason: {{ $('Format Results').item.json.visitReason }}\n\u2022 Diagnosis: {{ $('Format Results').item.json.diagnosis }}\n\n\ud83d\udc89 *Vaccinations:*\n\u2022 Up-to-Date: {{ $('Format Results').item.json.vaccinesUpToDate }}\n\u2022 Given Today: {{ $('Format Results').item.json.vaccinesGiven }}\n\u2022 Due Soon: {{ $('Format Results').item.json.vaccinesDueSoon }}\n\u2022 Expired: {{ $('Format Results').item.json.vaccinesExpired }}\n\n\ud83d\udc8a *Medications:* {{ $('Format Results').item.json.currentMedications }}\n\n\u2764\ufe0f *Health Status:* {{ $('Format Results').item.json.healthStatus }}\n\ud83d\udcc5 *Next Appointment:* {{ $('Format Results').item.json.nextAppointmentDate }} \u2014 {{ $('Format Results').item.json.nextAppointmentReason }}\n\n\ud83d\udea8 *Alerts:* {{ $('Format Results').item.json.urgentAlerts }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Results').item.json.fileId }}/view|View Record>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Pet Record": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract Pet Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Health Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Pet Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
