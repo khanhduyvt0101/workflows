@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-69_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-70_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 69 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 70 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -4162,6 +4162,56 @@ Stop overpaying for subscriptions you forgot about. This workflow automatically 
 - Add a conditional node to send urgent alerts when monthly subscription spending exceeds a threshold
 - Create separate sheet tabs for each account or card to track spending independently
 - Add email notifications alongside Slack for high-savings alerts or duplicate service warnings
+
+</details>
+
+<details>
+<summary><strong>🐾 Pet Medical Tracker</strong> - Extract pet health records, track vaccinations, and get AI care recommendations | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/pet-medical-tracker.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/pet-medical-tracker.json">📋 Open</a></summary>
+
+Never miss a vaccination or vet appointment again. This workflow automatically processes pet medical documents uploaded to Google Drive, extracts comprehensive health data including vaccinations, medications, and diagnoses, and uses AI to provide personalized health insights and care recommendations. It tracks vaccine expiration dates and sends Slack alerts when action is needed.
+
+#### Who is this for?
+- Pet owners managing medical records for one or multiple pets
+- Multi-pet families who need to track different vaccination schedules
+- Pet sitters and boarding facilities requiring up-to-date health records
+- Veterinary clinics looking to digitize and organize patient records
+
+#### How it works
+1. **New Pet Record** — Google Drive trigger watches a designated folder for new pet medical documents (PDFs, scans, etc.)
+2. **Download Document** — Downloads the uploaded file for processing
+3. **Extract Pet Data** — PDF Vector AI extracts structured data including pet info, owner details, clinic info, visit details, vaccination status, medications, lab results, and follow-up instructions
+4. **Health Analysis** — Runs in parallel with extraction; AI analyzes the record for vaccination status, medication reviews, health concerns, preventive care needs, cost considerations, and prioritized care recommendations
+5. **Merge Results** — Combines the extracted data and health analysis into a single dataset
+6. **Format Results** — JavaScript node processes the merged data, calculates days until vaccine expiries, generates urgent alerts for expired or soon-due vaccinations, and formats everything for output
+7. **Log to Sheets** — Appends a summary row to a Google Sheets pet health tracker with pet name, species, breed, weight, visit date, vaccination status, medications, health status, and next appointment
+8. **Send to Slack** — Posts a detailed notification to a Slack channel with pet info, visit details, vaccination status, medications, health status, alerts, and a link to the original document
+
+#### Services used
+- Google Drive (trigger for new documents + file download)
+- PDF Vector (AI-powered document extraction + health analysis)
+- Google Sheets (pet health tracking log)
+- Slack (notifications and vaccination alerts)
+
+#### Google Sheets structure
+
+| Pet Name | Species | Breed | Weight | Visit Date | Vet | Vaccines Up-to-Date | Vaccines Expired | Vaccines Due Soon | Medications | Health Status | Next Appt | Processed |
+|----------|---------|-------|--------|------------|-----|---------------------|------------------|-------------------|-------------|---------------|-----------|-----------|
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials
+4. Create a Google Drive folder for pet medical records and update `YOUR_FOLDER_ID`
+5. Configure Google Sheets OAuth2 credentials
+6. Create a Google Sheet with the columns listed above and update `YOUR_SPREADSHEET_ID`
+7. Configure Slack OAuth2 credentials and update `YOUR_SLACK_CHANNEL_ID`
+8. Activate the workflow
+
+#### Customizing this workflow
+- Add species-specific vaccination checks (e.g., FVRCP for cats, DHPP for dogs) by extending the Format Results code node
+- Set up multiple Slack channels for different alert levels (urgent vs. routine reminders)
+- Add an email notification node to send vaccination reminders directly to pet owners
+- Extend the Google Sheets tracker with separate tabs per pet for longitudinal health tracking
 
 </details>
 
