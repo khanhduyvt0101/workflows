@@ -1,0 +1,442 @@
+{
+  "name": "Home Purchase Navigator",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83c\udfe0 Home Purchase Document Navigator\n\n### What this workflow does\n1. Watches Google Drive folder for home purchase docs\n2. Parses closing disclosures, mortgages, inspections\n3. AI answers plain-language questions about docs\n4. Extracts key terms, costs, and deadlines\n5. Logs document details to Google Sheets\n6. Sends Slack summary with key findings\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for home purchase docs\n3. Create a Google Sheet with these columns:\n   Document Type | Property Address | Key Amount | Monthly Payment | Interest Rate | Closing Date | Issues Found | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- First-time homebuyers\n- Real estate investors\n- Anyone buying property",
+        "height": 540,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udd00 Parallel Processing\n\nParse and Q&A Analysis run at\nthe same time from the same PDF",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Home Purchase Docs"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Document",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "parse",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "options": {
+          "llmParams": {
+            "useVision": "auto"
+          }
+        }
+      },
+      "id": "pdfvector-parse",
+      "name": "Parse Document",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Analyze this home purchase document and answer these common buyer questions:\n\n**DOCUMENT IDENTIFICATION:**\n- What type of document is this? (Closing Disclosure, Loan Estimate, Mortgage Note, Deed, Title Insurance, Home Inspection, Appraisal, Purchase Agreement, HOA Documents, or other)\n- What is the property address?\n\n**FOR CLOSING DISCLOSURE / LOAN ESTIMATE:**\n- What is my total monthly payment including escrow?\n- What is my interest rate and is it fixed or adjustable?\n- What is the loan amount and loan term?\n- What are my total closing costs?\n- How much cash do I need to close?\n- What is the purchase price vs appraised value?\n- Are there any prepayment penalties?\n- What is the APR (annual percentage rate)?\n- Breakdown of monthly payment: Principal, Interest, Taxes, Insurance, PMI/MIP\n\n**FOR HOME INSPECTION:**\n- What major issues were found?\n- Are there any safety concerns?\n- What repairs are recommended immediately vs. can wait?\n- What is the overall condition of: roof, foundation, HVAC, plumbing, electrical?\n- Are there any signs of water damage or mold?\n- What is the estimated age of major systems?\n\n**FOR PURCHASE AGREEMENT:**\n- What is the purchase price?\n- What are the key contingencies (inspection, financing, appraisal)?\n- What are the contingency deadlines?\n- What is included/excluded from the sale?\n- What is the earnest money amount?\n- What is the closing date?\n\n**RED FLAGS TO WATCH:**\n- Any unusual fees or charges?\n- Terms that differ from what was expected?\n- Missing disclosures or signatures?\n- Tight deadlines that need attention?\n\n**SUMMARY:**\n- Top 3 most important things the buyer should know\n- Any items requiring immediate action\n- Questions to ask the lender/agent/seller"
+      },
+      "id": "pdfvector-ask",
+      "name": "Answer Questions",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst parseItem = allItems[0]?.json || {};\nconst parsedContent = parseItem.markdown || parseItem.text || '';\n\nconst askItem = allItems[1]?.json || {};\nconst qaAnalysis = askItem.answer || askItem.markdown || askItem.text || '';\n\n// Combine both for searching\nconst fullText = parsedContent + '\\n' + qaAnalysis;\n\nconst triggerData = $('New Document').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\n// \u2500\u2500 Document type \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nlet docType = 'Unknown';\nconst ft = fullText.toLowerCase();\nif (ft.includes('closing disclosure'))      docType = 'Closing Disclosure';\nelse if (ft.includes('loan estimate'))       docType = 'Loan Estimate';\nelse if (ft.includes('home inspection'))     docType = 'Home Inspection';\nelse if (ft.includes('purchase agreement'))  docType = 'Purchase Agreement';\nelse if (ft.includes('appraisal'))           docType = 'Appraisal';\nelse if (ft.includes('title insurance'))     docType = 'Title Insurance';\nelse if (ft.includes('mortgage note'))       docType = 'Mortgage Note';\nelse if (ft.includes('deed of trust') || ft.includes('warranty deed')) docType = 'Deed';\nelse if (ft.includes('hoa') || ft.includes('homeowner'))               docType = 'HOA Documents';\n\n// \u2500\u2500 Helper: extract first dollar amount after a label \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nfunction extractAmount(text, patterns) {\n  for (const pattern of patterns) {\n    const m = text.match(pattern);\n    if (m) {\n      const val = parseFloat(m[1].replace(/,/g, ''));\n      if (!isNaN(val) && val > 0) return val;\n    }\n  }\n  return 0;\n}\n\n// \u2500\u2500 Purchase price \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst purchasePrice = extractAmount(fullText, [\n  /purchase price\\s*[:\\|]?\\s*\\$?([\\d,]+(?:\\.\\d+)?)/i,\n  /sale price\\s*[:\\|]?\\s*\\$?([\\d,]+(?:\\.\\d+)?)/i,\n  /contract price\\s*[:\\|]?\\s*\\$?([\\d,]+(?:\\.\\d+)?)/i,\n]);\n\n// \u2500\u2500 Loan amount \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst loanAmount = extractAmount(fullText, [\n  /loan amount\\s*[:\\|]?\\s*\\$?([\\d,]+(?:\\.\\d+)?)/i,\n  /amount financed\\s*[:\\|]?\\s*\\$?([\\d,]+(?:\\.\\d+)?)/i,\n]);\n\n// \u2500\u2500 Monthly payment \u2014 must be < purchase price and look like a payment \u2500\u2500\nconst monthlyPayment = extractAmount(fullText, [\n  /(?:total )?monthly payment\\s*[:\\|]?\\s*\\$?([1-9]\\d{2,4}(?:\\.\\d{2})?)/i,\n  /principal\\s*(?:&|and)\\s*interest\\s*[:\\|]?\\s*\\$?([1-9]\\d{2,4}(?:\\.\\d{2})?)/i,\n  /estimated monthly payment\\s*[:\\|]?\\s*\\$?([1-9]\\d{2,4}(?:\\.\\d{2})?)/i,\n  /\\$([1-9]\\d{2,4}\\.\\d{2})\\s*per month/i,\n]);\n\n// \u2500\u2500 Interest rate \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nlet interestRate = 'N/A';\nconst rateM = fullText.match(/interest rate\\s*[:\\|]?\\s*(\\d+\\.?\\d*)\\s*%?/i);\nif (rateM) interestRate = rateM[1];\n\n// \u2500\u2500 Closing costs \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst closingCosts = extractAmount(fullText, [\n  /closing costs\\s*[:\\|]?\\s*\\$?([\\d,]+(?:\\.\\d+)?)/i,\n  /total closing costs\\s*[:\\|]?\\s*\\$?([\\d,]+(?:\\.\\d+)?)/i,\n  /J\\.?\\s*Total Closing Costs[\\s\\S]{0,50}?([\\d,]+(?:\\.\\d+)?)/i,\n]);\n\n// \u2500\u2500 Cash to close \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst cashToClose = extractAmount(fullText, [\n  /cash to close\\s*[:\\|]?\\s*\\$?([\\d,]+(?:\\.\\d+)?)/i,\n  /total cash to close\\s*[:\\|]?\\s*\\$?([\\d,]+(?:\\.\\d+)?)/i,\n  /due (?:from|at) (?:borrower|closing)\\s*[:\\|]?\\s*\\$?([\\d,]+(?:\\.\\d+)?)/i,\n]);\n\n// \u2500\u2500 Closing date \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nlet closingDate = 'N/A';\nconst dateM = fullText.match(/closing date\\s*[:\\|]?\\s*(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4}|[A-Z][a-z]+ \\d{1,2},? \\d{4})/i);\nif (dateM) closingDate = dateM[1];\n\n// \u2500\u2500 Property address \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nlet propertyAddress = 'N/A';\nconst addrM = fullText.match(/property address\\s*[:\\|]?\\s*([^\\n]{5,80})/i) ||\n              fullText.match(/subject property\\s*[:\\|]?\\s*([^\\n]{5,80})/i) ||\n              fullText.match(/(\\d+\\s+[A-Za-z][^,\\n]{3,40},\\s*[A-Za-z\\s]+,\\s*[A-Z]{2}\\s*\\d{5})/);\nif (addrM) propertyAddress = addrM[1].trim().substring(0, 100);\n\n// \u2500\u2500 Issues \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst issues = [];\nconst flagPatterns = [\n  /red flag[:\\s]+([^.\\n]{10,150})/gi,\n  /major (?:issue|concern)[:\\s]+([^.\\n]{10,150})/gi,\n  /critical[:\\s]+([^.\\n]{10,150})/gi,\n  /repairs? (?:needed|required)[:\\s]+([^.\\n]{10,150})/gi,\n];\nflagPatterns.forEach(p => {\n  let m;\n  while ((m = p.exec(qaAnalysis)) !== null) {\n    issues.push(m[1].trim());\n  }\n});\nconst issueCount = issues.length;\n\n// \u2500\u2500 Action required \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst actionRequired = /immediat|deadline|action required|must sign|expires/i.test(fullText);\n\nreturn [{ json: {\n  fileName, fileId,\n  documentType:    docType,\n  propertyAddress,\n  purchasePrice,\n  loanAmount,\n  monthlyPayment,\n  interestRate,\n  closingCosts,\n  cashToClose,\n  closingDate,\n  issueCount,\n  issues: issues.join('; ') || 'None identified',\n  actionRequired,\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "format-data",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Home Purchase Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Documents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Document Type": "={{ $json.documentType }}",
+            "Property": "={{ $json.propertyAddress }}",
+            "Purchase Price": "={{ $json.purchasePrice }}",
+            "Loan Amount": "={{ $json.loanAmount }}",
+            "Monthly Payment": "={{ $json.monthlyPayment }}",
+            "Interest Rate": "={{ $json.interestRate }}",
+            "Closing Costs": "={{ $json.closingCosts }}",
+            "Cash to Close": "={{ $json.cashToClose }}",
+            "Issues Found": "={{ $json.issueCount }}",
+            "Action Required": "={{ $json.actionRequired }}",
+            "Processed": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Document Type",
+              "displayName": "Document Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property",
+              "displayName": "Property",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Purchase Price",
+              "displayName": "Purchase Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Loan Amount",
+              "displayName": "Loan Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Monthly Payment",
+              "displayName": "Monthly Payment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Interest Rate",
+              "displayName": "Interest Rate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Closing Costs",
+              "displayName": "Closing Costs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cash to Close",
+              "displayName": "Cash to Close",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Issues Found",
+              "displayName": "Issues Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Action Required",
+              "displayName": "Action Required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed",
+              "displayName": "Processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "home-purchase"
+        },
+        "text": "=\ud83c\udfe0 *Home Purchase Document Analyzed*\n\n*Document Type:* {{ $('Format Results').item.json.documentType }}\n*Property:* {{ $('Format Results').item.json.propertyAddress }}\n\n\ud83d\udcb0 *Financial Summary:*\n\u2022 Purchase Price: ${{ $('Format Results').item.json.purchasePrice }}\n\u2022 Loan Amount: ${{ $('Format Results').item.json.loanAmount }}\n\u2022 Interest Rate: {{ $('Format Results').item.json.interestRate }}%\n\u2022 Monthly Payment: ${{ $('Format Results').item.json.monthlyPayment }}\n\u2022 Closing Costs: ${{ $('Format Results').item.json.closingCosts }}\n\u2022 Cash to Close: ${{ $('Format Results').item.json.cashToClose }}\n\u2022 Closing Date: {{ $('Format Results').item.json.closingDate }}\n\n\ud83d\udccb *Issues Found ({{ $('Format Results').item.json.issueCount }})* : {{ $('Format Results').item.json.issues }}\n\u2705 *Action Required:* {{ $('Format Results').item.json.actionRequired }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Results').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Document": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Parse Document",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Answer Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Document": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Questions": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

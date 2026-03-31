@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-70_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-71_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 70 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 71 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -4212,6 +4212,50 @@ Never miss a vaccination or vet appointment again. This workflow automatically p
 - Set up multiple Slack channels for different alert levels (urgent vs. routine reminders)
 - Add an email notification node to send vaccination reminders directly to pet owners
 - Extend the Google Sheets tracker with separate tabs per pet for longitudinal health tracking
+
+</details>
+
+<details>
+<summary><strong>🏠 Home Purchase Navigator</strong> - AI-powered home purchase document analyzer with financial extraction and issue detection | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/home-purchase-navigator.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/home-purchase-navigator.json">📋 Open</a></summary>
+
+Navigate the home buying process with confidence. This workflow automatically analyzes closing disclosures, loan estimates, home inspections, purchase agreements, and other real estate documents — extracting key financial terms, flagging potential issues, and delivering plain-language summaries so you always know what you're signing.
+
+#### Who is this for?
+- First-time homebuyers overwhelmed by closing paperwork
+- Real estate investors managing multiple property acquisitions
+- Anyone purchasing property who wants AI-assisted document review
+
+#### How it works
+1. **New Document** Google Drive trigger watches a designated folder for newly uploaded home purchase documents
+2. **Download Document** Retrieves the uploaded file from Google Drive for processing
+3. **Parse Document** PDF Vector extracts the full text and structure from the document (runs in parallel with Q&A)
+4. **Answer Questions** PDF Vector AI analyzes the document against comprehensive buyer questions covering financials, inspections, red flags, and action items
+5. **Merge Results** Combines parsed content and Q&A analysis into a single data stream
+6. **Format Results** JavaScript node identifies document type, extracts purchase price, loan amount, monthly payment, interest rate, closing costs, cash to close, closing date, property address, and flags issues
+7. **Log to Sheets** Appends extracted data to a Google Sheets tracker for all your home purchase documents
+8. **Send to Slack** Posts a formatted financial summary with issue counts and a direct link to the document
+
+#### Services used
+- Google Drive (document upload trigger and file download)
+- PDF Vector (AI-powered document parsing and question answering)
+- Google Sheets (document tracking and logging)
+- Slack (summary notifications with financial details)
+- Code / JavaScript (document classification, data extraction, and issue detection)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Configure Google Drive OAuth2 credentials and set the watched folder ID
+4. Create a Google Sheet with columns: Document Type, Property, Purchase Price, Loan Amount, Monthly Payment, Interest Rate, Closing Costs, Cash to Close, Issues Found, Action Required, Processed
+5. Configure Google Sheets OAuth2 credentials and set the spreadsheet ID
+6. Configure Slack OAuth2 credentials and set the target channel
+7. Activate the workflow
+
+#### Customizing this workflow
+- Add email notifications for documents flagged with action required or tight deadlines
+- Extend the document type detection to handle additional real estate documents like title commitments or survey reports
+- Add a second Slack channel for urgent issues vs. routine document summaries
+- Integrate with a project management tool to automatically create tasks for items requiring buyer action
 
 </details>
 
