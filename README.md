@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-72_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-73_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 72 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 73 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -4306,6 +4306,50 @@ Stay on top of every application document without the spreadsheet chaos. This wo
 - Add additional document types to the extraction prompt for specialized programs (e.g., portfolio, audition recordings)
 - Create separate Slack channels for different urgency levels — urgent deadlines vs. routine processing
 - Add a conditional node to send email alerts when deadlines are within 48 hours
+
+</details>
+
+<details>
+<summary><strong>💰 Freelancer Contract Manager</strong> - AI-powered contract and invoice tracking for freelancers | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/freelancer-contract-manager.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/freelancer-contract-manager.json">📋 Open</a></summary>
+
+Stop losing track of payment deadlines and risky contract terms. This workflow automatically processes freelance contracts and invoices from Google Drive, uses AI to extract financial data and analyze contract risks, then logs everything to a Google Sheets tracker and sends Slack alerts so you always know what's owed and when.
+
+#### Who is this for?
+- Freelancers managing multiple client contracts
+- Independent contractors tracking invoices and receivables
+- Small business owners monitoring payment terms and deadlines
+
+#### How it works
+1. **New Document** watches a Google Drive folder for new contracts or invoices
+2. **Download Document** retrieves the uploaded PDF file
+3. **Extract Financial Data** uses AI to pull structured data — client info, rates, payment terms, due dates, and invoice details
+4. **Analyze Contract** runs a parallel AI analysis for risk flags, rate assessment, missing protections, and negotiation suggestions
+5. **Merge Results** combines the extracted data and analysis into a single item
+6. **Format Financial Data** calculates key amounts, days until due, payment urgency levels, and risk scores
+7. **Log to Sheets** appends a row to your Google Sheets financial tracker with client, amount, status, and risk info
+8. **Send to Slack** posts a detailed summary including financial details, payment urgency, and a link to the original document
+
+#### Services used
+- Google Drive (trigger on new files and download documents)
+- PDF Vector (AI-powered data extraction and contract analysis)
+- Google Sheets (financial tracking spreadsheet)
+- Slack (payment and risk alert notifications)
+- Code / JavaScript (financial calculations and risk scoring)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Configure Google Drive OAuth2 credentials and set your folder ID
+3. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+4. Create a Google Sheet with columns: Client, Doc Type, Invoice #, Amount, Rate, Payment Terms, Due Date, Days Left, Status, Risk, Risk Flags, Processed
+5. Configure Google Sheets OAuth2 credentials and set your spreadsheet ID
+6. Configure Slack OAuth2 credentials and set your channel ID
+7. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the payment urgency thresholds (currently 7 days for "due soon", 30 days for "severely overdue") in the Format Financial Data code node
+- Modify the AI extraction prompt to capture additional fields specific to your contracts (e.g., NDAs, liability caps)
+- Add a conditional node to send separate Slack alerts for overdue vs. upcoming payments
+- Extend the risk scoring logic to weight certain flags more heavily based on your experience
 
 </details>
 

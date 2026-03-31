@@ -1,0 +1,449 @@
+{
+  "name": "Freelancer Contract Manager",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📼 Freelancer Contract & Invoice Manager\n\n### What this workflow does\n1. Watches Google Drive folder for contracts/invoices\n2. Extracts payment terms, rates, deadlines\n3. AI analyzes contract risks and payment status\n4. Tracks outstanding receivables by client\n5. Calculates days until payment due\n6. Logs to Google Sheets financial tracker\n7. Sends Slack alerts for overdue payments\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for contracts/invoices\n3. Create a Google Sheet with these columns:\n   Client | Doc Type | Amount | Rate | Payment Terms | Due Date | Days Left | Status | Processed Date\n4. Update the folder ID and sheet ID in the nodes\n5. Connect your Slack workspace\n\n### Perfect for\n- Freelancers\n- Independent contractors\n- Small business owners",
+        "height": 540,
+        "width": 400,
+        "color": 5
+      },
+      "id": "sticky-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 Parallel Processing\n\nExtract and Contract Analysis run at\nthe same time from the same PDF",
+        "height": 100,
+        "width": 260
+      },
+      "id": "sticky-parallel",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Contracts and Invoices"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "gdrive-trigger",
+      "name": "New Document",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "gdrive-download",
+      "name": "Download Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract freelance contract and invoice data as flat fields only — no nested objects or arrays. documentType (contract/invoice/payment receipt/amendment/other). Client: clientName, clientEmail, clientPhone, clientAddress, clientCompany. Contractor: contractorName, contractorEmail, contractorBusiness. Contract: projectTitle, projectScope (brief description), startDate (YYYY-MM-DD), endDate (YYYY-MM-DD), hourlyRate (number), projectRate (number), estimatedHours (number), depositPercent (number), depositAmount (number), paymentTerms (Net 30/Net 15/50% upfront/etc), killFeePercent (number), killFeeAmount (number), revisionLimit (number), ipOwnership (contractor/client/shared), confidentiality (true/false), nonCompete (true/false). Invoice: invoiceNumber, invoiceDate (YYYY-MM-DD), dueDate (YYYY-MM-DD), invoiceTotal (number), taxAmount (number), lineItemsSummary (comma-separated descriptions), poNumber. Payment: paymentStatus (paid/unpaid/partial/overdue), paymentDate (YYYY-MM-DD), paymentAmount (number), paymentMethod (bank transfer/check/PayPal/Stripe/other), lateFeePercent (number).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"documentType\": {\"type\": \"string\"}, \"clientName\": {\"type\": \"string\"}, \"clientEmail\": {\"type\": \"string\"}, \"clientPhone\": {\"type\": \"string\"}, \"clientAddress\": {\"type\": \"string\"}, \"clientCompany\": {\"type\": \"string\"}, \"contractorName\": {\"type\": \"string\"}, \"contractorEmail\": {\"type\": \"string\"}, \"contractorBusiness\": {\"type\": \"string\"}, \"projectTitle\": {\"type\": \"string\"}, \"projectScope\": {\"type\": \"string\"}, \"startDate\": {\"type\": \"string\"}, \"endDate\": {\"type\": \"string\"}, \"hourlyRate\": {\"type\": \"number\"}, \"projectRate\": {\"type\": \"number\"}, \"estimatedHours\": {\"type\": \"number\"}, \"depositPercent\": {\"type\": \"number\"}, \"depositAmount\": {\"type\": \"number\"}, \"paymentTerms\": {\"type\": \"string\"}, \"killFeePercent\": {\"type\": \"number\"}, \"killFeeAmount\": {\"type\": \"number\"}, \"revisionLimit\": {\"type\": \"number\"}, \"ipOwnership\": {\"type\": \"string\"}, \"confidentiality\": {\"type\": \"boolean\"}, \"nonCompete\": {\"type\": \"boolean\"}, \"invoiceNumber\": {\"type\": \"string\"}, \"invoiceDate\": {\"type\": \"string\"}, \"dueDate\": {\"type\": \"string\"}, \"invoiceTotal\": {\"type\": \"number\"}, \"taxAmount\": {\"type\": \"number\"}, \"lineItemsSummary\": {\"type\": \"string\"}, \"poNumber\": {\"type\": \"string\"}, \"paymentStatus\": {\"type\": \"string\"}, \"paymentDate\": {\"type\": \"string\"}, \"paymentAmount\": {\"type\": \"number\"}, \"paymentMethod\": {\"type\": \"string\"}, \"lateFeePercent\": {\"type\": \"number\"}}, \"required\": [\"documentType\", \"clientName\"], \"additionalProperties\": false}"
+      },
+      "id": "pdfvector-extract",
+      "name": "Extract Financial Data",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "ask",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Analyze this freelance contract or invoice and provide insights:\n\n**FOR CONTRACTS:**\n\n1. RATE ANALYSIS:\n   - What is the effective hourly rate?\n   - How does this compare to industry standards?\n   - Is this a good deal for the freelancer?\n\n2. PAYMENT TERMS ASSESSMENT:\n   - What are the payment terms (Net 30, etc.)?\n   - When should payment be expected?\n   - Are there late payment penalties? Are they enforceable?\n   - Is there a deposit/retainer? (Recommended: 25-50%)\n\n3. RISK FLAGS:\n   - Scope creep risks (vague deliverables, unlimited revisions)\n   - Payment risks (long payment terms, no late fees)\n   - IP concerns (work-for-hire vs licensed)\n   - Termination risks (no kill fee, unfavorable cancellation)\n   - Non-compete concerns (too broad?)\n\n4. MISSING PROTECTIONS:\n   - Is there a kill fee? (Should be 25-50% of remaining)\n   - Revision limits? (Should cap at 2-3 rounds)\n   - Scope change process? (Should require written approval)\n   - Late payment penalties? (Should be 1.5-2% monthly)\n\n5. NEGOTIATION SUGGESTIONS:\n   - What terms should the freelancer push back on?\n   - What's missing that should be added?\n\n**FOR INVOICES:**\n\n1. PAYMENT STATUS:\n   - Is this invoice paid, unpaid, or partially paid?\n   - When is/was payment due?\n   - How many days until due or overdue?\n\n2. CASH FLOW IMPACT:\n   - What is the total amount outstanding?\n   - Based on payment terms, when should you expect payment?\n\n3. COLLECTION RISKS:\n   - Is this client likely to pay late based on payment terms?\n   - Are there concerning patterns (no PO, vague descriptions)?\n\n4. ACTION ITEMS:\n   - For unpaid: When to send reminder?\n   - For overdue: Collection steps to take?\n\n**OVERALL ASSESSMENT:**\n- Risk Level: LOW / MEDIUM / HIGH\n- Priority Actions: (list top 3 things to do)"
+      },
+      "id": "pdfvector-analyze",
+      "name": "Analyze Contract",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "merge-results",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\n\nconst extractItem = allItems[0]?.json || {};\nconst finData = extractItem.data || extractItem;\n\nconst analysisItem = allItems[1]?.json || {};\nconst contractAnalysis = analysisItem.answer || analysisItem.markdown || analysisItem.text || '';\n\nconst triggerData = $('New Document').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\n// All fields are flat from schema\nconst docType          = finData.documentType   || 'Unknown';\nconst clientName       = finData.clientName     || 'Unknown Client';\nconst clientEmail      = finData.clientEmail    || 'N/A';\nconst hourlyRate       = parseFloat(finData.hourlyRate)    || 0;\nconst projectRate      = parseFloat(finData.projectRate)   || 0;\nconst estimatedHours   = parseFloat(finData.estimatedHours)|| 0;\nconst paymentTerms     = finData.paymentTerms   || 'N/A';\nconst depositAmount    = parseFloat(finData.depositAmount) || 0;\nconst startDate        = finData.startDate      || 'N/A';\nconst endDate          = finData.endDate        || 'N/A';\nconst killFeeAmount    = parseFloat(finData.killFeeAmount) || 0;\nconst killFeePercent   = parseFloat(finData.killFeePercent)|| 0;\nconst killFee          = killFeeAmount > 0 ? `$${killFeeAmount}` : (killFeePercent > 0 ? `${killFeePercent}%` : 'Not specified');\nconst revisionLimit    = parseInt(finData.revisionLimit)   || 0;\nconst invoiceNumber    = finData.invoiceNumber  || 'N/A';\nconst invoiceDate      = finData.invoiceDate    || 'N/A';\nconst dueDate          = finData.dueDate        || 'N/A';\nconst invoiceTotal     = parseFloat(finData.invoiceTotal)  || 0;\nconst paymentStatus    = finData.paymentStatus  || 'Unpaid';\nconst poNumber         = finData.poNumber       || 'N/A';\nconst lineItemSummary  = finData.lineItemsSummary || 'N/A';\nconst paymentDate      = finData.paymentDate    || 'N/A';\nconst paymentAmount    = parseFloat(finData.paymentAmount) || 0;\nconst paymentMethod    = finData.paymentMethod  || 'N/A';\n\n// Key amount\nlet keyAmount = 0;\nif (invoiceTotal > 0)                         keyAmount = invoiceTotal;\nelse if (projectRate > 0)                     keyAmount = projectRate;\nelse if (hourlyRate > 0 && estimatedHours > 0)keyAmount = hourlyRate * estimatedHours;\nelse if (paymentAmount > 0)                   keyAmount = paymentAmount;\n\n// Days until due\nlet daysUntilDue = 'N/A';\nlet paymentUrgency = 'N/A';\nif (dueDate && dueDate !== 'N/A') {\n  try {\n    const due = new Date(dueDate);\n    const today = new Date();\n    const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));\n    daysUntilDue = diffDays;\n    if (paymentStatus.toLowerCase() === 'paid' || paymentStatus.toLowerCase() === 'paid in full')  paymentUrgency = '\u2705 PAID';\n    else if (diffDays < -30) paymentUrgency = '\ud83d\udd34 SEVERELY OVERDUE';\n    else if (diffDays < 0)   paymentUrgency = '\ud83d\udd34 OVERDUE';\n    else if (diffDays <= 7)  paymentUrgency = '\ud83d\udfe1 DUE SOON';\n    else                     paymentUrgency = '\ud83d\udfe2 ON TRACK';\n  } catch(e) {}\n}\n\n// Risk analysis\nconst al = contractAnalysis.toLowerCase();\nlet riskLevel = 'MEDIUM';\nif (al.includes('risk level: low') || al.includes('low risk'))   riskLevel = 'LOW';\nelse if (al.includes('risk level: high') || al.includes('high risk')) riskLevel = 'HIGH';\n\nlet riskFlags = 0;\nif (al.includes('scope creep'))                                       riskFlags++;\nif (killFee === 'Not specified')                                      riskFlags++;\nif (al.includes('unlimited revision') || revisionLimit === 0)        riskFlags++;\nif (al.includes('no late') || al.includes('no penalty'))             riskFlags++;\nif (depositAmount === 0 && projectRate > 5000)                       riskFlags++;\n\nreturn [{ json: {\n  fileName, fileId,\n  documentType:   docType,\n  clientName,\n  clientEmail,\n  contractorName: finData.contractorName || 'N/A',\n  hourlyRate,\n  projectRate,\n  estimatedHours,\n  keyAmount,\n  paymentTerms,\n  depositAmount,\n  startDate,\n  endDate,\n  killFee,\n  revisionLimit,\n  invoiceNumber,\n  invoiceDate,\n  dueDate,\n  invoiceTotal,\n  paymentStatus,\n  poNumber,\n  lineItemSummary,\n  paymentDate,\n  paymentAmount,\n  paymentMethod,\n  daysUntilDue,\n  paymentUrgency,\n  riskLevel,\n  riskFlags,\n  contractAnalysis,\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "format-data",
+      "name": "Format Financial Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Freelance Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Documents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Client": "={{ $json.clientName }}",
+            "Doc Type": "={{ $json.documentType }}",
+            "Invoice #": "={{ $json.invoiceNumber }}",
+            "Amount": "={{ $json.keyAmount }}",
+            "Rate": "={{ $json.hourlyRate }}",
+            "Payment Terms": "={{ $json.paymentTerms }}",
+            "Due Date": "={{ $json.dueDate }}",
+            "Days Left": "={{ $json.daysUntilDue }}",
+            "Status": "={{ $json.paymentStatus }}",
+            "Risk": "={{ $json.riskLevel }}",
+            "Risk Flags": "={{ $json.riskFlags }}",
+            "Processed": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Client",
+              "displayName": "Client",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Doc Type",
+              "displayName": "Doc Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Invoice #",
+              "displayName": "Invoice #",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rate",
+              "displayName": "Rate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payment Terms",
+              "displayName": "Payment Terms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Days Left",
+              "displayName": "Days Left",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk",
+              "displayName": "Risk",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk Flags",
+              "displayName": "Risk Flags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed",
+              "displayName": "Processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sheets-log",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1520,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "freelance"
+        },
+        "text": "=📼 *Freelance Document Processed*\n\n*Type:* {{ $('Format Financial Data').item.json.documentType }}\n*Client:* {{ $('Format Financial Data').item.json.clientName }}\n*Contractor:* {{ $('Format Financial Data').item.json.contractorName }}\n*Invoice Date:* {{ $('Format Financial Data').item.json.invoiceDate }}\n\n💰 *Financial Details:*\n• Key Amount: ${{ $('Format Financial Data').item.json.keyAmount }}\n• Hourly Rate: ${{ $('Format Financial Data').item.json.hourlyRate }}/hr\n• Project Rate: ${{ $('Format Financial Data').item.json.projectRate }}\n• Deposit: ${{ $('Format Financial Data').item.json.depositAmount }}\n• Kill Fee: {{ $('Format Financial Data').item.json.killFee }}\n\n📅 *Payment Info:*\n• Terms: {{ $('Format Financial Data').item.json.paymentTerms }}\n• Invoice #: {{ $('Format Financial Data').item.json.invoiceNumber }}\n• Due Date: {{ $('Format Financial Data').item.json.dueDate }}\n• Days Until Due: {{ $('Format Financial Data').item.json.daysUntilDue }}\n• Payment Status: {{ $('Format Financial Data').item.json.paymentStatus }}\n• Urgency: {{ $('Format Financial Data').item.json.paymentUrgency }}\n\n📋 *Contract Terms:*\n• Start: {{ $('Format Financial Data').item.json.startDate }}\n• End: {{ $('Format Financial Data').item.json.endDate }}\n• Revisions: {{ $('Format Financial Data').item.json.revisionLimit }}\n• Line Items: {{ $('Format Financial Data').item.json.lineItemSummary }}\n\n⚠️ *Risk:* {{ $('Format Financial Data').item.json.riskLevel }} ({{ $('Format Financial Data').item.json.riskFlags }} flags)\n\n🔗 <https://drive.google.com/file/d/{{ $('Format Financial Data').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Document": {
+      "main": [
+        [
+          {
+            "node": "Download Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document": {
+      "main": [
+        [
+          {
+            "node": "Extract Financial Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Analyze Contract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Financial Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Contract": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Financial Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Financial Data": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
