@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-75_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-76_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 75 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 76 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -1891,6 +1891,69 @@ Automatically analyze research papers with AI-powered extraction of metadata, fi
 - Add duplicate paper detection
 - Create weekly literature digest reports
 - Tag papers by research theme or project
+
+</details>
+
+<details>
+<summary><strong>📚 Research Grant Tracker</strong> - Extract grant terms from award PDFs, find supporting literature, and alert on reporting deadlines | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/research-grant-tracker.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/research-grant-tracker.json">📋 Open</a></summary>
+
+Automate your research grant management by monitoring Google Drive for new grant award or agreement PDFs. This workflow extracts grant terms, milestones, deliverables, and reporting dates using AI, searches academic databases for relevant supporting literature, alerts your team via Slack when reporting deadlines are within 30 days, and logs everything to Google Sheets.
+
+#### Who is this for?
+- Academic researchers and labs managing multiple grants
+- Nonprofit grant managers tracking award compliance
+- University research offices overseeing grant portfolios
+- Principal investigators juggling reporting deadlines
+
+#### How it works
+1. **New Grant Doc (Google Drive Trigger)** watches a designated folder for new grant award or agreement PDFs
+2. **Download Grant** retrieves the PDF file from Google Drive
+3. **Extract Grant Terms (PDF Vector)** uses AI to extract 20+ structured fields including grant title, funder, award amount, dates, PI, milestones, deliverables, reporting schedule, and budget details
+4. **Format Grant Data** calculates days until next report, determines status (On Track, DUE SOON, OVERDUE, No Date), and normalizes all extracted fields
+5. **Find Supporting Literature** searches Semantic Scholar and PubMed for related papers based on the grant's research keywords
+6. **Report Due Soon?** routes based on whether the next report is due within 30 days
+7. **Log to Sheets** appends grant data with literature results to a Google Sheets tracker (for all grants)
+8. **Deadline Alert** sends an urgent Slack notification with grant details, deliverables, and literature count (only for grants due soon)
+9. **Grant Logged** sends a standard Slack notification confirming the grant was processed (for grants not due soon)
+
+#### Services used
+- Google Drive (file monitoring & download)
+- PDF Vector (AI-powered grant term extraction & academic literature search)
+- Code / JavaScript (deadline calculation, status scoring, and data formatting)
+- Conditional Logic (deadline proximity routing)
+- Google Sheets (grant tracking and logging)
+- Slack (deadline alerts & processing notifications)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the credential
+3. Create a Google Drive folder for grant documents and update the folder ID in the "New Grant Doc" trigger node
+4. Create a Google Sheet with columns: Grant Title, Funder, Award Amount, Start Date, End Date, Next Report, Days Until Report, Keywords, Papers Found, Status, Processed Date
+5. Update the spreadsheet ID in the "Log to Sheets" node
+6. Configure Slack OAuth2 credentials and set the channel ID in both the "Deadline Alert" and "Grant Logged" nodes
+7. Activate the workflow
+
+#### Google Sheets structure
+| Column | Description |
+|--------|-------------|
+| Grant Title | Name of the research grant |
+| Funder | Funding organization |
+| Award Amount | Total award amount in dollars |
+| Start Date | Grant start date |
+| End Date | Grant end date |
+| Next Report | Next reporting deadline |
+| Days Until Report | Days remaining until next report |
+| Keywords | Research keywords extracted from the grant |
+| Papers Found | Number of related papers found in academic databases |
+| Status | On Track, DUE SOON, OVERDUE, or No Date |
+| Processed Date | Date the grant was processed |
+
+#### Customizing this workflow
+- Adjust the 30-day deadline threshold in the "Report Due Soon?" conditional node
+- Add additional academic databases or increase the paper search limit beyond 8
+- Include co-investigators and institution fields in the Google Sheets logging
+- Add email notifications alongside Slack for critical deadline alerts
+- Create separate Slack channels for different funders or research groups
 
 </details>
 

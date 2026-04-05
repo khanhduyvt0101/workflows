@@ -1,0 +1,438 @@
+{
+  "name": "Research Grant Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83d\udcda Research Grant Tracker\n\n### What this workflow does\n1. Watches Google Drive for new grant award or agreement PDFs\n2. Extracts grant terms, milestones, deliverables, and reporting dates\n3. Searches academic databases for relevant supporting literature\n4. Alerts via Slack when reporting deadlines are within 30 days\n5. Logs all grants with deadlines to Google Sheets\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Drive folder for grant documents\n3. Create Google Sheet with columns:\n   Grant Title | Funder | Award Amount | Start Date | End Date | Next Report | Days Until Report | Keywords | Papers Found | Status | Processed Date\n4. Update YOUR_FOLDER_ID, YOUR_SPREADSHEET_ID, YOUR_SLACK_CHANNEL_ID\n\n### Perfect for\n- Academic researchers and labs\n- Nonprofit grant managers\n- University research offices",
+        "height": 624,
+        "width": 452,
+        "color": 5
+      },
+      "id": "4dfb0d31-f40f-4d34-af0e-515e74432191",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2352,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Grant Documents"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "303bd2d7-6f5a-43bc-9838-91852ce838ba",
+      "name": "New Grant Doc",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        2864,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "58bc758d-f57a-4685-ac6d-62e15a683a99",
+      "name": "Download Grant",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3040,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract research grant or award agreement data as flat fields. grantTitle, funderName, funderType (federal/state/private/foundation), awardNumber, awardAmount (number), indirectRate (number as percent), startDate (YYYY-MM-DD), endDate (YYYY-MM-DD), principalInvestigator, coInvestigators, institution, projectSummary (2-3 sentence description), researchKeywords (comma-separated), reportingSchedule (quarterly/semi-annual/annual), nextReportDue (YYYY-MM-DD), finalReportDue (YYYY-MM-DD), keyMilestones (comma-separated milestone descriptions), deliverables (comma-separated), budgetCategories (comma-separated), restrictedFunds (true/false), allowedCosts (comma-separated), prohibitedCosts (comma-separated).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"grantTitle\": {\"type\": \"string\"}, \"funderName\": {\"type\": \"string\"}, \"funderType\": {\"type\": \"string\"}, \"awardNumber\": {\"type\": \"string\"}, \"awardAmount\": {\"type\": \"number\"}, \"indirectRate\": {\"type\": \"number\"}, \"startDate\": {\"type\": \"string\"}, \"endDate\": {\"type\": \"string\"}, \"principalInvestigator\": {\"type\": \"string\"}, \"institution\": {\"type\": \"string\"}, \"projectSummary\": {\"type\": \"string\"}, \"researchKeywords\": {\"type\": \"string\"}, \"reportingSchedule\": {\"type\": \"string\"}, \"nextReportDue\": {\"type\": \"string\"}, \"finalReportDue\": {\"type\": \"string\"}, \"keyMilestones\": {\"type\": \"string\"}, \"deliverables\": {\"type\": \"string\"}, \"restrictedFunds\": {\"type\": \"boolean\"}, \"allowedCosts\": {\"type\": \"string\"}, \"prohibitedCosts\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
+      },
+      "id": "0b159472-2178-4330-89fe-e857a8fbe250",
+      "name": "Extract Grant Terms",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        3200,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "query": "={{ $('Format Grant Data').item.json.researchKeywords || 'research grant methodology' }}",
+        "providers": [
+          "semantic-scholar",
+          "pubmed"
+        ],
+        "limit": 8,
+        "additionalFields": {}
+      },
+      "id": "ee519269-ac21-407e-a128-328b847e7f7a",
+      "name": "Find Supporting Literature",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const grant = ($input.first().json?.data || $input.first().json) || {};\nconst triggerData = $('New Grant Doc').item.json;\nconst fileId = triggerData.id || '';\n\nconst today = new Date();\nfunction daysUntil(dateStr) {\n  if (!dateStr || dateStr === 'N/A') return 9999;\n  const d = new Date(dateStr);\n  if (isNaN(d)) return 9999;\n  return Math.ceil((d - today) / (1000*60*60*24));\n}\n\nconst daysToReport = daysUntil(grant.nextReportDue);\n\nlet reportStatus = 'On Track';\nif (daysToReport === 9999)       reportStatus = 'No Date';\nelse if (daysToReport < 0)       reportStatus = 'OVERDUE';\nelse if (daysToReport <= 30)     reportStatus = 'DUE SOON';\n\nreturn [{ json: {\n  fileId,\n  grantTitle:       grant.grantTitle       || 'Unknown',\n  funderName:       grant.funderName       || 'Unknown',\n  awardNumber:      grant.awardNumber      || 'N/A',\n  awardAmount:      parseFloat(grant.awardAmount) || 0,\n  startDate:        grant.startDate        || 'N/A',\n  endDate:          grant.endDate          || 'N/A',\n  pi:               grant.principalInvestigator || 'N/A',\n  researchKeywords: grant.researchKeywords || 'research grant methodology',\n  nextReportDue:    grant.nextReportDue    || 'N/A',\n  daysToReport,\n  reportStatus,\n  keyMilestones:    grant.keyMilestones    || 'N/A',\n  deliverables:     grant.deliverables     || 'N/A',\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "671b2c4c-df19-4ed3-b2e3-b3c3566154f0",
+      "name": "Format Grant Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3392,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "46b0bd25-c311-4671-960f-7da9a17a72f6",
+              "leftValue": "={{ $('Format Grant Data').item.json.reportStatus }}",
+              "rightValue": "DUE SOON",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "915e4881-5657-4fd5-a290-977526a284ca",
+      "name": "Report Due Soon?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3808,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Workflow Sheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Grant Title": "={{ $('Format Grant Data').item.json.grantTitle }}",
+            "Funder": "={{ $('Format Grant Data').item.json.funderName }}",
+            "Award Amount": "={{ $('Format Grant Data').item.json.awardAmount }}",
+            "Start Date": "={{ $('Format Grant Data').item.json.startDate }}",
+            "End Date": "={{ $('Format Grant Data').item.json.endDate }}",
+            "Next Report": "={{ $('Format Grant Data').item.json.nextReportDue }}",
+            "Days Until Report": "={{ $('Format Grant Data').item.json.daysToReport }}",
+            "Keywords": "={{ $('Format Grant Data').item.json.researchKeywords }}",
+            "Papers Found": "={{ $('Find Supporting Literature').item.json.estimatedTotalResults }}",
+            "Status": "={{ $('Format Grant Data').item.json.reportStatus }}",
+            "Processed Date": "={{ $('Format Grant Data').item.json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Grant Title",
+              "displayName": "Grant Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Funder",
+              "displayName": "Funder",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Award Amount",
+              "displayName": "Award Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start Date",
+              "displayName": "Start Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "End Date",
+              "displayName": "End Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Next Report",
+              "displayName": "Next Report",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Days Until Report",
+              "displayName": "Days Until Report",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Keywords",
+              "displayName": "Keywords",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Papers Found",
+              "displayName": "Papers Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "77f443e4-0928-4edd-824e-aa48788a1652",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        4016,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "general"
+        },
+        "text": "=\u23f0 *Grant Report Deadline Alert*\n\n*Grant:* {{ $('Format Grant Data').item.json.grantTitle }}\n*Funder:* {{ $('Format Grant Data').item.json.funderName }}\n*PI:* {{ $('Format Grant Data').item.json.pi }}\n\n\ud83d\udcc5 *Next Report Due:* {{ $('Format Grant Data').item.json.nextReportDue }}\n\ud83d\udd50 *Days Remaining:* {{ $('Format Grant Data').item.json.daysToReport }}\n\n\ud83d\udcda *Supporting Literature Found:* {{ $('Find Supporting Literature').item.json.estimatedTotalResults }} papers\n\n\ud83d\udccb *Key Deliverables:* {{ $('Format Grant Data').item.json.deliverables }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Grant Data').item.json.fileId }}/view|View Grant>",
+        "otherOptions": {}
+      },
+      "id": "d6c8585d-e7a7-479b-9173-621a6167fac5",
+      "name": "Deadline Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        4208,
+        480
+      ],
+      "webhookId": "dfcf7f48-ee73-456e-89b4-a0f5a8cde7e9"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "general"
+        },
+        "text": "=\ud83d\udcda *New Grant Processed*\n\n*Grant:* {{ $('Format Grant Data').item.json.grantTitle }}\n*Funder:* {{ $('Format Grant Data').item.json.funderName }}\n*Award:* ${{ $('Format Grant Data').item.json.awardAmount }}\n*Next Report:* {{ $('Format Grant Data').item.json.nextReportDue }} ({{ $('Format Grant Data').item.json.daysToReport }} days)\n*Keywords:* {{ $('Format Grant Data').item.json.researchKeywords }}\n*Papers Found:* {{ $('Find Supporting Literature').item.json.estimatedTotalResults }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Grant Data').item.json.fileId }}/view|View Grant>",
+        "otherOptions": {}
+      },
+      "id": "b2c3ef01-e707-44c8-ab56-04cae9c68394",
+      "name": "Grant Logged",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        4016,
+        736
+      ],
+      "webhookId": "bd195f8d-db53-428b-b8f8-464c81404484"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Grant Doc": {
+      "main": [
+        [
+          {
+            "node": "Download Grant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Grant": {
+      "main": [
+        [
+          {
+            "node": "Extract Grant Terms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Grant Terms": {
+      "main": [
+        [
+          {
+            "node": "Format Grant Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Grant Data": {
+      "main": [
+        [
+          {
+            "node": "Find Supporting Literature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Supporting Literature": {
+      "main": [
+        [
+          {
+            "node": "Report Due Soon?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Due Soon?": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Grant Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Deadline Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "68499d21-f19e-4c9d-a5a7-4ca3595fc295",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4b6ca2de3cf6f3b94e6c516de2b81c26c6b4f0207f36f034912ecbc2932dbecc"
+  },
+  "id": "bimaIQdyHP00DM1e",
+  "tags": []
+}
