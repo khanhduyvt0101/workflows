@@ -1,0 +1,442 @@
+{
+  "name": "Lease vs Buy Decision Analyzer",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## \ud83c\udfe0 Lease vs Buy Decision Analyzer\n\n### What this workflow does\n1. Watches Google Drive for new lease or purchase agreement PDFs\n2. Extracts all financial terms from the new document\n3. Simultaneously extracts the comparison document (fixed file ID)\n4. Calculates 5-year total cost of ownership for both options\n5. Logs comparison results to Google Sheets\n6. Sends Slack report with recommendation and cost breakdown\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Drive folder \u2014 upload documents to compare\n3. Set YOUR_COMPARISON_DOC_FILE_ID in Download Comparison node\n   (this is the other document you're comparing against)\n4. Create Google Sheet with columns:\n   Document A | Document B | Type A | Type B | 5yr Cost A | 5yr Cost B | Difference | Recommendation | Processed Date\n5. Update YOUR_FOLDER_ID, YOUR_SPREADSHEET_ID, YOUR_SLACK_CHANNEL_ID\n\n### Perfect for\n- Home buyers comparing lease vs purchase\n- Business equipment financing decisions\n- Vehicle lease vs buy analysis",
+        "height": 480,
+        "width": 340,
+        "color": 5
+      },
+      "id": "a7b22729-5df2-42ac-825a-4c472ecd4100",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Agreements to Compare"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "d583db80-67e9-4ca0-bc10-66483dbf0115",
+      "name": "New Agreement",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "5fbe3e7f-3147-49d8-afe1-186add1f6e9f",
+      "name": "Download Doc A",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        700,
+        220
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "YOUR_COMPARISON_DOC_FILE_ID",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "aa476ce4-8851-40d4-977a-2271d637d702",
+      "name": "Download Doc B",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        700,
+        380
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract financial agreement data as flat fields. documentType (lease/purchase/loan/other), agreementLabel (short label like 'Lease Option A'), assetName (what is being leased or purchased), monthlyPayment (number), termMonths (number), totalPayments (monthlyPayment * termMonths), downPayment (number), purchasePrice (number), interestRate (number as percent), residualValue (end-of-term residual or buyout, number), maintenanceCost (estimated annual maintenance, number), insuranceCost (annual, number), taxesFees (total taxes and fees, number), endOfTermValue (asset value at end of term, number), keyTerms (3-5 key terms summary), hiddenCosts (any hidden or extra costs mentioned).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"documentType\": {\"type\": \"string\"}, \"agreementLabel\": {\"type\": \"string\"}, \"assetName\": {\"type\": \"string\"}, \"monthlyPayment\": {\"type\": \"number\"}, \"termMonths\": {\"type\": \"number\"}, \"totalPayments\": {\"type\": \"number\"}, \"downPayment\": {\"type\": \"number\"}, \"purchasePrice\": {\"type\": \"number\"}, \"interestRate\": {\"type\": \"number\"}, \"residualValue\": {\"type\": \"number\"}, \"maintenanceCost\": {\"type\": \"number\"}, \"insuranceCost\": {\"type\": \"number\"}, \"taxesFees\": {\"type\": \"number\"}, \"endOfTermValue\": {\"type\": \"number\"}, \"keyTerms\": {\"type\": \"string\"}, \"hiddenCosts\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
+      },
+      "id": "88a56f27-2b8a-4338-90fd-8fa6c9f1ffca",
+      "name": "Extract Doc A",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "extract",
+        "inputType": "file",
+        "binaryPropertyName": "data",
+        "prompt": "Extract financial agreement data as flat fields. documentType (lease/purchase/loan/other), agreementLabel (short label like 'Lease Option A'), assetName (what is being leased or purchased), monthlyPayment (number), termMonths (number), totalPayments (monthlyPayment * termMonths), downPayment (number), purchasePrice (number), interestRate (number as percent), residualValue (end-of-term residual or buyout, number), maintenanceCost (estimated annual maintenance, number), insuranceCost (annual, number), taxesFees (total taxes and fees, number), endOfTermValue (asset value at end of term, number), keyTerms (3-5 key terms summary), hiddenCosts (any hidden or extra costs mentioned).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"documentType\": {\"type\": \"string\"}, \"agreementLabel\": {\"type\": \"string\"}, \"assetName\": {\"type\": \"string\"}, \"monthlyPayment\": {\"type\": \"number\"}, \"termMonths\": {\"type\": \"number\"}, \"totalPayments\": {\"type\": \"number\"}, \"downPayment\": {\"type\": \"number\"}, \"purchasePrice\": {\"type\": \"number\"}, \"interestRate\": {\"type\": \"number\"}, \"residualValue\": {\"type\": \"number\"}, \"maintenanceCost\": {\"type\": \"number\"}, \"insuranceCost\": {\"type\": \"number\"}, \"taxesFees\": {\"type\": \"number\"}, \"endOfTermValue\": {\"type\": \"number\"}, \"keyTerms\": {\"type\": \"string\"}, \"hiddenCosts\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
+      },
+      "id": "1daf902b-0f63-4d20-b7b6-3119f6ccd016",
+      "name": "Extract Doc B",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "a7a89246-cddc-44ed-af59-db85b228f056",
+      "name": "Merge Docs",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst allItems = $input.all();\nconst a = (allItems[0]?.json?.data || allItems[0]?.json) || {};\nconst b = (allItems[1]?.json?.data || allItems[1]?.json) || {};\n\nconst triggerData = $('New Agreement').item.json;\nconst fileId = triggerData.id || '';\n\nfunction fiveYearCost(doc) {\n  const monthly = parseFloat(doc.monthlyPayment) || 0;\n  const down    = parseFloat(doc.downPayment)    || 0;\n  const maint   = parseFloat(doc.maintenanceCost)|| 0;\n  const ins     = parseFloat(doc.insuranceCost)  || 0;\n  const taxes   = parseFloat(doc.taxesFees)      || 0;\n  const residual= parseFloat(doc.residualValue)  || 0;\n  const endVal  = parseFloat(doc.endOfTermValue) || 0;\n  // 5-year = 60 months payments + down + 5yr maintenance + insurance + taxes - residual value retained\n  return (monthly * 60) + down + (maint * 5) + (ins * 5) + taxes - endVal;\n}\n\nconst costA = fiveYearCost(a);\nconst costB = fiveYearCost(b);\nconst diff  = Math.abs(costA - costB);\nconst winner = costA < costB ? (a.agreementLabel || 'Doc A') : (b.agreementLabel || 'Doc B');\nconst savings = diff.toFixed(2);\n\nreturn [{ json: {\n  fileId,\n  labelA: a.agreementLabel || a.documentType || 'Document A',\n  labelB: b.agreementLabel || b.documentType || 'Document B',\n  assetName: a.assetName || b.assetName || 'Asset',\n  typeA: a.documentType || 'N/A',\n  typeB: b.documentType || 'N/A',\n  monthlyA: parseFloat(a.monthlyPayment) || 0,\n  monthlyB: parseFloat(b.monthlyPayment) || 0,\n  fiveYearCostA: costA.toFixed(2),\n  fiveYearCostB: costB.toFixed(2),\n  costDifference: diff.toFixed(2),\n  recommendation: winner,\n  savings,\n  keyTermsA: a.keyTerms || 'N/A',\n  keyTermsB: b.keyTerms || 'N/A',\n  hiddenCostsA: a.hiddenCosts || 'None noted',\n  hiddenCostsB: b.hiddenCosts || 'None noted',\n  processedAt: new Date().toISOString()\n}}];"
+      },
+      "id": "d81b585b-f9b7-4887-993c-613f7395cd03",
+      "name": "Compare & Calculate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Workflow Sheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Document A": "={{ $json.labelA }}",
+            "Document B": "={{ $json.labelB }}",
+            "Type A": "={{ $json.typeA }}",
+            "Type B": "={{ $json.typeB }}",
+            "5yr Cost A": "={{ $json.fiveYearCostA }}",
+            "5yr Cost B": "={{ $json.fiveYearCostB }}",
+            "Difference": "={{ $json.costDifference }}",
+            "Recommendation": "={{ $json.recommendation }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Document A",
+              "displayName": "Document A",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document B",
+              "displayName": "Document B",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type A",
+              "displayName": "Type A",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type B",
+              "displayName": "Type B",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "5yr Cost A",
+              "displayName": "5yr Cost A",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "5yr Cost B",
+              "displayName": "5yr Cost B",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Difference",
+              "displayName": "Difference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Recommendation",
+              "displayName": "Recommendation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6394d6c4-7113-480d-b49b-59983c875646",
+      "name": "Log Comparison",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1500,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "general"
+        },
+        "text": "=\ud83c\udfe0 *Lease vs Buy Analysis Complete*\n\n*Asset:* {{ $('Compare & Calculate').item.json.assetName }}\n\n\ud83d\udcca *5-Year Cost Comparison:*\n\u2022 {{ $('Compare & Calculate').item.json.labelA }}: ${{ $('Compare & Calculate').item.json.fiveYearCostA }}\n\u2022 {{ $('Compare & Calculate').item.json.labelB }}: ${{ $('Compare & Calculate').item.json.fiveYearCostB }}\n\u2022 Difference: ${{ $('Compare & Calculate').item.json.costDifference }}\n\n\u2705 *Recommendation:* {{ $('Compare & Calculate').item.json.recommendation }} saves ${{ $('Compare & Calculate').item.json.savings }} over 5 years\n\n\u26a0\ufe0f *Hidden Costs A:* {{ $('Compare & Calculate').item.json.hiddenCostsA }}\n\u26a0\ufe0f *Hidden Costs B:* {{ $('Compare & Calculate').item.json.hiddenCostsB }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Compare & Calculate').item.json.fileId }}/view|View Document>",
+        "otherOptions": {}
+      },
+      "id": "431c87f5-1669-429e-82fe-3f03df2b6039",
+      "name": "Send Decision",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1700,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "New Agreement": {
+      "main": [
+        [
+          {
+            "node": "Download Doc A",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download Doc B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Doc A": {
+      "main": [
+        [
+          {
+            "node": "Extract Doc A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Doc B": {
+      "main": [
+        [
+          {
+            "node": "Extract Doc B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Doc A": {
+      "main": [
+        [
+          {
+            "node": "Merge Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Doc B": {
+      "main": [
+        [
+          {
+            "node": "Merge Docs",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Docs": {
+      "main": [
+        [
+          {
+            "node": "Compare & Calculate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare & Calculate": {
+      "main": [
+        [
+          {
+            "node": "Log Comparison",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Comparison": {
+      "main": [
+        [
+          {
+            "node": "Send Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "pinData": {}
+}
