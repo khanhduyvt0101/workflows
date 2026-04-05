@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-73_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-74_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 73 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 74 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -4350,6 +4350,56 @@ Stop losing track of payment deadlines and risky contract terms. This workflow a
 - Modify the AI extraction prompt to capture additional fields specific to your contracts (e.g., NDAs, liability caps)
 - Add a conditional node to send separate Slack alerts for overdue vs. upcoming payments
 - Extend the risk scoring logic to weight certain flags more heavily based on your experience
+
+</details>
+
+<details>
+<summary><strong>🏥 Medical Bill Dispute Analyzer</strong> - Detect billing errors and disputes in medical bills | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/medical-bill-dispute-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/medical-bill-dispute-analyzer.json">📋 Open</a></summary>
+
+Automatically analyze medical bills and Explanation of Benefits (EOB) documents for common billing errors like duplicate charges, unbundling, and upcoding. Upload a bill to Google Drive and get an instant AI-powered audit with dispute recommendations, all logged to a spreadsheet with Slack alerts.
+
+#### Who is this for?
+- Patients reviewing hospital or medical bills for overcharges
+- Medical billing advocates helping clients dispute errors
+- Insurance claims processors validating provider charges
+
+#### How it works
+1. **New Medical Bill** watches a Google Drive folder for newly uploaded medical bill PDFs
+2. **Download Bill** retrieves the uploaded file for processing
+3. **Extract Charges** uses AI to pull structured data from the bill including patient info, procedure codes, charges, insurance payments, and initial error flags
+4. **Analyze Errors** performs a detailed AI review checking for duplicate charges, unbundling, upcoding, services not rendered, and incorrect patient information
+5. **Merge Analysis** combines the extracted data and error analysis into a single dataset
+6. **Format Dispute** consolidates all findings into a structured dispute report with financial summary and status
+7. **Has Billing Errors?** routes the bill based on whether errors were detected
+8. **Log to Sheets** records bills with errors to a Google Sheet for tracking
+9. **Alert Dispute Found** sends a detailed Slack alert with the dispute summary, financial breakdown, and link to the original bill
+10. **Bill Looks Clean** sends a Slack confirmation when no errors are found
+
+#### Services used
+- Google Drive (trigger and file download for medical bills)
+- PDF Vector (AI-powered data extraction and error analysis)
+- Code (JavaScript) (dispute formatting and financial calculations)
+- Conditional Logic (routing based on error detection)
+- Merge (combining extraction and analysis results)
+- Google Sheets (dispute tracking and logging)
+- Slack (alerts for disputes and clean bill confirmations)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Configure Google Drive OAuth2 credentials
+3. Configure PDF Vector API credentials (get key from pdfvector.com/api-keys)
+4. Configure Google Sheets OAuth2 credentials
+5. Configure Slack OAuth2 credentials
+6. Create a Google Drive folder for medical bills and update `YOUR_FOLDER_ID` in the New Medical Bill node
+7. Create a Google Sheet with columns: Patient, Provider, Bill Date, Total Charged, Insurance Paid, Patient Owed, Errors Found, Dispute Amount, Status, Processed Date — then update `YOUR_SPREADSHEET_ID`
+8. Update `YOUR_SLACK_CHANNEL_ID` in both Slack nodes
+9. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the AI extraction prompt to capture additional fields like pre-authorization numbers or referring physician
+- Add email notifications alongside Slack for patients who prefer email updates
+- Extend the error analysis prompt to check for balance billing violations or out-of-network overcharges
+- Add a human review step (Wait node) before logging disputes to allow manual verification
 
 </details>
 
