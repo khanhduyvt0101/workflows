@@ -1,6 +1,6 @@
 # Awesome Document-Processing Automation Workflows
 
-![n8n Workflows](https://img.shields.io/badge/n8n-74_workflows-FF6D5A)
+![n8n Workflows](https://img.shields.io/badge/n8n-75_workflows-FF6D5A)
 ![Zapier](https://img.shields.io/badge/Zapier-coming_soon-FF4A00)
 ![Make](https://img.shields.io/badge/Make.com-coming_soon-6E52FF)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -15,7 +15,7 @@ Transform your document workflows with AI-powered automation. Extract data from 
 
 | Platform | Status | Workflows | Folder |
 |:--------:|:------:|:---------:|:------:|
-| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 74 | [`n8n-workflows/`](n8n-workflows/) |
+| ![n8n](https://img.shields.io/badge/-n8n-FF6D5A?style=flat&logo=n8n&logoColor=white) | Available | 75 | [`n8n-workflows/`](n8n-workflows/) |
 | ![Zapier](https://img.shields.io/badge/-Zapier-FF4A00?style=flat&logo=zapier&logoColor=white) | Coming Soon | - | [`zapier-workflows/`](zapier-workflows/) |
 | ![Make](https://img.shields.io/badge/-Make.com-6E52FF?style=flat&logo=make&logoColor=white) | Coming Soon | - | [`make-workflows/`](make-workflows/) |
 
@@ -4400,6 +4400,52 @@ Automatically analyze medical bills and Explanation of Benefits (EOB) documents 
 - Add email notifications alongside Slack for patients who prefer email updates
 - Extend the error analysis prompt to check for balance billing violations or out-of-network overcharges
 - Add a human review step (Wait node) before logging disputes to allow manual verification
+
+</details>
+
+<details>
+<summary><strong>🏠 Lease vs Buy Decision Analyzer</strong> - Compare lease and purchase agreements with 5-year cost analysis | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/lease-buy-decision-analyzer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/lease-buy-decision-analyzer.json">📋 Open</a></summary>
+
+Automatically compare lease vs purchase agreements by extracting financial terms from PDF documents and calculating the true 5-year total cost of ownership. Get a clear recommendation delivered to Slack with a full cost breakdown, so you can make confident financing decisions.
+
+#### Who is this for?
+- Home buyers comparing lease vs purchase options
+- Business owners evaluating equipment financing decisions
+- Fleet managers analyzing vehicle lease vs buy scenarios
+
+#### How it works
+1. **New Agreement** watches a Google Drive folder for newly uploaded lease or purchase agreement PDFs
+2. **Download Doc A** and **Download Doc B** fetch the new document and a fixed comparison document in parallel
+3. **Extract Doc A** and **Extract Doc B** use PDF Vector AI to extract financial terms (monthly payment, down payment, interest rate, maintenance costs, insurance, taxes, residual value, and more) from both documents
+4. **Merge Docs** combines the extracted data from both documents into a single item
+5. **Compare & Calculate** runs a JavaScript calculation to compute the 5-year total cost of ownership for each option and determines the winner
+6. **Log Comparison** appends the results (labels, types, 5-year costs, difference, recommendation, date) to a Google Sheets spreadsheet
+7. **Send Decision** posts a formatted Slack message with the asset name, cost comparison, savings amount, recommendation, and hidden costs
+
+#### Services used
+- Google Drive (trigger on new files and download PDFs)
+- PDF Vector (AI-powered extraction of financial terms from agreements)
+- Google Sheets (log comparison results for historical tracking)
+- Slack (deliver recommendation report with cost breakdown)
+- Code/JavaScript (5-year total cost of ownership calculation)
+
+#### Setup instructions
+1. Import the workflow JSON into n8n
+2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the `pdfVectorApi` credential
+3. Configure Google Drive OAuth2 credentials
+4. Configure Google Sheets OAuth2 credentials
+5. Configure Slack OAuth2 credentials
+6. Create a Google Drive folder for agreements and update `YOUR_FOLDER_ID` in the New Agreement node
+7. Set `YOUR_COMPARISON_DOC_FILE_ID` in the Download Doc B node to the file ID of the document you want to compare against
+8. Create a Google Sheet with columns: Document A, Document B, Type A, Type B, 5yr Cost A, 5yr Cost B, Difference, Recommendation, Processed Date — and update `YOUR_SPREADSHEET_ID`
+9. Update `YOUR_SLACK_CHANNEL_ID` in the Send Decision node
+10. Activate the workflow
+
+#### Customizing this workflow
+- Adjust the 5-year cost calculation in the Compare & Calculate node to weight factors differently (e.g., add opportunity cost of down payment or factor in tax deductions)
+- Modify the PDF Vector extraction prompt to capture additional fields like early termination penalties or renewal options
+- Add an email notification node alongside Slack for stakeholders who prefer email
+- Extend the workflow to compare more than two documents by adding additional download and extract branches
 
 </details>
 
