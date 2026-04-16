@@ -3,32 +3,33 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## 🏦 Bank Statement Analyzer\n\n**What this workflow does:**\n1. Monitors Gmail for bank statements\n2. Extracts all transactions\n3. Categorizes spending\n4. Calculates savings rate\n5. Identifies large transactions\n6. Sends monthly summary\n\n**Perfect for:**\n- Personal finance tracking\n- Small business bookkeeping\n- Budget analysis",
-        "height": 388,
-        "width": 300
+        "content": "## 🏦 Bank Statement Analyzer\n\n### What this workflow does\n1. Monitors Gmail for bank statements\n2. Extracts all transactions\n3. Categorizes spending\n4. Calculates savings rate\n5. Identifies large transactions\n6. Sends monthly summary\n\n### Setup steps\n1. Connect Gmail OAuth2 credentials\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns listed below\n4. Update Sheet ID in the Sheets node\n5. Connect Slack and set your channel\n\n### Sheet columns needed\nPeriod Start, Period End, Opening Balance, Closing Balance, Total Income, Total Spending, Savings Rate %, Transaction Count, Processed Date\n\n### Perfect for\n- Personal finance tracking\n- Small business bookkeeping\n- Budget analysis",
+        "height": 520,
+        "width": 340,
+        "color": 5
       },
-      "id": "881d092b-c4f8-46c2-aec3-1a7fdd012d47",
+      "id": "e4782803-0619-4a8f-8a3a-8072b6f91ea2",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        704,
-        80
+        528,
+        1408
       ]
     },
     {
       "parameters": {
-        "content": "## 📊 Spending Categories\n\n- Income\n- Utilities\n- Groceries\n- Dining\n- Shopping\n- Transport\n- Subscriptions\n- Healthcare\n- Entertainment\n- Transfers",
+        "content": "## 📊 Spending Categories\n\n- Income\n- Utilities\n- Groceries\n- Dining\n- Shopping\n- Transport\n- Travel\n- Subscriptions\n- Healthcare\n- Entertainment\n- Transfer\n- Other",
         "height": 296,
-        "width": 344
+        "width": 200
       },
-      "id": "c2351f31-8359-405b-874e-815c9f87d98d",
+      "id": "52a1dcbb-1878-4408-a8e9-475c8fafc484",
       "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1520,
-        -112
+        1344,
+        1216
       ]
     },
     {
@@ -44,57 +45,73 @@
           "includeSpamTrash": false
         }
       },
-      "id": "d90379fe-717d-458e-90da-77fda205fc61",
+      "id": "7bd136e2-5b16-4905-9c4f-59ae210649b3",
       "name": "Gmail Trigger",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1,
       "position": [
-        1008,
-        224
+        832,
+        1552
       ],
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "GMAIL_CREDENTIAL_ID",
-          "name": "Gmail account"
-        }
-      },
       "notes": "Monitor for bank statement emails"
     },
     {
       "parameters": {
-        "resource": "document",
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1008,
+        1552
+      ],
+      "id": "117a5e79-3c13-4edf-875e-902f4e66e977",
+      "name": "Get Statement Attachment",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "attachment_0",
-        "prompt": "Extract all transactions from this bank statement including date, description, amount (positive for deposits, negative for withdrawals), running balance, and categorize each transaction.\n\nCategory rules:\n- Travel: airlines (DELTA, UNITED, AMERICAN), hotels (HILTON, MARRIOTT, HYATT), airbnb, booking.com\n- Transport: UBER, LYFT, taxi, gas stations (SHELL, CHEVRON, BP), parking\n- Subscriptions: NETFLIX, SPOTIFY, ADOBE, APPLE.COM, recurring monthly services\n- Groceries: WHOLE FOODS, TRADER JOE'S, COSTCO, PUBLIX, supermarkets\n- Dining: restaurants, STARBUCKS, MCDONALD'S, DOORDASH, UBER EATS\n- Shopping: AMAZON, TARGET, BEST BUY, WALMART, retail stores\n- Utilities: electric, gas, water, internet, phone (AT&T, COMCAST, VERIZON)\n- Healthcare: pharmacy (CVS, WALGREENS), doctors, gym (PLANET FITNESS)\n- Entertainment: movies (AMC), concerts, streaming, games\n- Other: anything that doesn't fit above",
-        "schema": "{\"type\":\"object\",\"properties\":{\"accountNumber\":{\"type\":\"string\"},\"statementPeriod\":{\"type\":\"object\",\"properties\":{\"startDate\":{\"type\":\"string\"},\"endDate\":{\"type\":\"string\"}}},\"openingBalance\":{\"type\":\"number\"},\"closingBalance\":{\"type\":\"number\"},\"totalDeposits\":{\"type\":\"number\"},\"totalWithdrawals\":{\"type\":\"number\"},\"transactions\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"date\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"},\"category\":{\"type\":\"string\",\"enum\":[\"Income\",\"Utilities\",\"Groceries\",\"Dining\",\"Shopping\",\"Transport\",\"Travel\",\"Subscriptions\",\"Healthcare\",\"Entertainment\",\"Transfer\",\"Other\"]},\"balance\":{\"type\":\"number\"}}}}},\"required\":[\"closingBalance\",\"transactions\"],\"additionalProperties\":false}"
+        "prompt": "Extract bank statement data as flat fields. accountNumber, statementStartDate (YYYY-MM-DD), statementEndDate (YYYY-MM-DD), openingBalance (number), closingBalance (number), totalDeposits (number), totalWithdrawals (number), totalIncome (number), totalSpending (number), transactionCount (number), topSpendingCategory (string), topSpendingAmount (number), largeTransactions (comma-separated transactions over $500), groceriesTotal (number), diningTotal (number), transportTotal (number), subscriptionsTotal (number), shoppingTotal (number), utilitiesTotal (number).",
+        "schema": "{\"type\":\"object\",\"properties\":{\"accountNumber\":{\"type\":\"string\"},\"statementStartDate\":{\"type\":\"string\"},\"statementEndDate\":{\"type\":\"string\"},\"openingBalance\":{\"type\":\"number\"},\"closingBalance\":{\"type\":\"number\"},\"totalDeposits\":{\"type\":\"number\"},\"totalWithdrawals\":{\"type\":\"number\"},\"totalIncome\":{\"type\":\"number\"},\"totalSpending\":{\"type\":\"number\"},\"transactionCount\":{\"type\":\"number\"},\"topSpendingCategory\":{\"type\":\"string\"},\"topSpendingAmount\":{\"type\":\"number\"},\"largeTransactions\":{\"type\":\"string\"},\"groceriesTotal\":{\"type\":\"number\"},\"diningTotal\":{\"type\":\"number\"},\"transportTotal\":{\"type\":\"number\"},\"subscriptionsTotal\":{\"type\":\"number\"},\"shoppingTotal\":{\"type\":\"number\"},\"utilitiesTotal\":{\"type\":\"number\"}},\"additionalProperties\":false}"
       },
-      "id": "63171083-8064-420a-a76c-87ec0554580f",
+      "id": "96d8d63b-8440-417c-a03d-2ab67b167eb3",
       "name": "PDF Vector - Extract Statement",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
-        1392,
-        224
+        1216,
+        1552
       ],
       "credentials": {
         "pdfVectorApi": {
-          "id": "PDFVECTOR_CREDENTIAL_ID",
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
           "name": "PDF Vector account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const statement = $input.first().json.data;\n\n// Calculate spending by category\nconst categoryTotals = {};\nlet totalSpending = 0;\nlet totalIncome = 0;\n\nstatement.transactions.forEach(tx => {\n  if (tx.amount < 0) {\n    totalSpending += Math.abs(tx.amount);\n    categoryTotals[tx.category] = (categoryTotals[tx.category] || 0) + Math.abs(tx.amount);\n  } else {\n    totalIncome += tx.amount;\n  }\n});\n\n// Format category breakdown\nconst categoryBreakdown = Object.entries(categoryTotals)\n  .sort((a, b) => b[1] - a[1])\n  .map(([cat, amount]) => `${cat}: $${amount.toFixed(2)} (${((amount/totalSpending)*100).toFixed(1)}%)`)\n  .join('\\n');\n\n// Find unusual transactions (over $500)\nconst largeTransactions = statement.transactions\n  .filter(tx => Math.abs(tx.amount) > 500)\n  .map(tx => `${tx.date}: ${tx.description} - $${tx.amount}`)\n  .join('\\n');\n\nreturn [{\n  json: {\n    ...statement,\n    totalSpending: totalSpending,\n    totalIncome: totalIncome,\n    savingsRate: totalIncome > 0 ? ((totalIncome - totalSpending) / totalIncome * 100).toFixed(1) : 0,\n    categoryTotals: categoryTotals,\n    categoryBreakdown: categoryBreakdown,\n    largeTransactions: largeTransactions || 'None',\n    transactionCount: statement.transactions.length,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\n\nconst totalIncome   = parseFloat(data.totalIncome)   || 0;\nconst totalSpending = parseFloat(data.totalSpending) || 0;\n\nconst savingsRate = totalIncome > 0\n  ? ((totalIncome - totalSpending) / totalIncome * 100).toFixed(1)\n  : '0.0';\n\nconst categories = [\n  { name: 'Groceries',     amount: parseFloat(data.groceriesTotal)     || 0 },\n  { name: 'Dining',        amount: parseFloat(data.diningTotal)        || 0 },\n  { name: 'Transport',     amount: parseFloat(data.transportTotal)     || 0 },\n  { name: 'Subscriptions', amount: parseFloat(data.subscriptionsTotal) || 0 },\n  { name: 'Shopping',      amount: parseFloat(data.shoppingTotal)      || 0 },\n  { name: 'Utilities',     amount: parseFloat(data.utilitiesTotal)     || 0 }\n].filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);\n\nconst categoryBreakdown = categories.length > 0\n  ? categories.map(c =>\n      `${c.name}: $${c.amount.toFixed(2)}${totalSpending > 0 ? ` (${((c.amount/totalSpending)*100).toFixed(1)}%)` : ''}`\n    ).join('\\n')\n  : 'No category breakdown available';\n\nreturn [{ json: {\n  accountNumber:       data.accountNumber       || 'N/A',\n  statementStartDate:  data.statementStartDate  || 'N/A',\n  statementEndDate:    data.statementEndDate    || 'N/A',\n  openingBalance:      parseFloat(data.openingBalance) || 0,\n  closingBalance:      parseFloat(data.closingBalance) || 0,\n  totalIncome,\n  totalSpending,\n  savingsRate,\n  transactionCount:    parseInt(data.transactionCount) || 0,\n  topSpendingCategory: data.topSpendingCategory || 'N/A',\n  largeTransactions:   data.largeTransactions   || 'None',\n  categoryBreakdown,\n  processedAt: new Date().toISOString()\n}}];"
       },
-      "id": "4c5423e8-0f2a-474a-bba5-a87a3e990041",
+      "id": "941f6e3a-7ce7-4d61-a252-d7c1da166e6e",
       "name": "Analyze Spending",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1584,
-        224
+        1408,
+        1552
       ]
     },
     {
@@ -102,19 +119,20 @@
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "",
+          "value": "YOUR_SPREADSHEET_ID",
           "mode": "list"
         },
         "sheetName": {
           "__rl": true,
-          "value": "Monthly Summaries",
-          "mode": "list"
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Monthly Summaries"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Period Start": "={{ $json.statementPeriod.startDate }}",
-            "Period End": "={{ $json.statementPeriod.endDate }}",
+            "Period Start": "={{ $json.statementStartDate }}",
+            "Period End": "={{ $json.statementEndDate }}",
             "Opening Balance": "={{ $json.openingBalance }}",
             "Closing Balance": "={{ $json.closingBalance }}",
             "Total Income": "={{ $json.totalIncome }}",
@@ -123,7 +141,6 @@
             "Transaction Count": "={{ $json.transactionCount }}",
             "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
           },
-          "matchingColumns": [],
           "schema": [
             {
               "id": "Period Start",
@@ -206,26 +223,18 @@
               "type": "string",
               "canBeUsedToMatch": true
             }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
+          ]
         },
         "options": {}
       },
-      "id": "111872d6-305e-48ac-a2a6-f120a406479f",
+      "id": "f3978334-9ab7-4444-8309-a19c4d072cc4",
       "name": "Log Monthly Summary",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
       "position": [
-        1792,
-        224
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "SHEETS_CREDENTIAL_ID",
-          "name": "Google Sheets account"
-        }
-      }
+        1616,
+        1552
+      ]
     },
     {
       "parameters": {
@@ -233,50 +242,21 @@
         "select": "channel",
         "channelId": {
           "__rl": true,
-          "value": "",
-          "mode": "list"
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "list",
+          "cachedResultName": "#finance-updates"
         },
-        "text": "=📊 *Monthly Bank Statement Analysis*\n\n*Period:* {{ $('Analyze Spending').item.json.statementPeriod.startDate }} - {{ $('Analyze Spending').item.json.statementPeriod.endDate }}\n\n💰 *Summary*\n• Income: ${{ $('Analyze Spending').item.json.totalIncome.toFixed(2) }}\n• Spending: ${{ $('Analyze Spending').item.json.totalSpending.toFixed(2) }}\n• Savings Rate: {{ $('Analyze Spending').item.json.savingsRate }}%\n\n📈 *Spending by Category*\n{{ $('Analyze Spending').item.json.categoryBreakdown }}\n\n⚠️ *Large Transactions (>$500)*\n{{ $('Analyze Spending').item.json.largeTransactions }}",
+        "text": "=📊 *Monthly Bank Statement Analysis*\n\n*Period:* {{ $('Analyze Spending').item.json.statementStartDate }} — {{ $('Analyze Spending').item.json.statementEndDate }}\n*Account:* {{ $('Analyze Spending').item.json.accountNumber }}\n\n💰 *Summary*\n• Income: ${{ $('Analyze Spending').item.json.totalIncome }}\n• Spending: ${{ $('Analyze Spending').item.json.totalSpending }}\n• Savings Rate: {{ $('Analyze Spending').item.json.savingsRate }}%\n• Transactions: {{ $('Analyze Spending').item.json.transactionCount }}\n\n📈 *Spending by Category*\n{{ $('Analyze Spending').item.json.categoryBreakdown }}\n\n⚠️ *Large Transactions (>$500)*\n{{ $('Analyze Spending').item.json.largeTransactions }}",
         "otherOptions": {}
       },
-      "id": "3e8d146a-5598-42a8-a2f3-8b741167155e",
+      "id": "d410c276-d555-4304-9f0a-f4692ce53b19",
       "name": "Send Analysis Report",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
-      "position": [
-        2000,
-        224
-      ],
-      "credentials": {
-        "slackOAuth2Api": {
-          "id": "SLACK_CREDENTIAL_ID",
-          "name": "Slack account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "get",
-        "messageId": "={{ $json.id }}",
-        "simple": false,
-        "options": {
-          "downloadAttachments": true
-        }
-      },
-      "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        1184,
-        224
-      ],
-      "id": "05d46ff9-c8a2-4e6e-862c-a5540b6d5ad9",
-      "name": "Get Statement Email",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "GMAIL_CREDENTIAL_ID",
-          "name": "Gmail account"
-        }
-      }
+        1824,
+        1552
+      ]
     }
   ],
   "pinData": {},
@@ -285,7 +265,18 @@
       "main": [
         [
           {
-            "node": "Get Statement Email",
+            "node": "Get Statement Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Statement Attachment": {
+      "main": [
+        [
+          {
+            "node": "PDF Vector - Extract Statement",
             "type": "main",
             "index": 0
           }
@@ -324,43 +315,25 @@
           }
         ]
       ]
-    },
-    "Get Statement Email": {
-      "main": [
-        [
-          {
-            "node": "PDF Vector - Extract Statement",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
   "meta": {
-    "templateId": "pdfvector-bank-statement-analyzer",
     "templateCredsSetupCompleted": false
   },
   "tags": [
     {
-      "id": "1",
-      "name": "Personal Finance"
+      "name": "Finance"
     },
     {
-      "id": "2",
-      "name": "Budget Tracking"
-    },
-    {
-      "id": "3",
       "name": "PDF Vector"
     },
     {
-      "id": "4",
-      "name": "Bank Statements"
+      "name": "Bank Statement"
     }
   ]
 }
