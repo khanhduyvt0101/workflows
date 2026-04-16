@@ -1,11 +1,12 @@
 {
-  "name": "W5 - Research Paper Analyzer",
+  "name": "Research Paper Analyzer & Literature Review Assistant",
   "nodes": [
     {
       "parameters": {
-        "content": "## Research Paper Analyzer\n\n**What this workflow does:**\n1. Monitors Google Drive for new papers\n2. Extracts metadata & findings\n3. Searches related papers (Semantic Scholar, PubMed)\n4. Generates citations\n5. Logs to Google Sheets\n6. Creates Notion summary page\n\n**Perfect for:**\n- PhD students\n- Researchers\n- Academic writers\n- Literature reviews\n\n**Setup Required:**\n1. Google Drive credential\n2. PDF Vector credential\n3. Google Sheets credential\n4. Notion credential\n5. Create Drive folder for papers\n6. Create Google Sheets with columns\n7. Create Notion parent page",
-        "height": 420,
-        "width": 320
+        "content": "## \ud83c\udf93 Research Paper Analyzer\n\n### What this workflow does\n1. Watches Drive for new papers\n2. Pulls out metadata and findings\n3. Searches Semantic Scholar & PubMed\n4. Generates APA citations\n5. Logs to Google Sheets\n6. Creates Notion summary page\n\n### Setup steps\n1. Create \"Research Papers\" folder in Drive\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns below\n4. Create Notion parent page for summaries\n5. Update folder ID, Sheet ID, Notion page ID\n\n### Sheet columns\nTitle, Authors, Year, Journal, DOI, Research Field, Study Type, Sample Size, Keywords, Abstract, Conclusions, Citation, Related Papers Found, File Link, Added Date\n\n### Perfect for\n- PhD students\n- Researchers\n- Literature reviews",
+        "height": 480,
+        "width": 320,
+        "color": 5
       },
       "id": "sticky-main",
       "name": "Sticky Note",
@@ -18,23 +19,8 @@
     },
     {
       "parameters": {
-        "content": "## Google Sheets Columns\n\nCreate these columns in Row 1:\n\nTitle | Authors | Year | Journal | DOI | Research Field | Study Type | Sample Size | Keywords | Abstract | Conclusions | Citation | Related Papers Found | File Link | Added Date\n\n**Tip:** Copy the tab-separated text above and paste into cell A1",
-        "height": 240,
-        "width": 320
-      },
-      "id": "sticky-sheets",
-      "name": "Sticky Note2",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        60,
-        540
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## Academic Search\n\nSearches across:\n- Semantic Scholar\n- PubMed\n\nUses paper keywords to find\nrelated research automatically!\n\nReturns up to 10 related papers\nwith citation counts.",
-        "height": 200,
+        "content": "## \ud83d\udcda Academic Search\n\n- Semantic Scholar\n- PubMed\n\nFinds up to 10 related papers\nusing keywords from your paper.",
+        "height": 160,
         "width": 220
       },
       "id": "sticky-databases",
@@ -106,17 +92,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract comprehensive research paper metadata and content.\n\nExtract:\n- Title (exact as written)\n- All authors (full names)\n- Journal name\n- Publication year\n- DOI if present\n- Full abstract\n- Keywords/key terms\n- Research field/discipline\n- Study type (Experimental, Observational, Review, Meta-analysis, Case Study, Qualitative, Mixed Methods, or Theoretical)\n- Sample size if applicable\n- Methodology summary\n- Main findings (list key results)\n- Conclusions\n- Limitations mentioned\n- Future research suggestions",
-        "schema": "{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"description\":\"Full title of the research paper\"},\"authors\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"List of all author names\"},\"journal\":{\"type\":\"string\",\"description\":\"Journal or publication name\"},\"publicationYear\":{\"type\":\"number\",\"description\":\"Year of publication\"},\"doi\":{\"type\":\"string\",\"description\":\"Digital Object Identifier if present\"},\"abstract\":{\"type\":\"string\",\"description\":\"Full abstract text\"},\"keywords\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Keywords or key terms\"},\"researchField\":{\"type\":\"string\",\"description\":\"Research field or discipline\"},\"studyType\":{\"type\":\"string\",\"enum\":[\"Experimental\",\"Observational\",\"Review\",\"Meta-analysis\",\"Case Study\",\"Qualitative\",\"Mixed Methods\",\"Theoretical\"],\"description\":\"Type of research study\"},\"sampleSize\":{\"type\":\"number\",\"description\":\"Sample size if applicable\"},\"methodology\":{\"type\":\"string\",\"description\":\"Brief methodology description\"},\"mainFindings\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"List of main findings or results\"},\"conclusions\":{\"type\":\"string\",\"description\":\"Main conclusions of the study\"},\"limitations\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Study limitations mentioned\"},\"futureResearch\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Suggested future research directions\"}},\"required\":[\"title\",\"abstract\"],\"additionalProperties\":false}"
+        "prompt": "Extract research paper metadata as flat fields. title, authorsList (all authors comma-separated as single string), journal, publicationYear (number), doi, abstract, keywordsList (comma-separated keywords as single string), researchField, studyType (one of: Experimental, Observational, Review, Meta-analysis, Case Study, Qualitative, Mixed Methods, Theoretical), sampleSize (number), methodology, mainFindings (semicolon-separated list of main findings as single string), conclusions, limitations (semicolon-separated list as single string), futureResearch (semicolon-separated list as single string).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"title\": {\"type\": \"string\"}, \"authorsList\": {\"type\": \"string\"}, \"journal\": {\"type\": \"string\"}, \"publicationYear\": {\"type\": \"number\"}, \"doi\": {\"type\": \"string\"}, \"abstract\": {\"type\": \"string\"}, \"keywordsList\": {\"type\": \"string\"}, \"researchField\": {\"type\": \"string\"}, \"studyType\": {\"type\": \"string\"}, \"sampleSize\": {\"type\": \"number\"}, \"methodology\": {\"type\": \"string\"}, \"mainFindings\": {\"type\": \"string\"}, \"conclusions\": {\"type\": \"string\"}, \"limitations\": {\"type\": \"string\"}, \"futureResearch\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Extract Paper Info",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         820,
         320
@@ -132,10 +116,9 @@
       "parameters": {
         "resource": "academic",
         "operation": "search",
-        "query": "={{ $json.data.keywords ? $json.data.keywords.slice(0, 3).join(' ') : $json.data.title.split(' ').slice(0, 5).join(' ') }}",
+        "query": "={{ $json.data?.keywordsList ? $json.data.keywordsList.split(',').slice(0,3).join(' ') : $json.data?.title?.split(' ').slice(0,5).join(' ') || '' }}",
         "providers": [
-          "semantic-scholar",
-          "pubmed"
+          "semantic-scholar"
         ],
         "limit": 10,
         "offset": 0
@@ -143,7 +126,7 @@
       "id": "pdfvector-search",
       "name": "PDF Vector - Find Related Papers",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         1020,
         320
@@ -157,7 +140,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const paper = $('PDF Vector - Extract Paper Info').item.json.data;\nconst relatedPapers = $input.first().json.results || [];\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Format authors\nconst authorsList = paper.authors ? paper.authors.join(', ') : 'Unknown';\n\n// Format findings\nconst findingsList = paper.mainFindings \n  ? paper.mainFindings.map((f, i) => `${i + 1}. ${f}`).join('\\n') \n  : 'Not extracted';\n\n// Format limitations\nconst limitationsList = paper.limitations \n  ? paper.limitations.join('; ') \n  : 'Not specified';\n\n// Format keywords\nconst keywordsList = paper.keywords \n  ? paper.keywords.join(', ') \n  : 'Not specified';\n\n// Format related papers\nconst relatedList = relatedPapers.slice(0, 5).map(p => \n  `• ${p.title} (${p.year || 'N/A'}) - ${p.citationCount || 0} citations`\n).join('\\n') || 'No related papers found';\n\n// Generate APA-style citation\nconst citation = `${authorsList} (${paper.publicationYear || 'n.d.'}). ${paper.title}. ${paper.journal || 'Unknown Journal'}${paper.doi ? `. https://doi.org/${paper.doi}` : ''}`;\n\n// Create summary for Notion (truncated to avoid 2000 char limit)\nconst abstractShort = paper.abstract && paper.abstract.length > 800 \n  ? paper.abstract.substring(0, 800) + '...' \n  : paper.abstract;\n\nconst notionSummary = `Authors: ${authorsList}\\nYear: ${paper.publicationYear || 'N/A'}\\nJournal: ${paper.journal || 'N/A'}\\n\\n${abstractShort}\\n\\n${paper.conclusions || ''}`;\n\nreturn [{\n  json: {\n    ...paper,\n    authorsList: authorsList,\n    findingsList: findingsList,\n    limitationsList: limitationsList,\n    keywordsList: keywordsList,\n    relatedPapers: relatedList,\n    relatedCount: relatedPapers.length,\n    citation: citation,\n    notionSummary: notionSummary,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const paper = $('PDF Vector - Extract Paper Info').item.json.data || $('PDF Vector - Extract Paper Info').item.json;\nconst relatedPapers = $input.first().json.results || [];\nconst fileName = $('Google Drive Trigger').item.json.name;\n\nconst relatedList = relatedPapers.slice(0, 5).map(p =>\n  `\u2022 ${p.title} (${p.year || 'N/A'}) - ${p.citationCount || 0} citations`\n).join('\\n') || 'No related papers found';\n\nconst citation = `${paper.authorsList || 'Unknown'} (${paper.publicationYear || 'n.d.'}). ${paper.title}. ${paper.journal || 'Unknown Journal'}${paper.doi ? `. https://doi.org/${paper.doi}` : ''}`;\n\nconst abstractShort = paper.abstract && paper.abstract.length > 800\n  ? paper.abstract.substring(0, 800) + '...'\n  : (paper.abstract || '');\n\nconst notionSummary = `Authors: ${paper.authorsList || 'N/A'}\\nYear: ${paper.publicationYear || 'N/A'}\\nJournal: ${paper.journal || 'N/A'}\\n\\n${abstractShort}\\n\\n${paper.conclusions || ''}`;\n\nreturn [{ json: {\n  title:         paper.title         || 'Unknown',\n  authorsList:   paper.authorsList   || 'Unknown',\n  publicationYear: paper.publicationYear || 'N/A',\n  journal:       paper.journal       || 'N/A',\n  doi:           paper.doi           || 'N/A',\n  researchField: paper.researchField || 'N/A',\n  studyType:     paper.studyType     || 'N/A',\n  sampleSize:    paper.sampleSize    || 'N/A',\n  keywordsList:  paper.keywordsList  || 'N/A',\n  abstract:      paper.abstract      || 'N/A',\n  conclusions:   paper.conclusions   || 'N/A',\n  mainFindings:  paper.mainFindings  || 'N/A',\n  relatedPapers: relatedList,\n  relatedCount:  relatedPapers.length,\n  citation,\n  notionSummary,\n  fileName,\n  fileId: $('Google Drive Trigger').item.json.id,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "compile-analysis",
       "name": "Compile Analysis",
@@ -326,7 +309,6 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "staticData": null,
   "tags": [
     {
       "name": "PDF Vector"
@@ -344,7 +326,6 @@
       "name": "Literature Review"
     }
   ],
-  "triggerCount": 0,
   "meta": {
     "templateCredsSetupCompleted": false
   }
