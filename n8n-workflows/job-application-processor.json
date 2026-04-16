@@ -1,11 +1,12 @@
 {
-  "name": "W6 - Job Application Processor & Candidate Scorer",
+  "name": "Job Application Processor & Candidate Scorer",
   "nodes": [
     {
       "parameters": {
-        "content": "## 📋 Job Application Processor\n\n**What this workflow does:**\n1. Monitors email for job applications\n2. Downloads attachments (resumes)\n3. Extracts candidate info from resume\n4. Scores candidates based on skills & experience\n5. Logs to ATS spreadsheet\n6. Sends auto-reply to candidates\n7. Notifies HR team via Slack\n\n**Setup Required:**\n1. Gmail credential\n2. PDF Vector credential\n3. Google Sheets credential\n4. Slack credential\n5. Create ATS spreadsheet with columns\n6. Configure required skills in Code node",
-        "height": 380,
-        "width": 320
+        "content": "## 📋 Job Application Processor\n\n### What this workflow does\n1. Watches Gmail for job applications\n2. Downloads resume attachments\n3. Extracts candidate info from resume\n4. Scores based on experience & skills\n5. Logs to ATS spreadsheet\n6. Sends auto-reply to candidate\n7. Notifies HR team via Slack\n\n### Setup steps\n1. Connect Gmail OAuth2 credentials\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns below\n4. Connect Slack and pick your HR channel\n5. Update required skills in Score Candidate node\n\n### Sheet columns\nName, Email, Phone, Location, Current Title, Years Experience, Score, Status, Skills, Skills Matched, Application Date, Processed Date\n\n### Perfect for\n- HR teams\n- Recruiters\n- Small businesses",
+        "height": 480,
+        "width": 320,
+        "color": 5
       },
       "id": "sticky-main",
       "name": "Sticky Note",
@@ -18,9 +19,9 @@
     },
     {
       "parameters": {
-        "content": "## 🎯 Scoring Logic\n\nCandidates scored on:\n- Years of experience (40%)\n- Education level (30%)\n- Skills match (30%)\n\n**Status Assignment:**\n- Score 75+ → Schedule Interview\n- Score 50-74 → Review Further\n- Score <50 → Pass\n\n**Customize required skills** in the Score Candidate node!",
-        "height": 260,
-        "width": 280
+        "content": "## 🎯 Scoring Logic\n\n- Experience: 40 points\n- Education: 30 points\n- Skills match: 30 points\n\n### Status\n- 75+ → Schedule Interview\n- 50-74 → Review Further\n- <50 → Pass\n\nEdit required skills in the\nScore Candidate node.",
+        "height": 220,
+        "width": 240
       },
       "id": "sticky-scoring",
       "name": "Sticky Note1",
@@ -29,21 +30,6 @@
       "position": [
         704,
         0
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## 📊 Google Sheets Columns\n\nCreate these columns in Row 1:\n\nName | Email | Phone | Location | Current Title | Years Experience | Score | Status | Skills | Skills Matched | Application Date | Processed Date",
-        "height": 160,
-        "width": 320
-      },
-      "id": "sticky-sheets",
-      "name": "Sticky Note2",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        0,
-        400
       ]
     },
     {
@@ -113,17 +99,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract candidate information from this resume:\n\n- Full name\n- Email address\n- Phone number\n- Location (city, state)\n- LinkedIn profile URL if present\n- Total years of professional experience\n- Current or most recent job title\n- Work experience history with company names, titles, dates, and key achievements\n- Education with institution, degree, field of study, and year\n- Technical skills (programming languages, tools, frameworks)\n- Soft skills\n- Certifications\n- Languages spoken",
-        "schema": "{\"type\":\"object\",\"properties\":{\"fullName\":{\"type\":\"string\",\"description\":\"Candidate's full name\"},\"email\":{\"type\":\"string\",\"description\":\"Email address\"},\"phone\":{\"type\":\"string\",\"description\":\"Phone number\"},\"location\":{\"type\":\"string\",\"description\":\"City and state/country\"},\"linkedIn\":{\"type\":\"string\",\"description\":\"LinkedIn profile URL\"},\"yearsOfExperience\":{\"type\":\"number\",\"description\":\"Total years of professional experience\"},\"currentTitle\":{\"type\":\"string\",\"description\":\"Current or most recent job title\"},\"workExperience\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"company\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"startDate\":{\"type\":\"string\"},\"endDate\":{\"type\":\"string\"},\"highlights\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}},\"education\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"institution\":{\"type\":\"string\"},\"degree\":{\"type\":\"string\"},\"field\":{\"type\":\"string\"},\"year\":{\"type\":\"string\"}}}},\"technicalSkills\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Programming languages, tools, frameworks\"},\"softSkills\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"certifications\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"languages\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"fullName\"],\"additionalProperties\":false}"
+        "prompt": "Extract candidate resume data as flat fields. fullName, email, phone, location (city and state), linkedIn, yearsOfExperience (number), currentTitle, mostRecentCompany, secondMostRecentCompany, highestDegree (e.g. Bachelor, Master, PhD, Other), educationField, educationInstitution, technicalSkillsList (comma-separated technical skills as single string), softSkillsList (comma-separated soft skills as single string), certificationsList (comma-separated certifications as single string), languagesList (comma-separated languages as single string), keyAchievements (semicolon-separated top 3 achievements as single string).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"fullName\": {\"type\": \"string\"}, \"email\": {\"type\": \"string\"}, \"phone\": {\"type\": \"string\"}, \"location\": {\"type\": \"string\"}, \"linkedIn\": {\"type\": \"string\"}, \"yearsOfExperience\": {\"type\": \"number\"}, \"currentTitle\": {\"type\": \"string\"}, \"mostRecentCompany\": {\"type\": \"string\"}, \"secondMostRecentCompany\": {\"type\": \"string\"}, \"highestDegree\": {\"type\": \"string\"}, \"educationField\": {\"type\": \"string\"}, \"educationInstitution\": {\"type\": \"string\"}, \"technicalSkillsList\": {\"type\": \"string\"}, \"softSkillsList\": {\"type\": \"string\"}, \"certificationsList\": {\"type\": \"string\"}, \"languagesList\": {\"type\": \"string\"}, \"keyAchievements\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Parse Resume",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         736,
         272
@@ -137,7 +121,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const candidate = $input.first().json.data;\nconst emailData = $('Gmail Trigger').item.json;\n\n// ============================================\n// CUSTOMIZE REQUIRED SKILLS FOR YOUR POSITION\n// ============================================\nconst requiredSkills = [\n  'javascript', 'python', 'react', 'node', 'sql', \n  'api', 'git', 'aws', 'docker', 'typescript'\n];\n\n// ============================================\n// EXPERIENCE SCORING (40 points max)\n// ============================================\nlet expScore = 0;\nconst years = candidate.yearsOfExperience || 0;\nif (years >= 7) expScore = 40;\nelse if (years >= 5) expScore = 35;\nelse if (years >= 3) expScore = 25;\nelse if (years >= 1) expScore = 15;\nelse expScore = 5;\n\n// ============================================\n// EDUCATION SCORING (30 points max)\n// ============================================\nlet eduScore = 10; // Base score\nif (candidate.education && candidate.education.length > 0) {\n  const degrees = candidate.education.map(e => (e.degree || '').toLowerCase());\n  if (degrees.some(d => d.includes('phd') || d.includes('doctorate'))) eduScore = 30;\n  else if (degrees.some(d => d.includes('master') || d.includes('mba'))) eduScore = 25;\n  else if (degrees.some(d => d.includes('bachelor'))) eduScore = 20;\n}\n\n// ============================================\n// SKILLS MATCHING (30 points max)\n// ============================================\nlet skillsMatched = 0;\nconst candidateSkills = (candidate.technicalSkills || []).map(s => s.toLowerCase());\nrequiredSkills.forEach(skill => {\n  if (candidateSkills.some(cs => cs.includes(skill))) skillsMatched++;\n});\nconst skillsScore = Math.min(skillsMatched * 3, 30);\n\n// ============================================\n// TOTAL SCORE & STATUS\n// ============================================\nconst totalScore = expScore + eduScore + skillsScore;\n\nlet status = 'Pass';\nif (totalScore >= 75) status = 'Schedule Interview';\nelse if (totalScore >= 50) status = 'Review Further';\n\nreturn [{\n  json: {\n    ...candidate,\n    applicantEmail: emailData?.from?.value?.[0]?.address || candidate.email || 'unknown',\n    applicationDate: emailData?.date || new Date().toISOString(),\n    subject: emailData?.subject || 'Manual Test',\n    score: totalScore,\n    expScore: expScore,\n    eduScore: eduScore,\n    skillsScore: skillsScore,\n    skillsMatched: skillsMatched,\n    status: status,\n    skillsList: candidate.technicalSkills ? candidate.technicalSkills.join(', ') : '',\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const candidate = ($input.first().json?.data || $input.first().json) || {};\nconst emailData = $('Gmail Trigger').item.json;\n\nconst requiredSkills = [\n  'javascript', 'python', 'react', 'node', 'sql',\n  'api', 'git', 'aws', 'docker', 'typescript'\n];\n\n// Experience scoring (40 pts)\nlet expScore = 0;\nconst years = parseFloat(candidate.yearsOfExperience) || 0;\nif (years >= 7)      expScore = 40;\nelse if (years >= 5) expScore = 35;\nelse if (years >= 3) expScore = 25;\nelse if (years >= 1) expScore = 15;\nelse                 expScore = 5;\n\n// Education scoring (30 pts)\nlet eduScore = 10;\nconst degree = (candidate.highestDegree || '').toLowerCase();\nif (degree.includes('phd') || degree.includes('doctorate'))    eduScore = 30;\nelse if (degree.includes('master') || degree.includes('mba'))  eduScore = 25;\nelse if (degree.includes('bachelor'))                           eduScore = 20;\n\n// Skills matching (30 pts)\nconst skillsStr = (candidate.technicalSkillsList || '').toLowerCase();\nlet skillsMatched = 0;\nrequiredSkills.forEach(skill => { if (skillsStr.includes(skill)) skillsMatched++; });\nconst skillsScore = Math.min(skillsMatched * 3, 30);\n\nconst totalScore = expScore + eduScore + skillsScore;\nlet status = 'Pass';\nif (totalScore >= 75)      status = 'Schedule Interview';\nelse if (totalScore >= 50) status = 'Review Further';\n\nreturn [{ json: {\n  fullName:           candidate.fullName           || 'Unknown',\n  email:              candidate.email              || '',\n  phone:              candidate.phone              || 'N/A',\n  location:           candidate.location           || 'N/A',\n  currentTitle:       candidate.currentTitle       || 'N/A',\n  yearsOfExperience:  years,\n  mostRecentCompany:  candidate.mostRecentCompany  || 'N/A',\n  highestDegree:      candidate.highestDegree      || 'N/A',\n  educationField:     candidate.educationField     || 'N/A',\n  skillsList:         candidate.technicalSkillsList || '',\n  certificationsList: candidate.certificationsList || 'N/A',\n  keyAchievements:    candidate.keyAchievements    || 'N/A',\n  applicantEmail: emailData?.from?.value?.[0]?.address || candidate.email || 'unknown',\n  applicationDate: emailData?.date || new Date().toISOString(),\n  score: totalScore,\n  expScore, eduScore, skillsScore,\n  skillsMatched,\n  status,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "score-candidate",
       "name": "Score Candidate",
@@ -329,7 +313,6 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "staticData": null,
   "tags": [
     {
       "name": "PDF Vector"
@@ -347,7 +330,6 @@
       "name": "ATS"
     }
   ],
-  "triggerCount": 0,
   "meta": {
     "templateCredsSetupCompleted": false
   }
