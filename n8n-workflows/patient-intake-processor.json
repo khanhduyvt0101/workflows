@@ -1,11 +1,12 @@
 {
-  "name": "W7 - Patient Intake Processor for Healthcare",
+  "name": "Patient Intake Form Processor for Healthcare",
   "nodes": [
     {
       "parameters": {
-        "content": "## 🏥 Patient Intake Processor\n\n**HIPAA Compliance Note:**\nThis workflow processes PHI. Ensure:\n- n8n is self-hosted securely\n- All connections use encryption\n- Access is restricted\n- Audit logs are enabled\n\n**What it does:**\n1. Monitors folder for intake forms\n2. Extracts patient information\n3. Validates insurance details\n4. Creates patient record\n5. Alerts medical staff\n6. Critical allergy warnings\n\n**Setup Required:**\n1. Google Drive credential\n2. PDF Vector credential\n3. Google Sheets credential\n4. Slack credential\n5. Create intake forms folder\n6. Create patient database sheet",
-        "height": 420,
-        "width": 340
+        "content": "## 🏥 Patient Intake Processor\n\n### HIPAA Compliance Note\nThis workflow processes PHI. Ensure:\n- n8n is self-hosted securely\n- All connections use encryption\n- Access is restricted\n- Audit logs are enabled\n\n### What this workflow does\n1. Watches folder for intake forms\n2. Extracts patient information\n3. Creates patient record\n4. Checks for critical allergies\n5. Alerts medical staff via Slack\n\n### Setup steps\n1. Create \"Intake Forms\" folder in Drive\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns below\n4. Connect Slack (2 channels: alerts + front desk)\n5. Update folder ID, Sheet ID, channel IDs\n\n### Sheet columns\nPatient ID, Name, DOB, Age, Gender, Phone, Email, Insurance, Conditions, Medications, Allergies, Reason for Visit, Emergency Contact, Intake Date\n\n### Perfect for\n- Medical clinics\n- Urgent care centers\n- Healthcare practices",
+        "height": 560,
+        "width": 340,
+        "color": 5
       },
       "id": "sticky-main",
       "name": "Sticky Note",
@@ -13,52 +14,22 @@
       "typeVersion": 1,
       "position": [
         60,
-        100
+        60
       ]
     },
     {
       "parameters": {
-        "content": "## ⚠️ Data Fields Extracted\n\n- Demographics (name, DOB, gender)\n- Contact info (phone, email, address)\n- Insurance info (provider, policy, group)\n- Medical history (conditions, surgeries)\n- Current medications (name, dosage, frequency)\n- Allergies (allergen, reaction severity)\n- Emergency contacts\n- Reason for visit",
-        "height": 260,
-        "width": 280
-      },
-      "id": "sticky-data",
-      "name": "Sticky Note1",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        420,
-        100
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## 📊 Google Sheets Columns\n\nCreate these columns in Row 1:\n\nPatient ID | Name | DOB | Age | Gender | Phone | Email | Insurance | Conditions | Medications | Allergies | Reason for Visit | Emergency Contact | Intake Date",
-        "height": 160,
-        "width": 340
-      },
-      "id": "sticky-sheets",
-      "name": "Sticky Note2",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        60,
-        540
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## 🚨 Critical Allergy Detection\n\nAuto-alerts for these allergens:\n- Penicillin\n- Sulfa\n- Latex\n- Iodine\n\nEdit the Code node to add more critical allergens.",
+        "content": "## 🚨 Critical Allergy Detection\n\nAuto-alerts for these allergens:\n- Penicillin\n- Sulfa\n- Latex\n- Iodine\n\nEdit the Code node to add more.",
         "height": 180,
         "width": 240
       },
       "id": "sticky-allergy",
-      "name": "Sticky Note3",
+      "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         720,
-        100
+        60
       ]
     },
     {
@@ -121,17 +92,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract all patient intake information from this healthcare form:\n\n1. Patient Information:\n   - First name, last name\n   - Date of birth\n   - Gender\n   - SSN (last 4 digits only if present)\n   - Phone number, email\n   - Full address\n\n2. Insurance Information:\n   - Insurance provider name\n   - Policy number\n   - Group number\n   - Subscriber name\n   - Relationship to subscriber\n\n3. Medical History:\n   - Current/past medical conditions\n   - Past surgeries with dates\n   - Family medical history\n\n4. Current Medications:\n   - Medication name\n   - Dosage\n   - Frequency\n\n5. Allergies:\n   - Allergen name\n   - Reaction/severity description\n\n6. Emergency Contact:\n   - Name\n   - Relationship\n   - Phone number\n\n7. Reason for today's visit",
-        "schema": "{\"type\":\"object\",\"properties\":{\"patientInfo\":{\"type\":\"object\",\"properties\":{\"firstName\":{\"type\":\"string\"},\"lastName\":{\"type\":\"string\"},\"dateOfBirth\":{\"type\":\"string\"},\"gender\":{\"type\":\"string\"},\"ssn\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"}}},\"insurance\":{\"type\":\"object\",\"properties\":{\"provider\":{\"type\":\"string\"},\"policyNumber\":{\"type\":\"string\"},\"groupNumber\":{\"type\":\"string\"},\"subscriberName\":{\"type\":\"string\"},\"subscriberRelation\":{\"type\":\"string\"}}},\"medicalHistory\":{\"type\":\"object\",\"properties\":{\"conditions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"surgeries\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"familyHistory\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}},\"currentMedications\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"dosage\":{\"type\":\"string\"},\"frequency\":{\"type\":\"string\"}}}},\"allergies\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"allergen\":{\"type\":\"string\"},\"reaction\":{\"type\":\"string\"}}}},\"emergencyContact\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"relation\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"}}},\"reasonForVisit\":{\"type\":\"string\"}},\"required\":[\"patientInfo\"],\"additionalProperties\":false}"
+        "prompt": "Extract patient intake form data as flat fields. firstName, lastName, dateOfBirth (YYYY-MM-DD), gender, ssnLast4, phone, email, address, insuranceProvider, policyNumber, groupNumber, subscriberName, subscriberRelation, medicalConditions (semicolon-separated list), pastSurgeries (semicolon-separated list), familyHistory (semicolon-separated list), currentMedications (semicolon-separated list formatted as: name dosage frequency), allergiesList (semicolon-separated list formatted as: allergen reaction), emergencyContactName, emergencyContactRelation, emergencyContactPhone, reasonForVisit.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"firstName\": {\"type\": \"string\"}, \"lastName\": {\"type\": \"string\"}, \"dateOfBirth\": {\"type\": \"string\"}, \"gender\": {\"type\": \"string\"}, \"ssnLast4\": {\"type\": \"string\"}, \"phone\": {\"type\": \"string\"}, \"email\": {\"type\": \"string\"}, \"address\": {\"type\": \"string\"}, \"insuranceProvider\": {\"type\": \"string\"}, \"policyNumber\": {\"type\": \"string\"}, \"groupNumber\": {\"type\": \"string\"}, \"subscriberName\": {\"type\": \"string\"}, \"subscriberRelation\": {\"type\": \"string\"}, \"medicalConditions\": {\"type\": \"string\"}, \"pastSurgeries\": {\"type\": \"string\"}, \"familyHistory\": {\"type\": \"string\"}, \"currentMedications\": {\"type\": \"string\"}, \"allergiesList\": {\"type\": \"string\"}, \"emergencyContactName\": {\"type\": \"string\"}, \"emergencyContactRelation\": {\"type\": \"string\"}, \"emergencyContactPhone\": {\"type\": \"string\"}, \"reasonForVisit\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Extract Intake",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         540,
         360
@@ -145,7 +114,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json.data;\nconst patient = data.patientInfo || {};\nconst insurance = data.insurance || {};\n\n// Generate patient ID\nconst patientId = `PT-${Date.now().toString(36).toUpperCase()}`;\n\n// Calculate age from DOB\nlet age = 'N/A';\nif (patient.dateOfBirth) {\n  const dob = new Date(patient.dateOfBirth);\n  const today = new Date();\n  age = Math.floor((today - dob) / (365.25 * 24 * 60 * 60 * 1000));\n}\n\n// Format medications list\nconst medications = data.currentMedications && data.currentMedications.length > 0\n  ? data.currentMedications.map(m => `${m.name} ${m.dosage} (${m.frequency})`).join('; ')\n  : 'None reported';\n\n// Format allergies with reaction severity\nconst allergies = data.allergies && data.allergies.length > 0\n  ? data.allergies.map(a => `${a.allergen} (${a.reaction})`).join('; ')\n  : 'NKDA'; // No Known Drug Allergies\n\n// Format medical conditions\nconst conditions = data.medicalHistory && data.medicalHistory.conditions\n  ? data.medicalHistory.conditions.join('; ')\n  : 'None reported';\n\n// ============================================\n// CRITICAL ALLERGY DETECTION\n// Add more allergens to this list as needed\n// ============================================\nconst criticalAllergens = ['penicillin', 'sulfa', 'latex', 'iodine', 'aspirin', 'nsaid'];\nconst hasCriticalAllergy = data.allergies && data.allergies.some(a => \n  criticalAllergens.some(c => a.allergen.toLowerCase().includes(c))\n);\n\nreturn [{\n  json: {\n    patientId: patientId,\n    fullName: `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Unknown',\n    ...patient,\n    age: age,\n    insurance: insurance,\n    insuranceSummary: insurance.provider \n      ? `${insurance.provider} - ${insurance.policyNumber}` \n      : 'Self-Pay',\n    medications: medications,\n    allergies: allergies,\n    conditions: conditions,\n    reasonForVisit: data.reasonForVisit || 'Not specified',\n    emergencyContact: data.emergencyContact,\n    hasCriticalAllergy: hasCriticalAllergy,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\n\nconst patientId = `PT-${Date.now().toString(36).toUpperCase()}`;\n\nlet age = 'N/A';\nif (data.dateOfBirth) {\n  const dob = new Date(data.dateOfBirth);\n  const today = new Date();\n  age = Math.floor((today - dob) / (365.25 * 24 * 60 * 60 * 1000));\n}\n\nconst criticalAllergens = ['penicillin', 'sulfa', 'latex', 'iodine', 'aspirin', 'nsaid'];\nconst allergiesStr = (data.allergiesList || '').toLowerCase();\nconst hasCriticalAllergy = criticalAllergens.some(c => allergiesStr.includes(c));\n\nconst insuranceSummary = data.insuranceProvider\n  ? `${data.insuranceProvider} - ${data.policyNumber || 'N/A'}`\n  : 'Self-Pay';\n\nreturn [{ json: {\n  patientId,\n  fullName:             `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Unknown',\n  dateOfBirth:          data.dateOfBirth          || 'N/A',\n  gender:               data.gender               || 'N/A',\n  phone:                data.phone                || 'N/A',\n  email:                data.email                || 'N/A',\n  address:              data.address              || 'N/A',\n  age,\n  insuranceSummary,\n  medicalConditions:    data.medicalConditions    || 'None reported',\n  currentMedications:   data.currentMedications   || 'None reported',\n  allergiesList:        data.allergiesList         || 'NKDA',\n  emergencyContactName: data.emergencyContactName || 'N/A',\n  emergencyContactPhone: data.emergencyContactPhone || 'N/A',\n  reasonForVisit:       data.reasonForVisit       || 'Not specified',\n  hasCriticalAllergy,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "process-intake",
       "name": "Process Intake Data",
@@ -180,9 +149,9 @@
             "Phone": "={{ $json.phone || 'N/A' }}",
             "Email": "={{ $json.email || 'N/A' }}",
             "Insurance": "={{ $json.insuranceSummary }}",
-            "Conditions": "={{ $json.conditions }}",
-            "Medications": "={{ $json.medications }}",
-            "Allergies": "={{ $json.allergies }}",
+            "Conditions": "={{ $json.medicalConditions }}",
+            "Medications": "={{ $json.currentMedications }}",
+            "Allergies": "={{ $json.allergiesList }}",
             "Reason for Visit": "={{ $json.reasonForVisit }}",
             "Emergency Contact": "={{ $json.emergencyContact ? $json.emergencyContact.name + ' (' + $json.emergencyContact.phone + ')' : 'N/A' }}",
             "Intake Date": "={{ $json.processedAt.split('T')[0] }}"
@@ -193,7 +162,7 @@
       "id": "sheets-log",
       "name": "Create Patient Record",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
+      "typeVersion": 4.4,
       "position": [
         940,
         360
@@ -231,7 +200,7 @@
       "id": "if-critical",
       "name": "Critical Allergy?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         1140,
         360
@@ -246,13 +215,13 @@
           "value": "YOUR_ALERTS_CHANNEL_ID",
           "mode": "list"
         },
-        "text": "=🚨 *CRITICAL ALLERGY ALERT*\n\n*Patient:* {{ $('Process Intake Data').item.json.fullName }}\n*Patient ID:* {{ $('Process Intake Data').item.json.patientId }}\n*DOB:* {{ $('Process Intake Data').item.json.dateOfBirth }}\n\n⚠️ *ALLERGIES:* {{ $('Process Intake Data').item.json.allergies }}\n\n*Reason for Visit:* {{ $('Process Intake Data').item.json.reasonForVisit }}",
+        "text": "=🚨 *CRITICAL ALLERGY ALERT*\n\n*Patient:* {{ $('Process Intake Data').item.json.fullName }}\n*Patient ID:* {{ $('Process Intake Data').item.json.patientId }}\n*DOB:* {{ $('Process Intake Data').item.json.dateOfBirth }}\n\n⚠️ *ALLERGIES:* {{ $json.Allergies }}\n\n*Reason for Visit:* {{ $('Process Intake Data').item.json.reasonForVisit }}",
         "otherOptions": {}
       },
       "id": "slack-alert",
       "name": "Critical Alert",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1340,
         260
@@ -279,7 +248,7 @@
       "id": "slack-notify",
       "name": "Notify Front Desk",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1340,
         460
@@ -371,7 +340,6 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "staticData": null,
   "tags": [
     {
       "name": "PDF Vector"
@@ -389,7 +357,6 @@
       "name": "Medical"
     }
   ],
-  "triggerCount": 0,
   "meta": {
     "templateCredsSetupCompleted": false
   }
