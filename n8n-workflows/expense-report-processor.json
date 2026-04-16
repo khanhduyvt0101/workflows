@@ -3,126 +3,77 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Expense Report Processor\n\n### How it works\nThis workflow automates expense report processing by extracting receipt data, auto-categorizing expenses, and routing high-value items for approval.\n\n1. **Google Drive Trigger** monitors folder for new receipts\n2. **PDF Vector** extracts expense details (merchant, amount, date)\n3. **Code Node** auto-categorizes based on merchant keywords\n4. **Google Sheets** logs all expenses with categories\n5. **Slack** notifies for approval (>$500) or confirms logging\n\n### Setup Steps\n1. Connect Google Drive credentials (Expenses folder)\n2. Connect PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with expense tracking columns\n4. Connect Slack workspace and select channel\n5. Test with sample receipt\n\n### Categories\n- Travel (Uber, Lyft, airlines, hotels)\n- Meals (restaurants, cafes, DoorDash)\n- Office Supplies (Amazon, Staples)\n- Software (SaaS, subscriptions)\n- Equipment, Marketing, Professional Services, Utilities, Other",
-        "height": 480,
-        "width": 420,
+        "content": "AI expense receipt processor with approval routing\n\n### How it works\n1. Google Drive trigger watches your Expenses folder for new receipts\n2. PDF Vector extracts merchant, amount, date, tax, and payment method\n3. AI categorizes spending (Travel, Meals, Office Supplies, etc.)\n4. Fallback rules catch common merchants (Uber → Travel, DoorDash → Meals)\n5. All expenses logged to Google Sheets with receipt links\n6. Over $500 triggers Slack approval request, under $500 gets confirmation\n\n### Setup steps\n1. Connect Google Drive and create an \"Expenses\" folder\n2. Add PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns: Date, Merchant, Category, Amount, Currency, Tax, Payment Method, Description, Requires Approval, Receipt Link, Processed Date\n4. Connect Slack and select notification channel\n\n### Customization\n- Change $500 threshold in Process & Categorize node\n- Add merchant rules for your vendors\n- Swap Slack for email notifications\n\n### If PDF Vector node shows Install error\n- Press Ctrl+K in the workflow editor\n- Search for PDF Vector\n- Click it to add — the node will load with all settings intact",
+        "height": 560,
+        "width": 340,
         "color": 5
       },
-      "id": "sticky-main",
+      "id": "b3b9627c-a12b-43ba-9423-5e62decd6482",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [
-        0,
-        0
-      ]
+      "position": [0, 0]
     },
     {
       "parameters": {
-        "content": "## 1. Receipt Detection\nGoogle Drive trigger monitors 'Expenses' folder.\nDownloads new receipts automatically.",
-        "height": 100,
-        "width": 300
+        "content": "## 1. Get receipt\nDownloads new files from Expenses folder",
+        "height": 120,
+        "width": 280
       },
-      "id": "sticky-section1",
+      "id": "9641b3d1-dba2-4798-b9e4-fc199139fdaf",
       "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [
-        480,
-        100
-      ]
+      "position": [384, 128]
     },
     {
       "parameters": {
-        "content": "## 2. AI Extraction & Categorization\nPDF Vector extracts expense data using JSON schema.\nCode node auto-categorizes by merchant name.",
-        "height": 100,
-        "width": 420
+        "content": "## 2. Extract & categorize\nAI reads receipt and assigns category",
+        "height": 120,
+        "width": 320
       },
-      "id": "sticky-section2",
+      "id": "20bb4f6c-6b4f-432c-a232-daafe6da63df",
       "name": "Sticky Note2",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [
-        940,
-        100
-      ]
+      "position": [720, 128]
     },
     {
       "parameters": {
-        "content": "## 3. Logging & Approval Routing\nLogs all expenses to Google Sheets.\nRoutes expenses >$500 for approval.",
-        "height": 100,
-        "width": 300
+        "content": "## 3. Log & route\nSaves to Sheets, routes based on amount",
+        "height": 120,
+        "width": 460
       },
-      "id": "sticky-section3",
+      "id": "335a4d7e-628b-405f-9231-1f7a7c6e71a4",
       "name": "Sticky Note3",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [
-        1480,
-        100
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## 4. Notifications\nSlack approval request for high-value expenses.\nSlack confirmation for logged expenses.",
-        "height": 100,
-        "width": 300
-      },
-      "id": "sticky-section4",
-      "name": "Sticky Note4",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        1900,
-        100
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## Expense Categories\n\n- Travel\n- Meals\n- Office Supplies\n- Software\n- Equipment\n- Marketing\n- Professional Services\n- Utilities\n- Other",
-        "height": 260,
-        "width": 180
-      },
-      "id": "sticky-categories",
-      "name": "Sticky Note5",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        480,
-        500
-      ]
+      "position": [1104, 128]
     },
     {
       "parameters": {
         "pollTimes": {
-          "item": [
-            {
-              "mode": "everyMinute"
-            }
-          ]
+          "item": [{ "mode": "everyMinute" }]
         },
         "triggerOn": "specificFolder",
         "folderToWatch": {
           "__rl": true,
+          "value": "YOUR_FOLDER_ID",
           "mode": "list",
-          "value": ""
+          "cachedResultName": "Expenses"
         },
         "event": "fileCreated",
         "options": {}
       },
-      "id": "gdrive-trigger",
+      "id": "03c7c11f-1098-418c-9304-5ff3217f2524",
       "name": "Google Drive Trigger",
       "type": "n8n-nodes-base.googleDriveTrigger",
       "typeVersion": 1,
-      "position": [
-        500,
-        300
-      ],
-      "notes": "Watch 'Expenses' folder for new receipts/reports",
+      "position": [400, 288],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "GDRIVE_CREDENTIAL_ID",
-          "name": "Google Drive Account"
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
         }
       }
     },
@@ -131,77 +82,66 @@
         "operation": "download",
         "fileId": {
           "__rl": true,
-          "mode": "id",
-          "value": "={{ $json.id }}"
+          "value": "={{ $json.id }}",
+          "mode": "id"
         },
         "options": {}
       },
-      "id": "gdrive-download",
-      "name": "Download Expense Document",
+      "id": "7cde84bf-1fcf-4cd5-aad8-19c628ed25ae",
+      "name": "Download receipt",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [
-        700,
-        300
-      ],
+      "position": [608, 288],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "GDRIVE_CREDENTIAL_ID",
-          "name": "Google Drive Account"
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
         }
       }
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
         "prompt": "Extract all expense details from this receipt or expense report including date, merchant name, amount, payment method, and category. If multiple items, list each separately.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"expenseDate\":{\"type\":\"string\"},\"merchant\":{\"type\":\"string\"},\"category\":{\"type\":\"string\",\"enum\":[\"Travel\",\"Meals\",\"Office Supplies\",\"Software\",\"Equipment\",\"Marketing\",\"Professional Services\",\"Utilities\",\"Other\"]},\"amount\":{\"type\":\"number\"},\"currency\":{\"type\":\"string\"},\"paymentMethod\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"taxAmount\":{\"type\":\"number\"},\"lineItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"item\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"}}}}},\"required\":[\"merchant\",\"amount\"],\"additionalProperties\":false}"
+        "schema": "{\"type\":\"object\",\"properties\":{\"expenseDate\":{\"type\":\"string\"},\"merchant\":{\"type\":\"string\"},\"category\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"},\"currency\":{\"type\":\"string\"},\"paymentMethod\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"taxAmount\":{\"type\":\"number\"}},\"additionalProperties\":false}"
       },
-      "id": "pdfvector-extract",
-      "name": "PDF Vector - Extract Expense",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
-      "position": [
-        960,
-        300
-      ],
-      "notes": "AI extracts and categorizes expense data",
+      "typeVersion": 2,
+      "position": [800, 288],
+      "id": "438b8466-f429-425a-b031-d50997e63619",
+      "name": "Extract from a document",
       "credentials": {
         "pdfVectorApi": {
-          "id": "PDFVECTOR_CREDENTIAL_ID",
-          "name": "PDF Vector API"
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
         }
       }
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
         "jsCode": "const expense = $input.first().json.data;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Auto-categorize if not determined\nlet category = expense.category || 'Other';\nconst merchantLower = (expense.merchant || '').toLowerCase();\n\nif (!expense.category || expense.category === 'Other') {\n  if (merchantLower.includes('uber') || merchantLower.includes('lyft') || merchantLower.includes('airline') || merchantLower.includes('hotel')) {\n    category = 'Travel';\n  } else if (merchantLower.includes('restaurant') || merchantLower.includes('cafe') || merchantLower.includes('doordash')) {\n    category = 'Meals';\n  } else if (merchantLower.includes('amazon') || merchantLower.includes('staples') || merchantLower.includes('office')) {\n    category = 'Office Supplies';\n  } else if (merchantLower.includes('software') || merchantLower.includes('saas') || merchantLower.includes('subscription')) {\n    category = 'Software';\n  }\n}\n\n// Determine if requires approval (over $500)\nconst requiresApproval = expense.amount > 500;\n\nreturn [{\n  json: {\n    ...expense,\n    category: category,\n    requiresApproval: requiresApproval,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    processedAt: new Date().toISOString()\n  }\n}];"
       },
-      "id": "process-expense",
-      "name": "Process & Categorize",
+      "id": "aceeb7e4-ccfe-496f-aebf-9f17f252ae5b",
+      "name": "Process & categorize",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1160,
-        300
-      ]
+      "position": [1008, 288]
     },
     {
       "parameters": {
         "operation": "append",
         "documentId": {
           "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
           "mode": "list",
-          "value": ""
+          "cachedResultName": "Workflow Sheet"
         },
         "sheetName": {
           "__rl": true,
+          "value": "gid=0",
           "mode": "list",
-          "value": "Expenses"
+          "cachedResultName": "Sheet1"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -217,22 +157,33 @@
             "Requires Approval": "={{ $json.requiresApproval ? 'Yes' : 'No' }}",
             "Receipt Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
             "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
-          }
+          },
+          "matchingColumns": [],
+          "schema": [
+            { "id": "Date", "displayName": "Date", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Merchant", "displayName": "Merchant", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Category", "displayName": "Category", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Amount", "displayName": "Amount", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Currency", "displayName": "Currency", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Tax", "displayName": "Tax", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Payment Method", "displayName": "Payment Method", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Description", "displayName": "Description", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Requires Approval", "displayName": "Requires Approval", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Receipt Link", "displayName": "Receipt Link", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Processed Date", "displayName": "Processed Date", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+          ]
         },
         "options": {}
       },
-      "id": "sheets-log",
-      "name": "Log to Expense Tracker",
+      "id": "e4ae0b50-b3dd-429d-bf13-53f1e1ad3696",
+      "name": "Log expense",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        1500,
-        300
-      ],
+      "typeVersion": 4.4,
+      "position": [1200, 288],
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "SHEETS_CREDENTIAL_ID",
-          "name": "Google Sheets Account"
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
         }
       }
     },
@@ -242,12 +193,12 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "loose"
+            "typeValidation": "strict"
           },
           "conditions": [
             {
-              "id": "condition-approval",
-              "leftValue": "={{ $('Process & Categorize').item.json.requiresApproval }}",
+              "id": "approval-condition",
+              "leftValue": "={{ $('Process & categorize').item.json.requiresApproval }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -256,176 +207,92 @@
             }
           ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
-      "id": "if-approval",
-      "name": "Needs Approval?",
+      "id": "8d824132-661a-4a43-a24b-6d8bff0f3792",
+      "name": "Over $500?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        1700,
-        300
-      ]
+      "typeVersion": 2.2,
+      "position": [1408, 288]
     },
     {
       "parameters": {
         "authentication": "oAuth2",
-        "resource": "message",
-        "operation": "post",
-        "channel": {
+        "select": "channel",
+        "channelId": {
           "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
           "mode": "list",
-          "value": ""
+          "cachedResultName": "general"
         },
-        "text": "=:rotating_light: *Expense Approval Required*\n\n*Merchant:* {{ $('Process & Categorize').item.json.merchant }}\n*Amount:* ${{ $('Process & Categorize').item.json.amount }}\n*Category:* {{ $('Process & Categorize').item.json.category }}\n*Date:* {{ $('Process & Categorize').item.json.expenseDate }}\n\n<https://drive.google.com/file/d/{{ $('Process & Categorize').item.json.fileId }}/view|View Receipt>",
+        "text": "=🚨 *Expense Approval Required*\n\n*Merchant:* {{ $('Process & categorize').item.json.merchant }}\n*Amount:* ${{ $('Process & categorize').item.json.amount }}\n*Category:* {{ $('Process & categorize').item.json.category }}\n*Date:* {{ $('Process & categorize').item.json.expenseDate }}\n\n<https://drive.google.com/file/d/{{ $('Process & categorize').item.json.fileId }}/view|View Receipt>",
         "otherOptions": {}
       },
-      "id": "slack-approval",
-      "name": "Request Approval",
+      "id": "b6a77e83-76ee-4d3b-b692-8675a3f7eba9",
+      "name": "Request approval",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [
-        1920,
-        200
-      ],
+      "position": [1600, 192],
       "credentials": {
         "slackOAuth2Api": {
-          "id": "SLACK_CREDENTIAL_ID",
-          "name": "Slack Account"
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
         }
       }
     },
     {
       "parameters": {
         "authentication": "oAuth2",
-        "resource": "message",
-        "operation": "post",
-        "channel": {
+        "select": "channel",
+        "channelId": {
           "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
           "mode": "list",
-          "value": ""
+          "cachedResultName": "general"
         },
-        "text": "=:white_check_mark: *Expense Logged*\n\n*Merchant:* {{ $('Process & Categorize').item.json.merchant }}\n*Amount:* ${{ $('Process & Categorize').item.json.amount }}\n*Category:* {{ $('Process & Categorize').item.json.category }}",
+        "text": "=✅ *Expense Logged*\n\n*Merchant:* {{ $('Process & categorize').item.json.merchant }}\n*Amount:* ${{ $('Process & categorize').item.json.amount }}\n*Category:* {{ $('Process & categorize').item.json.category }}",
         "otherOptions": {}
       },
-      "id": "slack-logged",
-      "name": "Confirm Logged",
+      "id": "7d448758-d3e1-4b30-b47a-20eb90715edd",
+      "name": "Confirm logged",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [
-        1920,
-        400
-      ],
+      "position": [1600, 384],
       "credentials": {
         "slackOAuth2Api": {
-          "id": "SLACK_CREDENTIAL_ID",
-          "name": "Slack Account"
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
         }
       }
     }
   ],
+  "pinData": {},
   "connections": {
     "Google Drive Trigger": {
-      "main": [
-        [
-          {
-            "node": "Download Expense Document",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Download receipt", "type": "main", "index": 0 }]]
     },
-    "Download Expense Document": {
-      "main": [
-        [
-          {
-            "node": "PDF Vector - Extract Expense",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Download receipt": {
+      "main": [[{ "node": "Extract from a document", "type": "main", "index": 0 }]]
     },
-    "PDF Vector - Extract Expense": {
-      "main": [
-        [
-          {
-            "node": "Process & Categorize",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Extract from a document": {
+      "main": [[{ "node": "Process & categorize", "type": "main", "index": 0 }]]
     },
-    "Process & Categorize": {
-      "main": [
-        [
-          {
-            "node": "Log to Expense Tracker",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Process & categorize": {
+      "main": [[{ "node": "Log expense", "type": "main", "index": 0 }]]
     },
-    "Log to Expense Tracker": {
-      "main": [
-        [
-          {
-            "node": "Needs Approval?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Log expense": {
+      "main": [[{ "node": "Over $500?", "type": "main", "index": 0 }]]
     },
-    "Needs Approval?": {
+    "Over $500?": {
       "main": [
-        [
-          {
-            "node": "Request Approval",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Confirm Logged",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Request approval", "type": "main", "index": 0 }],
+        [{ "node": "Confirm logged", "type": "main", "index": 0 }]
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "staticData": null,
-  "meta": {
-    "templateId": "pdfvector-expense-report-processor",
-    "templateCredsSetupCompleted": false
-  },
-  "pinData": {},
-  "versionId": "1.0.0",
-  "triggerCount": 1,
-  "tags": [
-    {
-      "id": "1",
-      "name": "Expense Management"
-    },
-    {
-      "id": "2",
-      "name": "Receipt Processing"
-    },
-    {
-      "id": "3",
-      "name": "PDF Vector"
-    },
-    {
-      "id": "4",
-      "name": "Approval Workflow"
-    }
-  ]
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
 }
