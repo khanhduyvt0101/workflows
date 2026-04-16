@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## 📝 AI Contract Review\n\n### What this workflow does\n1. Monitors Google Drive for new contracts\n2. Extracts key terms & parties\n3. Identifies risks & red flags\n4. Generates executive summary\n5. Recommends review status\n\n### Setup steps\n1. Create Google Drive folder for contracts\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns (see below)\n4. Connect Slack and set your channel\n5. Update all credential IDs\n\n### Sheet columns\nFile Name, Contract Type, Parties, Effective Date, Expiration Date, Value, Auto Renewal, Termination Notice, High Risks, Medium Risks, Review Status, Contract Link, Reviewed Date\n\n### Perfect for\n- Legal teams\n- Business operations\n- Procurement\n- Sales operations",
+        "content": "## 📋 Contract Review\n\n### What this workflow does\n1. Watches Drive for new contracts\n2. Pulls out terms and parties\n3. Flags risky clauses\n4. Writes a quick summary\n5. Sets review status\n6. Sends Slack report\n\n### Setup steps\n1. Create \"Contracts\" folder in Google Drive\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns below\n4. Connect Slack and pick your channel\n5. Update folder ID, Sheet ID, channel ID\n\n### Sheet columns\nFile Name, Contract Type, Parties, Effective Date, Expiration Date, Value, Auto Renewal, Termination Notice, High Risks, Medium Risks, Review Status, Contract Link, Reviewed Date\n\n### Perfect for\n- Legal teams\n- Business ops\n- Procurement",
         "height": 480,
         "width": 364,
         "color": 5
@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "content": "## ⚠️ Risk Severity Levels\n\n**High** - Requires legal review\n**Medium** - Review recommended\n**Low** - Ready for signature\n\nFlags unusual clauses,\nmissing protections,\nand liability concerns.",
+        "content": "## ⚠️ Risk Levels\n\n- High → Legal review needed\n- Medium → Review recommended\n- Low → Ready to sign",
         "height": 220,
         "width": 400
       },
@@ -90,16 +90,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "prompt": "Analyze this contract and extract key terms, parties involved, important dates, payment terms, termination clauses, liability limitations, and identify any potential risks or unusual clauses.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"contractType\":{\"type\":\"string\",\"enum\":[\"Service Agreement\",\"Employment Contract\",\"NDA\",\"Lease Agreement\",\"Sales Contract\",\"Partnership Agreement\",\"License Agreement\",\"Other\"]},\"parties\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"role\":{\"type\":\"string\"}}}},\"effectiveDate\":{\"type\":\"string\"},\"expirationDate\":{\"type\":\"string\"},\"autoRenewal\":{\"type\":\"boolean\"},\"renewalTerms\":{\"type\":\"string\"},\"totalValue\":{\"type\":\"number\"},\"paymentTerms\":{\"type\":\"string\"},\"terminationNoticeDays\":{\"type\":\"number\"},\"terminationClauses\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"liabilityLimitations\":{\"type\":\"string\"},\"indemnificationClauses\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"confidentialityTerms\":{\"type\":\"string\"},\"nonCompeteClause\":{\"type\":\"boolean\"},\"nonCompeteDetails\":{\"type\":\"string\"},\"riskFlags\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"risk\":{\"type\":\"string\"},\"severity\":{\"type\":\"string\",\"enum\":[\"High\",\"Medium\",\"Low\"]},\"clause\":{\"type\":\"string\"}}}}},\"required\":[\"contractType\",\"parties\"],\"additionalProperties\":false}"
+        "prompt": "Analyze this contract and extract as flat fields. contractType (one of: Service Agreement, Employment Contract, NDA, Lease Agreement, Sales Contract, Partnership Agreement, License Agreement, Other), party1Name, party1Role, party2Name, party2Role, effectiveDate (YYYY-MM-DD), expirationDate (YYYY-MM-DD), autoRenewal (true/false), renewalTerms, totalValue (number), paymentTerms, terminationNoticeDays (number), terminationClauses (semicolon-separated list), liabilityLimitations, nonCompeteClause (true/false), nonCompeteDetails, highRiskFlags (semicolon-separated list of HIGH severity risks), mediumRiskFlags (semicolon-separated list of MEDIUM severity risks), lowRiskFlags (semicolon-separated list of LOW severity risks), highRiskCount (number), mediumRiskCount (number).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"contractType\": {\"type\": \"string\"}, \"party1Name\": {\"type\": \"string\"}, \"party1Role\": {\"type\": \"string\"}, \"party2Name\": {\"type\": \"string\"}, \"party2Role\": {\"type\": \"string\"}, \"effectiveDate\": {\"type\": \"string\"}, \"expirationDate\": {\"type\": \"string\"}, \"autoRenewal\": {\"type\": \"boolean\"}, \"renewalTerms\": {\"type\": \"string\"}, \"totalValue\": {\"type\": \"number\"}, \"paymentTerms\": {\"type\": \"string\"}, \"terminationNoticeDays\": {\"type\": \"number\"}, \"terminationClauses\": {\"type\": \"string\"}, \"liabilityLimitations\": {\"type\": \"string\"}, \"nonCompeteClause\": {\"type\": \"boolean\"}, \"nonCompeteDetails\": {\"type\": \"string\"}, \"highRiskFlags\": {\"type\": \"string\"}, \"mediumRiskFlags\": {\"type\": \"string\"}, \"lowRiskFlags\": {\"type\": \"string\"}, \"highRiskCount\": {\"type\": \"number\"}, \"mediumRiskCount\": {\"type\": \"number\"}}, \"additionalProperties\": false}"
       },
       "id": "df895e74-25d1-4913-91c3-30a9c5b28d0a",
       "name": "PDF Vector - Analyze Contract",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         656,
         -96
@@ -128,15 +127,14 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
-        "prompt": "Provide a brief executive summary of this contract (2-3 sentences), list the top 3 things the signer should be aware of, and give an overall risk rating (Low/Medium/High) with justification."
+        "question": "Provide a brief executive summary of this contract (2-3 sentences), list the top 3 things the signer should be aware of, and give an overall risk rating (Low/Medium/High) with justification."
       },
       "id": "06b75976-6f60-46db-bfe3-28982f88ac33",
       "name": "PDF Vector - Executive Summary",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         1040,
         64
@@ -150,7 +148,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const contract = $('PDF Vector - Analyze Contract').item.json.data;\nconst summary = $input.first().json.markdown;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Count risk levels\nconst risks = contract.riskFlags || [];\nconst highRisks = risks.filter(r => r.severity === 'High').length;\nconst mediumRisks = risks.filter(r => r.severity === 'Medium').length;\n\n// Format parties\nconst partiesList = contract.parties ? contract.parties.map(p => `${p.name} (${p.role})`).join(', ') : 'Not specified';\n\n// Format risks\nconst risksList = risks.map(r => `[${r.severity}] ${r.risk}`).join('\\n') || 'No significant risks identified';\n\n// Determine overall status\nlet reviewStatus = 'Ready for Signature';\nif (highRisks > 0) reviewStatus = 'Requires Legal Review';\nelse if (mediumRisks >= 2) reviewStatus = 'Review Recommended';\n\nreturn [{\n  json: {\n    ...contract,\n    executiveSummary: summary,\n    partiesList: partiesList,\n    risksList: risksList,\n    highRiskCount: highRisks,\n    mediumRiskCount: mediumRisks,\n    reviewStatus: reviewStatus,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const contract = $('PDF Vector - Analyze Contract').item.json.data || $('PDF Vector - Analyze Contract').item.json;\nconst summary = $input.first().json.answer || $input.first().json.markdown || '';\nconst fileName = $('Google Drive Trigger').item.json.name;\n\nconst highRisks  = parseInt(contract.highRiskCount)   || 0;\nconst medRisks   = parseInt(contract.mediumRiskCount) || 0;\n\nconst partiesList = [\n  contract.party1Name ? `${contract.party1Name} (${contract.party1Role || 'Party A'})` : null,\n  contract.party2Name ? `${contract.party2Name} (${contract.party2Role || 'Party B'})` : null\n].filter(Boolean).join(', ') || 'Not specified';\n\nconst risksList = [\n  ...(contract.highRiskFlags   || '').split(';').map(r => r.trim()).filter(Boolean).map(r => `[High] ${r}`),\n  ...(contract.mediumRiskFlags || '').split(';').map(r => r.trim()).filter(Boolean).map(r => `[Medium] ${r}`),\n  ...(contract.lowRiskFlags    || '').split(';').map(r => r.trim()).filter(Boolean).map(r => `[Low] ${r}`)\n].join('\\n') || 'No significant risks identified';\n\nlet reviewStatus = 'Ready for Signature';\nif (highRisks > 0)    reviewStatus = 'Requires Legal Review';\nelse if (medRisks >= 2) reviewStatus = 'Review Recommended';\n\nreturn [{ json: {\n  ...contract,\n  executiveSummary:   summary,\n  partiesList,\n  risksList,\n  highRiskCount:  highRisks,\n  mediumRiskCount: medRisks,\n  reviewStatus,\n  fileName,\n  fileId: $('Google Drive Trigger').item.json.id,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "fd623fe4-996a-4f50-8d61-034ecf2452ae",
       "name": "Compile Review",
