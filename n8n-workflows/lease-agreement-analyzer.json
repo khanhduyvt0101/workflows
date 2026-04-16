@@ -1,11 +1,12 @@
 {
-  "name": "W8 - Lease Agreement Analyzer for Renters",
+  "name": "Lease Agreement Analyzer for Renters",
   "nodes": [
     {
       "parameters": {
-        "content": "## 🏠 Lease Agreement Analyzer\n\n**Perfect for:**\n- Renters reviewing leases\n- Property managers\n- Real estate agents\n\n**What it extracts:**\n- Rent & deposit amounts\n- Lease duration & renewal terms\n- Pet policies\n- Maintenance responsibilities\n- Early termination clauses\n- Red flags & unusual terms\n\n**Setup Required:**\n1. Google Drive credential\n2. PDF Vector credential\n3. Google Sheets credential\n4. Slack credential\n5. Create lease folder in Drive\n6. Create analysis spreadsheet",
-        "height": 400,
-        "width": 320
+        "content": "## \ud83c\udfe0 Lease Agreement Analyzer\n\n### What this workflow does\n1. Watches Drive for new lease PDFs\n2. Extracts rent, deposits, terms\n3. Flags red flags and unusual clauses\n4. Generates tenant advice\n5. Logs to comparison spreadsheet\n6. Alerts on high-risk leases\n\n### Setup steps\n1. Create \"Leases\" folder in Drive\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns below\n4. Connect Slack for notifications\n5. Update folder ID, Sheet ID, channel ID\n\n### Sheet columns\nProperty Address, Landlord, Tenants, Monthly Rent, Security Deposit, Move-In Cost, Lease Start, Lease End, Pet Policy, Utilities Included, Late Fee, Early Termination, Red Flags, Risk Level, Tenant Advice, Analyzed Date\n\n### Perfect for\n- Renters reviewing leases\n- Property managers\n- Real estate agents",
+        "height": 520,
+        "width": 320,
+        "color": 5
       },
       "id": "sticky-main",
       "name": "Sticky Note",
@@ -18,7 +19,7 @@
     },
     {
       "parameters": {
-        "content": "## 🚩 Red Flag Detection\n\nAutomatically flags:\n- Excessive fees\n- Unreasonable penalties\n- Unusual clauses\n- Missing tenant protections\n- Vague language\n\n**Risk Levels:**\n- High: 2+ high-severity flags\n- Medium: 1 high or 3+ total flags\n- Low: Minor or no issues",
+        "content": "## \ud83d\udea9 Red Flag Detection\n\nFlags these issues:\n- Excessive fees\n- Unreasonable penalties\n- Unusual clauses\n- Missing tenant protections\n- Vague language\n\n### Risk Levels\n- High: 2+ high-severity flags\n- Medium: 1 high or 3+ total flags\n- Low: Minor or no issues",
         "height": 240,
         "width": 260
       },
@@ -29,21 +30,6 @@
       "position": [
         400,
         80
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## 📊 Google Sheets Columns\n\nCreate these columns in Row 1:\n\nProperty Address | Landlord | Tenants | Monthly Rent | Security Deposit | Move-In Cost | Lease Start | Lease End | Pet Policy | Utilities Included | Late Fee | Early Termination | Red Flags | Risk Level | Tenant Advice | Analyzed Date",
-        "height": 160,
-        "width": 400
-      },
-      "id": "sticky-sheets",
-      "name": "Sticky Note2",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        60,
-        500
       ]
     },
     {
@@ -106,17 +92,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Analyze this residential lease agreement thoroughly and extract all key terms:\n\n1. Property Information:\n   - Full property address\n   - Unit/apartment number if applicable\n\n2. Parties:\n   - Landlord name, company, contact info\n   - All tenant names\n\n3. Financial Terms:\n   - Monthly rent amount\n   - Security deposit\n   - Any additional deposits (pet, last month)\n   - Late payment grace period and fee\n   - Returned check fee\n\n4. Lease Duration:\n   - Start date and end date\n   - Lease term length\n   - Renewal terms and conditions\n   - Auto-renewal clause (yes/no)\n   - Required notice to vacate\n\n5. Pet Policy:\n   - Pets allowed or not\n   - Pet deposit and monthly pet rent\n   - Breed/size restrictions\n\n6. Utilities & Amenities:\n   - Which utilities are included\n   - Parking included or fee\n   - Storage, laundry access\n\n7. Responsibilities:\n   - Landlord maintenance duties\n   - Tenant maintenance duties\n\n8. Termination:\n   - Early termination penalty\n   - Lease break conditions\n   - Move-out notice required\n\n9. Red Flags:\n   - Identify any unusual, excessive, or potentially unfair clauses\n   - Note vague language that could be problematic\n   - Flag missing standard tenant protections",
-        "schema": "{\"type\":\"object\",\"properties\":{\"propertyAddress\":{\"type\":\"string\",\"description\":\"Full property address including unit number\"},\"landlord\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"company\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"}}},\"tenants\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"List of all tenant names\"},\"monthlyRent\":{\"type\":\"number\",\"description\":\"Monthly rent amount in dollars\"},\"securityDeposit\":{\"type\":\"number\",\"description\":\"Security deposit amount\"},\"leaseStart\":{\"type\":\"string\",\"description\":\"Lease start date\"},\"leaseEnd\":{\"type\":\"string\",\"description\":\"Lease end date\"},\"leaseTerm\":{\"type\":\"string\",\"description\":\"Lease duration (e.g., 12 months)\"},\"renewalTerms\":{\"type\":\"string\",\"description\":\"How lease renews after initial term\"},\"autoRenewal\":{\"type\":\"boolean\",\"description\":\"Whether lease auto-renews\"},\"petPolicy\":{\"type\":\"object\",\"properties\":{\"allowed\":{\"type\":\"boolean\"},\"petDeposit\":{\"type\":\"number\"},\"petRent\":{\"type\":\"number\"},\"restrictions\":{\"type\":\"string\"}}},\"utilitiesIncluded\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"List of included utilities\"},\"parkingIncluded\":{\"type\":\"boolean\"},\"parkingFee\":{\"type\":\"number\"},\"latePaymentGracePeriod\":{\"type\":\"number\",\"description\":\"Days before late fee applies\"},\"latePaymentFee\":{\"type\":\"number\",\"description\":\"Late payment fee amount\"},\"earlyTerminationPenalty\":{\"type\":\"string\",\"description\":\"Penalty for breaking lease early\"},\"moveOutNotice\":{\"type\":\"number\",\"description\":\"Days notice required to move out\"},\"maintenanceResponsibilities\":{\"type\":\"object\",\"properties\":{\"landlord\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"tenant\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}},\"redFlags\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"issue\":{\"type\":\"string\",\"description\":\"Description of the concerning clause\"},\"severity\":{\"type\":\"string\",\"enum\":[\"High\",\"Medium\",\"Low\"]},\"clause\":{\"type\":\"string\",\"description\":\"The actual clause text\"}}}}},\"required\":[\"propertyAddress\",\"monthlyRent\"],\"additionalProperties\":false}"
+        "prompt": "Analyze this residential lease agreement and extract as flat fields. propertyAddress, landlordName, landlordCompany, landlordPhone, landlordEmail, tenantNames (comma-separated all tenant names), monthlyRent (number), securityDeposit (number), leaseStart (YYYY-MM-DD), leaseEnd (YYYY-MM-DD), leaseTerm, renewalTerms, autoRenewal (true/false), moveOutNotice (number of days), petsAllowed (true/false), petDeposit (number), petRent (number), petRestrictions, utilitiesIncluded (comma-separated list), parkingIncluded (true/false), parkingFee (number), latePaymentGracePeriod (number of days), latePaymentFee (number), earlyTerminationPenalty, landlordResponsibilities (semicolon-separated list), tenantResponsibilities (semicolon-separated list), highRedFlags (semicolon-separated HIGH severity issues), mediumRedFlags (semicolon-separated MEDIUM severity issues), lowRedFlags (semicolon-separated LOW severity issues), totalRedFlagCount (number).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"propertyAddress\": {\"type\": \"string\"}, \"landlordName\": {\"type\": \"string\"}, \"landlordCompany\": {\"type\": \"string\"}, \"landlordPhone\": {\"type\": \"string\"}, \"landlordEmail\": {\"type\": \"string\"}, \"tenantNames\": {\"type\": \"string\"}, \"monthlyRent\": {\"type\": \"number\"}, \"securityDeposit\": {\"type\": \"number\"}, \"leaseStart\": {\"type\": \"string\"}, \"leaseEnd\": {\"type\": \"string\"}, \"leaseTerm\": {\"type\": \"string\"}, \"renewalTerms\": {\"type\": \"string\"}, \"autoRenewal\": {\"type\": \"boolean\"}, \"moveOutNotice\": {\"type\": \"number\"}, \"petsAllowed\": {\"type\": \"boolean\"}, \"petDeposit\": {\"type\": \"number\"}, \"petRent\": {\"type\": \"number\"}, \"petRestrictions\": {\"type\": \"string\"}, \"utilitiesIncluded\": {\"type\": \"string\"}, \"parkingIncluded\": {\"type\": \"boolean\"}, \"parkingFee\": {\"type\": \"number\"}, \"latePaymentGracePeriod\": {\"type\": \"number\"}, \"latePaymentFee\": {\"type\": \"number\"}, \"earlyTerminationPenalty\": {\"type\": \"string\"}, \"landlordResponsibilities\": {\"type\": \"string\"}, \"tenantResponsibilities\": {\"type\": \"string\"}, \"highRedFlags\": {\"type\": \"string\"}, \"mediumRedFlags\": {\"type\": \"string\"}, \"lowRedFlags\": {\"type\": \"string\"}, \"totalRedFlagCount\": {\"type\": \"number\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Analyze Lease",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         540,
         340
@@ -145,16 +129,14 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "As a tenant advocate reviewing this lease agreement, provide:\n\n1. SUMMARY (2-3 sentences): Brief overview of this lease - is it standard or does it have unusual terms?\n\n2. TOP 3 NEGOTIATION POINTS: What should the tenant try to negotiate or get clarified before signing? Be specific.\n\n3. FAIRNESS RATING: Rate this lease as one of:\n   - Tenant-Friendly (favorable terms for renter)\n   - Neutral (standard/balanced terms)\n   - Landlord-Friendly (favors property owner)\n   Include a brief justification.\n\n4. WARNINGS: Any terms that could cause problems during tenancy or at move-out?"
+        "question": "As a tenant advocate reviewing this lease agreement, provide:\n\n1. SUMMARY (2-3 sentences): Brief overview of this lease - is it standard or does it have unusual terms?\n\n2. TOP 3 NEGOTIATION POINTS: What should the tenant try to negotiate or get clarified before signing? Be specific.\n\n3. FAIRNESS RATING: Rate this lease as one of:\n   - Tenant-Friendly (favorable terms for renter)\n   - Neutral (standard/balanced terms)\n   - Landlord-Friendly (favors property owner)\n   Include a brief justification.\n\n4. WARNINGS: Any terms that could cause problems during tenancy or at move-out?"
       },
       "id": "pdfvector-advice",
       "name": "PDF Vector - Tenant Advice",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         940,
         340
@@ -168,7 +150,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const lease = $('PDF Vector - Analyze Lease').item.json.data;\nconst advice = $input.first().json.markdown;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Calculate total move-in cost\nconst moveInCost = (lease.monthlyRent || 0) + \n  (lease.securityDeposit || 0) + \n  (lease.petPolicy?.petDeposit || 0);\n\n// Format landlord info\nconst landlordInfo = lease.landlord \n  ? `${lease.landlord.name || ''}${lease.landlord.company ? ' (' + lease.landlord.company + ')' : ''}`.trim()\n  : 'Not specified';\n\n// Format tenants\nconst tenantsList = lease.tenants && lease.tenants.length > 0\n  ? lease.tenants.join(', ')\n  : 'Not specified';\n\n// Format utilities\nconst utilities = lease.utilitiesIncluded && lease.utilitiesIncluded.length > 0\n  ? lease.utilitiesIncluded.join(', ')\n  : 'None included';\n\n// Format pet policy\nlet petSummary = 'Not specified';\nif (lease.petPolicy) {\n  if (lease.petPolicy.allowed) {\n    petSummary = `Allowed`;\n    if (lease.petPolicy.petDeposit) petSummary += ` - Deposit: $${lease.petPolicy.petDeposit}`;\n    if (lease.petPolicy.petRent) petSummary += `, Monthly: $${lease.petPolicy.petRent}`;\n    if (lease.petPolicy.restrictions) petSummary += ` (${lease.petPolicy.restrictions})`;\n  } else {\n    petSummary = 'Not allowed';\n  }\n}\n\n// Format late fee\nconst lateFee = lease.latePaymentFee \n  ? `$${lease.latePaymentFee} after ${lease.latePaymentGracePeriod || 0} days`\n  : 'Not specified';\n\n// Format red flags\nconst redFlags = lease.redFlags || [];\nconst highRisks = redFlags.filter(r => r.severity === 'High');\nconst mediumRisks = redFlags.filter(r => r.severity === 'Medium');\nconst flagsSummary = redFlags.length > 0\n  ? redFlags.map(r => `[${r.severity}] ${r.issue}`).join('; ')\n  : 'None identified';\n\n// Determine overall risk level\nlet riskLevel = 'Low';\nif (highRisks.length >= 2) riskLevel = 'High';\nelse if (highRisks.length === 1 || redFlags.length >= 3) riskLevel = 'Medium';\n\n// Truncate advice for Sheets (avoid cell overflow)\nconst adviceShort = advice && advice.length > 500 \n  ? advice.substring(0, 500) + '...'\n  : advice;\n\nreturn [{\n  json: {\n    propertyAddress: lease.propertyAddress || 'Not specified',\n    landlord: landlordInfo,\n    tenants: tenantsList,\n    monthlyRent: lease.monthlyRent || 0,\n    securityDeposit: lease.securityDeposit || 0,\n    moveInCost: moveInCost,\n    leaseStart: lease.leaseStart || 'Not specified',\n    leaseEnd: lease.leaseEnd || 'Not specified',\n    leaseTerm: lease.leaseTerm || 'Not specified',\n    autoRenewal: lease.autoRenewal ? 'Yes' : 'No',\n    petPolicy: petSummary,\n    utilities: utilities,\n    lateFee: lateFee,\n    earlyTermination: lease.earlyTerminationPenalty || 'Not specified',\n    moveOutNotice: lease.moveOutNotice ? `${lease.moveOutNotice} days` : 'Not specified',\n    redFlagCount: redFlags.length,\n    highRiskCount: highRisks.length,\n    flagsSummary: flagsSummary,\n    riskLevel: riskLevel,\n    tenantAdvice: advice,\n    tenantAdviceShort: adviceShort,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const lease = $('PDF Vector - Analyze Lease').item.json.data || $('PDF Vector - Analyze Lease').item.json;\nconst advice = $input.first().json.answer || $input.first().json.markdown || '';\nconst fileName = $('Google Drive Trigger').item.json.name;\n\nconst monthlyRent = parseFloat(lease.monthlyRent) || 0;\nconst securityDeposit = parseFloat(lease.securityDeposit) || 0;\nconst petDeposit = parseFloat(lease.petDeposit) || 0;\nconst moveInCost = monthlyRent + securityDeposit + petDeposit;\n\nconst landlordInfo = [lease.landlordName, lease.landlordCompany].filter(Boolean).join(' (').replace(/(.+)/, '$1)').replace(/^(.+)\\)$/, '$1') || 'Not specified';\n\nlet petSummary = 'Not specified';\nif (lease.petsAllowed === true) {\n  petSummary = 'Allowed';\n  if (petDeposit) petSummary += ` - Deposit: $${petDeposit}`;\n  if (lease.petRent) petSummary += `, Monthly: $${lease.petRent}`;\n  if (lease.petRestrictions) petSummary += ` (${lease.petRestrictions})`;\n} else if (lease.petsAllowed === false) { petSummary = 'Not allowed'; }\n\nconst lateFee = lease.latePaymentFee\n  ? `$${lease.latePaymentFee} after ${lease.latePaymentGracePeriod || 0} days`\n  : 'Not specified';\n\nconst highFlags = (lease.highRedFlags || '').split(';').map(f => f.trim()).filter(Boolean);\nconst medFlags  = (lease.mediumRedFlags || '').split(';').map(f => f.trim()).filter(Boolean);\nconst lowFlags  = (lease.lowRedFlags || '').split(';').map(f => f.trim()).filter(Boolean);\nconst allFlags  = [\n  ...highFlags.map(f => `[High] ${f}`),\n  ...medFlags.map(f  => `[Medium] ${f}`),\n  ...lowFlags.map(f  => `[Low] ${f}`)\n];\nconst flagsSummary = allFlags.join('; ') || 'None identified';\n\nlet riskLevel = 'Low';\nif (highFlags.length >= 2) riskLevel = 'High';\nelse if (highFlags.length === 1 || allFlags.length >= 3) riskLevel = 'Medium';\n\nconst adviceShort = advice && advice.length > 500 ? advice.substring(0, 500) + '...' : advice;\n\nreturn [{ json: {\n  propertyAddress:  lease.propertyAddress  || 'Not specified',\n  landlord:         landlordInfo,\n  tenants:          lease.tenantNames       || 'Not specified',\n  monthlyRent,\n  securityDeposit,\n  moveInCost,\n  leaseStart:       lease.leaseStart        || 'Not specified',\n  leaseEnd:         lease.leaseEnd          || 'Not specified',\n  leaseTerm:        lease.leaseTerm         || 'Not specified',\n  autoRenewal:      lease.autoRenewal ? 'Yes' : 'No',\n  petPolicy:        petSummary,\n  utilities:        lease.utilitiesIncluded || 'None included',\n  lateFee,\n  earlyTermination: lease.earlyTerminationPenalty || 'Not specified',\n  moveOutNotice:    lease.moveOutNotice ? `${lease.moveOutNotice} days` : 'Not specified',\n  flagsSummary,\n  riskLevel,\n  tenantAdvice:      advice,\n  tenantAdviceShort: adviceShort,\n  fileName,\n  fileId: $('Google Drive Trigger').item.json.id,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "compile-analysis",
       "name": "Compile Analysis",
@@ -218,7 +200,7 @@
       "id": "sheets-log",
       "name": "Log Lease Analysis",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
+      "typeVersion": 4.4,
       "position": [
         1340,
         340
@@ -249,14 +231,14 @@
               }
             }
           ],
-          "combinator": "or"
+          "combinator": "and"
         },
         "options": {}
       },
       "id": "if-high-risk",
       "name": "High Risk?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         1540,
         340
@@ -271,13 +253,13 @@
           "value": "YOUR_SLACK_CHANNEL_ID",
           "mode": "list"
         },
-        "text": "=🚨 *HIGH RISK LEASE ALERT*\n\n*Property:* {{ $('Compile Analysis').item.json.propertyAddress }}\n*Rent:* ${{ $('Compile Analysis').item.json.monthlyRent }}/month\n*Move-In Cost:* ${{ $('Compile Analysis').item.json.moveInCost }}\n\n⚠️ *Red Flags ({{ $('Compile Analysis').item.json.redFlagCount }}):*\n{{ $('Compile Analysis').item.json.flagsSummary }}\n\n📋 *File:* {{ $('Compile Analysis').item.json.fileName }}",
+        "text": "=\ud83d\udea8 *High-Risk Lease Detected*\n\n*Property:* {{ $('Compile Analysis').item.json.propertyAddress }}\n*Rent:* ${{ $('Compile Analysis').item.json.monthlyRent }}/month\n*Move-In Cost:* ${{ $('Compile Analysis').item.json.moveInCost }}\n\n\u26a0\ufe0f *Red Flags:* {{ $('Compile Analysis').item.json.flagsSummary }}\n\n\ud83d\udccb Review before signing!",
         "otherOptions": {}
       },
       "id": "slack-alert",
       "name": "High Risk Alert",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1740,
         240
@@ -298,13 +280,13 @@
           "value": "YOUR_SLACK_CHANNEL_ID",
           "mode": "list"
         },
-        "text": "=✅ *Lease Analyzed*\n\n*Property:* {{ $('Compile Analysis').item.json.propertyAddress }}\n*Rent:* ${{ $('Compile Analysis').item.json.monthlyRent }}/month\n*Term:* {{ $('Compile Analysis').item.json.leaseStart }} to {{ $('Compile Analysis').item.json.leaseEnd }}\n*Risk Level:* {{ $('Compile Analysis').item.json.riskLevel }}\n\n📋 *File:* {{ $('Compile Analysis').item.json.fileName }}",
+        "text": "=\u2705 *Lease Analyzed*\n\n*Property:* {{ $('Compile Analysis').item.json.propertyAddress }}\n*Rent:* ${{ $('Compile Analysis').item.json.monthlyRent }}/month\n*Term:* {{ $('Compile Analysis').item.json.leaseStart }} to {{ $('Compile Analysis').item.json.leaseEnd }}\n*Risk Level:* {{ $('Compile Analysis').item.json.riskLevel }}\n\n\ud83d\udccb *File:* {{ $('Compile Analysis').item.json.fileName }}",
         "otherOptions": {}
       },
       "id": "slack-notify",
       "name": "Analysis Complete",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1740,
         440
@@ -423,7 +405,6 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "staticData": null,
   "tags": [
     {
       "name": "PDF Vector"
@@ -441,7 +422,6 @@
       "name": "Contract Analysis"
     }
   ],
-  "triggerCount": 0,
   "meta": {
     "templateCredsSetupCompleted": false
   }
