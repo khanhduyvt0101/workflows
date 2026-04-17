@@ -1,20 +1,20 @@
 {
-  "name": "Academic Paper Finder & Citation Generator",
+  "name": "W13 - Academic Paper Finder & Citation Generator",
   "nodes": [
     {
       "parameters": {
-        "content": "## 🎓 Academic Paper Finder & Citation Generator\n\n### What this workflow does\n1. Checks Google Sheet for queries with Status = \"Pending\"\n2. Searches Semantic Scholar, PubMed, and ArXiv\n3. Ranks results by citation count\n4. Generates APA and BibTeX citations\n5. Updates row with results and Status = \"Completed\"\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Sheet with columns: Search Query, Status, Results Found, Top Papers, Total Citations, Most Cited, APA Citations, BibTeX Citations, Search Date\n3. Connect Google Sheets in both Read and Update nodes\n4. Update spreadsheet ID in both nodes\n\n### How to use\n1. Add search queries to column A\n2. Set Status to \"Pending\" for queries to search\n3. Workflow runs every minute and processes pending rows\n4. Status changes to \"Completed\" when done\n5. To re-search: change Status back to \"Pending\"\n\n### Perfect for\n- Researchers doing literature reviews\n- PhD students finding related work\n- Academic writers needing citations",
+        "content": "## 🎓 Academic Paper Finder & Citation Generator\n\n### What this workflow does\n1. Checks Google Sheet for queries with Status = \"Pending\"\n2. Searches Semantic Scholar, PubMed, and ArXiv\n3. Ranks results by citation count\n4. Generates APA and BibTeX citations\n5. Updates row with results and Status = \"Completed\"\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create Google Sheet with columns:\n   Search Query, Status, Results Found, Top Papers, Total Citations, Most Cited, APA Citations, BibTeX Citations, Search Date\n3. Connect Google Sheets credential in both Read Queries and Update Results nodes\n4. Update your Spreadsheet ID in both nodes\n5. Connect PDF Vector credential in the Search Papers node\n\n### How to use\n1. Add your search topic to column A (Search Query)\n2. Type **Pending** in column B (Status)\n3. The workflow runs every minute automatically\n4. Status changes to **Completed** when results are ready\n5. To re-search the same query: change Status back to **Pending**\n\n### ⚠️ Important Note\nThe workflow automatically filters for Status = \"Pending\" rows via the **Status = Pending?** filter node — you do NOT need to configure any filter in the Read Queries Sheets node. It works out of the box.\n\n### Perfect for\n- Researchers doing literature reviews\n- PhD students finding related work\n- Academic writers needing citations",
         "height": 580,
         "width": 360,
         "color": 5
       },
-      "id": "sticky-main",
+      "id": "e4605613-39cf-43e9-9093-0b4f40d11cc7",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -384,
-        368
+        2160,
+        976
       ]
     },
     {
@@ -23,13 +23,13 @@
         "height": 180,
         "width": 220
       },
-      "id": "sticky-databases",
+      "id": "d6036ed2-d607-421c-b6c0-97ef0230f93d",
       "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        224,
-        368
+        2768,
+        976
       ]
     },
     {
@@ -38,13 +38,13 @@
         "height": 180,
         "width": 220
       },
-      "id": "sticky-status",
+      "id": "cc9ebec3-861b-45a4-9cee-317a72c0a90f",
       "name": "Sticky Note2",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        464,
-        368
+        3008,
+        976
       ]
     },
     {
@@ -58,13 +58,13 @@
           ]
         }
       },
-      "id": "schedule-trigger",
+      "id": "faa1092c-f6aa-4e0c-b9e1-7e7db5bbd0ac",
       "name": "Every Minute",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -32,
-        656
+        2512,
+        1264
       ]
     },
     {
@@ -79,15 +79,23 @@
           "value": "gid=0",
           "mode": "list"
         },
-        "options": {}
+        "options": {},
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "Pending"
+            }
+          ]
+        }
       },
-      "id": "sheets-read",
+      "id": "de349380-5ee3-49fc-9754-fa77a702230f",
       "name": "Read Queries",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        160,
-        656
+        2704,
+        1264
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -129,17 +137,18 @@
         },
         "options": {}
       },
-      "id": "filter-pending",
+      "id": "90f46c8e-e291-475d-ad26-47bd2571e2b9",
       "name": "Status = Pending?",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2,
       "position": [
-        368,
-        656
+        2912,
+        1264
       ]
     },
     {
       "parameters": {
+        "resource": "academic",
         "query": "={{ $json['Search Query'] }}",
         "providers": [
           "semantic-scholar",
@@ -147,15 +156,16 @@
           "arxiv"
         ],
         "limit": 20,
-        "additionalFields": {}
+        "yearFrom": 1900,
+        "yearTo": 2050
       },
-      "id": "pdfvector-search",
+      "id": "79e06e72-e80f-4bf7-a6b5-ec2a313b5149",
       "name": "PDF Vector - Search Papers",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
-        560,
-        656
+        3104,
+        1264
       ],
       "credentials": {
         "pdfVectorApi": {
@@ -169,13 +179,13 @@
         "mode": "runOnceForEachItem",
         "jsCode": "const results = $input.item.json.results || [];\nconst query = $('Status = Pending?').item.json['Search Query'] || 'Unknown';\n\n// Sort by citations (descending)\nconst sortedResults = results.sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0));\n\n// Take top 10 most cited\nconst topPapers = sortedResults.slice(0, 10);\n\n// Generate formatted lists\nconst apaCitations = [];\nconst bibtexCitations = [];\nconst paperList = [];\n\ntopPapers.forEach((paper, index) => {\n  const authors = paper.authors ? paper.authors.map(a => a.name).join(', ') : 'Unknown';\n  const firstAuthor = paper.authors && paper.authors[0] ? paper.authors[0].name.split(' ').pop() : 'Unknown';\n  const year = paper.year || 'n.d.';\n  const title = paper.title || 'Untitled';\n  const venue = paper.venue || paper.journal || 'N/A';\n  const citations = paper.citationCount || 0;\n  \n  // Paper list entry\n  paperList.push(`${index + 1}. ${title} (${year}) - ${citations} citations`);\n  \n  // APA format\n  const apa = `${authors} (${year}). ${title}. ${venue}${paper.doi ? `. https://doi.org/${paper.doi}` : ''}`;\n  apaCitations.push(apa);\n  \n  // BibTeX format\n  const bibtexKey = `${firstAuthor.toLowerCase().replace(/[^a-z]/g, '')}${year}${title.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '')}`;\n  const bibtex = `@article{${bibtexKey},\\n  title={${title}},\\n  author={${authors}},\\n  year={${year}},\\n  journal={${venue}}${paper.doi ? `,\\n  doi={${paper.doi}}` : ''}\\n}`;\n  bibtexCitations.push(bibtex);\n});\n\n// Summary stats\nconst totalCitations = topPapers.reduce((sum, p) => sum + (p.citationCount || 0), 0);\n\nreturn {\n  json: {\n    query: query,\n    totalResults: results.length,\n    topPapersList: paperList.join('\\n'),\n    totalCitations: totalCitations,\n    mostCited: topPapers[0] ? `${topPapers[0].title} (${topPapers[0].citationCount} citations)` : 'N/A',\n    apaCitations: apaCitations.join('\\n\\n'),\n    bibtexCitations: bibtexCitations.join('\\n\\n'),\n    searchDate: new Date().toISOString().split('T')[0]\n  }\n};"
       },
-      "id": "process-results",
+      "id": "e69ff6f1-9595-4da0-93e0-e795d89118c7",
       "name": "Process & Format Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        768,
-        656
+        3312,
+        1264
       ]
     },
     {
@@ -202,21 +212,118 @@
             "Most Cited": "={{ $json.mostCited }}",
             "APA Citations": "={{ $json.apaCitations }}",
             "BibTeX Citations": "={{ $json.bibtexCitations }}",
-            "Search Date": "={{ $json.searchDate }}"
+            "Search Date": "={{ $json.searchDate }}",
+            "row_number": 0
           },
           "matchingColumns": [
             "Search Query"
-          ]
+          ],
+          "schema": [
+            {
+              "id": "Search Query",
+              "displayName": "Search Query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Results Found",
+              "displayName": "Results Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Top Papers",
+              "displayName": "Top Papers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Citations",
+              "displayName": "Total Citations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Most Cited",
+              "displayName": "Most Cited",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "APA Citations",
+              "displayName": "APA Citations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "BibTeX Citations",
+              "displayName": "BibTeX Citations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Search Date",
+              "displayName": "Search Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
         "options": {}
       },
-      "id": "sheets-update",
+      "id": "ff0b5982-f5c8-4870-8ebd-16c20ced93e6",
       "name": "Update Results",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        960,
-        656
+        3504,
+        1264
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -286,9 +393,12 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
-  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
   "tags": [
     {
       "name": "PDF Vector"
@@ -302,8 +412,5 @@
     {
       "name": "Citations"
     }
-  ],
-  "meta": {
-    "templateCredsSetupCompleted": false
-  }
+  ]
 }
