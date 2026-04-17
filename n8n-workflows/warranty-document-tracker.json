@@ -90,16 +90,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "prompt": "Extract warranty information from this document: product name, model number, serial number, manufacturer, purchase date, purchase location, warranty duration, warranty type (limited, full, extended), what's covered, what's excluded, claim process, and contact information for claims.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"product\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"brand\":{\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"serialNumber\":{\"type\":\"string\"},\"category\":{\"type\":\"string\"}}},\"purchase\":{\"type\":\"object\",\"properties\":{\"date\":{\"type\":\"string\"},\"retailer\":{\"type\":\"string\"},\"price\":{\"type\":\"number\"},\"receiptNumber\":{\"type\":\"string\"}}},\"warranty\":{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"Limited\",\"Full\",\"Extended\",\"Lifetime\",\"Manufacturer\"]},\"durationMonths\":{\"type\":\"number\"},\"startDate\":{\"type\":\"string\"},\"endDate\":{\"type\":\"string\"}}},\"coverage\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"exclusions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"claimProcess\":{\"type\":\"string\"},\"contactInfo\":{\"type\":\"object\",\"properties\":{\"phone\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"website\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"}}}},\"required\":[\"product\"],\"additionalProperties\":false}"
+        "prompt": "Extract warranty document data as flat fields. productName, brandName, modelNumber, serialNumber, purchaseDate (YYYY-MM-DD), purchasePrice (number), retailerName, retailerAddress, warrantyType (one of: Manufacturer, Extended, Limited, Full, Parts Only, Other), warrantyStartDate (YYYY-MM-DD), warrantyEndDate (YYYY-MM-DD), warrantyDurationMonths (number), coverageList (semicolon-separated what is covered), exclusionsList (semicolon-separated what is NOT covered), claimContactPhone, claimContactEmail, claimWebsite, registrationRequired (true/false), registrationDeadlineDays (number), proofOfPurchaseRequired (true/false), transferable (true/false).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"productName\": {\"type\": \"string\"}, \"brandName\": {\"type\": \"string\"}, \"modelNumber\": {\"type\": \"string\"}, \"serialNumber\": {\"type\": \"string\"}, \"purchaseDate\": {\"type\": \"string\"}, \"purchasePrice\": {\"type\": \"number\"}, \"retailerName\": {\"type\": \"string\"}, \"retailerAddress\": {\"type\": \"string\"}, \"warrantyType\": {\"type\": \"string\"}, \"warrantyStartDate\": {\"type\": \"string\"}, \"warrantyEndDate\": {\"type\": \"string\"}, \"warrantyDurationMonths\": {\"type\": \"number\"}, \"coverageList\": {\"type\": \"string\"}, \"exclusionsList\": {\"type\": \"string\"}, \"claimContactPhone\": {\"type\": \"string\"}, \"claimContactEmail\": {\"type\": \"string\"}, \"claimWebsite\": {\"type\": \"string\"}, \"registrationRequired\": {\"type\": \"boolean\"}, \"registrationDeadlineDays\": {\"type\": \"number\"}, \"proofOfPurchaseRequired\": {\"type\": \"boolean\"}, \"transferable\": {\"type\": \"boolean\"}}, \"additionalProperties\": false}"
       },
       "id": "6fd80a0e-7700-40cd-a511-00934c12ce48",
       "name": "PDF Vector - Extract Warranty",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         512,
         176
@@ -113,7 +112,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const doc = $input.first().json.data;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\nconst product = doc.product || {};\nconst purchase = doc.purchase || {};\nconst warranty = doc.warranty || {};\n\n// Calculate warranty end date if not provided\nlet endDate = warranty.endDate;\nif (!endDate && purchase.date && warranty.durationMonths) {\n  const start = new Date(purchase.date);\n  start.setMonth(start.getMonth() + warranty.durationMonths);\n  endDate = start.toISOString().split('T')[0];\n}\n\n// Calculate days remaining\nlet daysRemaining = 'Unknown';\nlet status = 'Unknown';\nif (endDate) {\n  const end = new Date(endDate);\n  const today = new Date();\n  daysRemaining = Math.ceil((end - today) / (1000 * 60 * 60 * 24));\n  \n  if (daysRemaining < 0) status = 'Expired';\n  else if (daysRemaining <= 30) status = 'Expiring Soon';\n  else if (daysRemaining <= 90) status = 'Active - Expires in 3 months';\n  else status = 'Active';\n}\n\n// Format coverage\nconst coverage = doc.coverage || [];\nconst coverageList = coverage.join(', ') || 'Not specified';\n\n// Format exclusions\nconst exclusions = doc.exclusions || [];\nconst exclusionsList = exclusions.join(', ') || 'None listed';\n\nreturn [{\n  json: {\n    ...doc,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    productName: product.name,\n    productBrand: product.brand,\n    productModel: product.model,\n    serialNumber: product.serialNumber,\n    purchaseDate: purchase.date,\n    purchasePrice: purchase.price,\n    retailer: purchase.retailer,\n    warrantyType: warranty.type,\n    warrantyEndDate: endDate,\n    daysRemaining: daysRemaining,\n    status: status,\n    coverageList: coverageList,\n    exclusionsList: exclusionsList,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId   = $('Google Drive Trigger').item.json.id;\n\nlet daysRemaining = 'N/A'; let warrantyStatus = 'Unknown';\nif (data.warrantyEndDate) {\n  const end = new Date(data.warrantyEndDate); const today = new Date();\n  daysRemaining = Math.ceil((end - today) / (1000*60*60*24));\n  if (daysRemaining < 0)        warrantyStatus = 'Expired';\n  else if (daysRemaining <= 30)  warrantyStatus = 'Expiring Soon';\n  else if (daysRemaining <= 90)  warrantyStatus = 'Expiring This Quarter';\n  else                           warrantyStatus = 'Active';\n}\n\nreturn [{ json: {\n  productName:      data.productName      || 'Unknown',\n  brandName:        data.brandName        || 'N/A',\n  modelNumber:      data.modelNumber      || 'N/A',\n  serialNumber:     data.serialNumber     || 'N/A',\n  purchaseDate:     data.purchaseDate     || 'N/A',\n  purchasePrice:    parseFloat(data.purchasePrice) || 0,\n  retailerName:     data.retailerName     || 'N/A',\n  warrantyType:     data.warrantyType     || 'N/A',\n  warrantyEndDate:  data.warrantyEndDate  || 'N/A',\n  daysRemaining,\n  warrantyStatus,\n  coverageList:     data.coverageList     || 'N/A',\n  exclusionsList:   data.exclusionsList   || 'N/A',\n  claimContactPhone: data.claimContactPhone || 'N/A',\n  claimWebsite:     data.claimWebsite     || 'N/A',\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "6d3f8c9a-01fc-4a69-a9a8-dc5de261e16f",
       "name": "Process Warranty",
@@ -143,16 +142,16 @@
           "mappingMode": "defineBelow",
           "value": {
             "Product": "={{ $json.productName }}",
-            "Brand": "={{ $json.productBrand || 'N/A' }}",
-            "Model": "={{ $json.productModel || 'N/A' }}",
-            "Serial Number": "={{ $json.serialNumber || 'N/A' }}",
-            "Purchase Date": "={{ $json.purchaseDate || 'N/A' }}",
-            "Purchase Price": "={{ $json.purchasePrice || 'N/A' }}",
-            "Retailer": "={{ $json.retailer || 'N/A' }}",
-            "Warranty Type": "={{ $json.warrantyType || 'N/A' }}",
-            "Expires": "={{ $json.warrantyEndDate || 'N/A' }}",
+            "Brand": "={{ $json.brandName }}",
+            "Model": "={{ $json.modelNumber }}",
+            "Serial Number": "={{ $json.serialNumber }}",
+            "Purchase Date": "={{ $json.purchaseDate }}",
+            "Purchase Price": "={{ $json.purchasePrice }}",
+            "Retailer": "={{ $json.retailerName }}",
+            "Warranty Type": "={{ $json.warrantyType }}",
+            "Expires": "={{ $json.warrantyEndDate }}",
             "Days Remaining": "={{ $json.daysRemaining }}",
-            "Status": "={{ $json.status }}",
+            "Status": "={{ $json.warrantyStatus }}",
             "Coverage": "={{ $json.coverageList }}",
             "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
             "Added Date": "={{ $json.processedAt.split('T')[0] }}"
@@ -318,8 +317,8 @@
           "conditions": [
             {
               "id": "fd3dfb7e-40fc-49c0-bee4-c6f640645347",
-              "leftValue": "={{ $('Process Warranty').item.json.status }}",
-              "rightValue": "Expiring Soon",
+              "leftValue": "={{ $('Process Warranty').item.json.warrantyStatus }}",
+              "rightValue": "Expired",
               "operator": {
                 "type": "string",
                 "operation": "equals",
@@ -356,7 +355,7 @@
       "id": "787b5e0e-25f7-48e3-8b89-9a3c6d1e8cef",
       "name": "Alert Expiring",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1312,
         64
@@ -443,7 +442,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
