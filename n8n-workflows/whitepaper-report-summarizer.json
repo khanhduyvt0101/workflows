@@ -78,16 +78,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "prompt": "Extract key information from this whitepaper or report: title, author/organization, publication date, document type, main thesis/argument, key statistics and data points, methodology used, main findings, conclusions, recommendations, and data sources cited.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"author\":{\"type\":\"string\"},\"organization\":{\"type\":\"string\"},\"publicationDate\":{\"type\":\"string\"},\"documentType\":{\"type\":\"string\",\"enum\":[\"Whitepaper\",\"Research Report\",\"Industry Report\",\"Case Study\",\"Technical Document\",\"Annual Report\",\"Market Analysis\",\"Other\"]},\"pageCount\":{\"type\":\"number\"},\"industry\":{\"type\":\"string\"},\"mainThesis\":{\"type\":\"string\"},\"keyStatistics\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"statistic\":{\"type\":\"string\"},\"source\":{\"type\":\"string\"}}}},\"methodology\":{\"type\":\"string\"},\"mainFindings\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"conclusions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"recommendations\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"dataSources\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"keywords\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"title\"],\"additionalProperties\":false}"
+        "prompt": "Extract whitepaper or report data as flat fields. title, author, organization, publicationDate, documentType (one of: Whitepaper, Research Report, Industry Report, Case Study, Technical Document, Annual Report, Market Analysis, Other), pageCount (number), industry, mainThesis, methodology, keyStatisticsList (semicolon-separated key stats as single string), mainFindingsList (semicolon-separated main findings), conclusionsList (semicolon-separated conclusions), recommendationsList (semicolon-separated recommendations), dataSourcesList (semicolon-separated data sources cited), keywordsList (comma-separated keywords).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"title\": {\"type\": \"string\"}, \"author\": {\"type\": \"string\"}, \"organization\": {\"type\": \"string\"}, \"publicationDate\": {\"type\": \"string\"}, \"documentType\": {\"type\": \"string\"}, \"pageCount\": {\"type\": \"number\"}, \"industry\": {\"type\": \"string\"}, \"mainThesis\": {\"type\": \"string\"}, \"methodology\": {\"type\": \"string\"}, \"keyStatisticsList\": {\"type\": \"string\"}, \"mainFindingsList\": {\"type\": \"string\"}, \"conclusionsList\": {\"type\": \"string\"}, \"recommendationsList\": {\"type\": \"string\"}, \"dataSourcesList\": {\"type\": \"string\"}, \"keywordsList\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Extract Info",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         576,
         48
@@ -110,15 +109,14 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
-        "prompt": "Based on this document, provide: 1) A 3-4 sentence executive summary, 2) The single most important takeaway for business leaders, 3) Three actionable next steps based on the findings, and 4) Who should read this document and why."
+        "question": "Based on this document, provide: 1) A 3-4 sentence executive summary, 2) The single most important takeaway for business leaders, 3) Three actionable next steps based on the findings, and 4) Who should read this document and why."
       },
       "id": "pdfvector-summary",
       "name": "PDF Vector - Generate Summary",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         976,
         192
@@ -126,7 +124,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const doc = $('PDF Vector - Extract Info').item.json.data;\nconst summary = $input.first().json.markdown;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Format key statistics\nconst stats = doc.keyStatistics || [];\nconst statsList = stats.map(s => `📊 ${s.statistic}`).join('\\n') || 'None extracted';\n\n// Format findings\nconst findings = doc.mainFindings || [];\nconst findingsList = findings.map((f, i) => `${i + 1}. ${f}`).join('\\n') || 'None listed';\n\n// Format recommendations\nconst recommendations = doc.recommendations || [];\nconst recsList = recommendations.map(r => `✓ ${r}`).join('\\n') || 'None provided';\n\n// Format keywords\nconst keywords = doc.keywords || [];\nconst keywordsList = keywords.join(', ') || 'None';\n\nreturn [{\n  json: {\n    ...doc,\n    executiveSummary: summary,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    statsList: statsList,\n    statsCount: stats.length,\n    findingsList: findingsList,\n    findingsCount: findings.length,\n    recsList: recsList,\n    recsCount: recommendations.length,\n    keywordsList: keywordsList,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const doc = $('PDF Vector - Extract Info').item.json.data || $('PDF Vector - Extract Info').item.json;\nconst summary = $input.first().json.answer || $input.first().json.markdown || '';\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId   = $('Google Drive Trigger').item.json.id;\n\nconst stats    = (doc.keyStatisticsList   || '').split(';').filter(Boolean);\nconst findings = (doc.mainFindingsList    || '').split(';').filter(Boolean);\nconst recs     = (doc.recommendationsList || '').split(';').filter(Boolean);\n\nconst statsList    = stats.map(s => `📊 ${s.trim()}`).join('\\n')           || 'None extracted';\nconst findingsList = findings.map((f,i) => `${i+1}. ${f.trim()}`).join('\\n') || 'None listed';\nconst recsList     = recs.map(r => `✓ ${r.trim()}`).join('\\n')             || 'None provided';\n\nreturn [{ json: {\n  title:           doc.title           || 'Unknown',\n  author:          doc.author          || 'N/A',\n  organization:    doc.organization    || 'N/A',\n  documentType:    doc.documentType    || 'Other',\n  industry:        doc.industry        || 'N/A',\n  publicationDate: doc.publicationDate || 'N/A',\n  pageCount:       doc.pageCount       || 'N/A',\n  keywordsList:    doc.keywordsList    || 'None',\n  executiveSummary: summary,\n  statsList,    statsCount:    stats.length,\n  findingsList, findingsCount: findings.length,\n  recsList,     recsCount:     recs.length,\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "compile-summary",
       "name": "Compile Summary",
@@ -171,19 +169,123 @@
           },
           "matchingColumns": [],
           "schema": [
-            { "id": "Title", "displayName": "Title", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Author", "displayName": "Author", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Organization", "displayName": "Organization", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Type", "displayName": "Type", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Industry", "displayName": "Industry", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Published", "displayName": "Published", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Pages", "displayName": "Pages", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Key Statistics", "displayName": "Key Statistics", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Findings", "displayName": "Findings", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Recommendations", "displayName": "Recommendations", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Keywords", "displayName": "Keywords", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Document Link", "displayName": "Document Link", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Added Date", "displayName": "Added Date", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Author",
+              "displayName": "Author",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Organization",
+              "displayName": "Organization",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Industry",
+              "displayName": "Industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Published",
+              "displayName": "Published",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pages",
+              "displayName": "Pages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Key Statistics",
+              "displayName": "Key Statistics",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Findings",
+              "displayName": "Findings",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Recommendations",
+              "displayName": "Recommendations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Keywords",
+              "displayName": "Keywords",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Document Link",
+              "displayName": "Document Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Added Date",
+              "displayName": "Added Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
           ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
@@ -215,7 +317,7 @@
       "id": "slack-share",
       "name": "Share Summary",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1584,
         192
@@ -312,7 +414,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
