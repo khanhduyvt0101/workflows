@@ -103,16 +103,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "prompt": "Extract meeting information from these notes or transcript: meeting title, date, attendees, agenda items, key discussion points, decisions made, action items with assigned owners and due dates, and any follow-up meetings scheduled.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"meetingTitle\":{\"type\":\"string\"},\"meetingDate\":{\"type\":\"string\"},\"meetingDuration\":{\"type\":\"string\"},\"attendees\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"role\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"}}}},\"agendaItems\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"keyDiscussionPoints\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"topic\":{\"type\":\"string\"},\"summary\":{\"type\":\"string\"}}}},\"decisionsMade\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"decision\":{\"type\":\"string\"},\"rationale\":{\"type\":\"string\"},\"decisionMaker\":{\"type\":\"string\"}}}},\"actionItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"task\":{\"type\":\"string\"},\"owner\":{\"type\":\"string\"},\"dueDate\":{\"type\":\"string\"},\"priority\":{\"type\":\"string\",\"enum\":[\"High\",\"Medium\",\"Low\"]}}}},\"followUpMeeting\":{\"type\":\"object\",\"properties\":{\"date\":{\"type\":\"string\"},\"purpose\":{\"type\":\"string\"}}},\"parkingLotItems\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"meetingTitle\"],\"additionalProperties\":false}"
+        "prompt": "Extract meeting notes data as flat fields. meetingTitle, meetingDate (YYYY-MM-DD), meetingDuration, attendeesList (comma-separated names as single string), agendaList (semicolon-separated agenda items), discussionSummary (semicolon-separated key points formatted as topic: summary), decisionsList (semicolon-separated decisions made), actionItemsList (semicolon-separated action items formatted as: task | owner | dueDate | priority), followUpDate (YYYY-MM-DD), followUpPurpose, parkingLotList (semicolon-separated parked items).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"meetingTitle\": {\"type\": \"string\"}, \"meetingDate\": {\"type\": \"string\"}, \"meetingDuration\": {\"type\": \"string\"}, \"attendeesList\": {\"type\": \"string\"}, \"agendaList\": {\"type\": \"string\"}, \"discussionSummary\": {\"type\": \"string\"}, \"decisionsList\": {\"type\": \"string\"}, \"actionItemsList\": {\"type\": \"string\"}, \"followUpDate\": {\"type\": \"string\"}, \"followUpPurpose\": {\"type\": \"string\"}, \"parkingLotList\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Extract Meeting Info",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         580,
         340
@@ -126,7 +125,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const meeting = $input.first().json.data;\nconst fileName = $('Google Drive Trigger')?.item?.json?.name || 'Unknown';\nconst fileId = $('Google Drive Trigger')?.item?.json?.id || '';\n\n// Format attendees\nconst attendees = meeting.attendees || [];\nconst attendeeList = attendees.map(a => a.name).join(', ') || 'Not specified';\nconst attendeeCount = attendees.length;\n\n// Format discussion points\nconst discussions = meeting.keyDiscussionPoints || [];\nconst discussionList = discussions.map(d => `• **${d.topic}**: ${d.summary}`).join('\\n') || 'None recorded';\n\n// Format decisions\nconst decisions = meeting.decisionsMade || [];\nconst decisionList = decisions.map(d => `✓ ${d.decision}`).join('\\n') || 'None recorded';\n\n// Format action items\nconst actions = meeting.actionItems || [];\nconst actionList = actions.map(a => \n  `□ ${a.task} → ${a.owner} (Due: ${a.dueDate || 'TBD'}) [${a.priority || 'Medium'}]`\n).join('\\n') || 'None assigned';\n\n// Count items\nconst actionCount = actions.length;\nconst decisionCount = decisions.length;\nconst highPriorityCount = actions.filter(a => a.priority === 'High').length;\n\nreturn [{\n  json: {\n    ...meeting,\n    fileName: fileName,\n    fileId: fileId,\n    attendeeList: attendeeList,\n    attendeeCount: attendeeCount,\n    discussionList: discussionList,\n    decisionList: decisionList,\n    decisionCount: decisionCount,\n    actionList: actionList,\n    actionCount: actionCount,\n    highPriorityCount: highPriorityCount,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\nconst fileName = $('Google Drive Trigger')?.item?.json?.name || 'Unknown';\nconst fileId   = $('Google Drive Trigger')?.item?.json?.id   || '';\n\nconst attendeeList  = data.attendeesList || 'Not specified';\nconst attendeeCount = attendeeList !== 'Not specified'\n  ? attendeeList.split(',').filter(a => a.trim()).length : 0;\n\nconst decisions = (data.decisionsList || '').split(';').map(d => d.trim()).filter(Boolean);\nconst decisionList  = decisions.map(d => `✓ ${d}`).join('\\n') || 'None recorded';\nconst decisionCount = decisions.length;\n\nconst actions = (data.actionItemsList || '').split(';').map(a => a.trim()).filter(Boolean);\nconst actionList = actions.map(a => {\n  const parts = a.split('|').map(p => p.trim());\n  return `▫ ${parts[0] || a} → ${parts[1] || 'TBD'} (Due: ${parts[2] || 'TBD'}) [${parts[3] || 'Medium'}]`;\n}).join('\\n') || 'None assigned';\nconst actionCount = actions.length;\nconst highPriorityCount = actions.filter(a => a.toLowerCase().includes('high')).length;\n\nreturn [{ json: {\n  meetingTitle:      data.meetingTitle      || 'Unknown Meeting',\n  meetingDate:       data.meetingDate       || 'N/A',\n  meetingDuration:   data.meetingDuration   || 'N/A',\n  attendeeList,\n  attendeeCount,\n  discussionSummary: data.discussionSummary || 'N/A',\n  decisionList,\n  decisionCount,\n  actionList,\n  actionCount,\n  highPriorityCount,\n  followUpDate:    data.followUpDate    || 'N/A',\n  followUpPurpose: data.followUpPurpose || 'N/A',\n  parkingLotList:  data.parkingLotList  || 'None',\n  fileName,\n  fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "format-meeting",
       "name": "Format Meeting Data",
@@ -161,7 +160,7 @@
             "Decisions Made": "={{ $json.decisionCount }}",
             "Action Items": "={{ $json.actionCount }}",
             "High Priority": "={{ $json.highPriorityCount }}",
-            "Follow-up Date": "={{ $json.followUpMeeting ? $json.followUpMeeting.date : 'N/A' }}",
+            "Follow-up Date": "={{ $json.followUpDate }}",
             "Notes Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
             "Processed": "={{ $json.processedAt.split('T')[0] }}"
           }
@@ -171,7 +170,7 @@
       "id": "sheets-log",
       "name": "Log Meeting Summary",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
+      "typeVersion": 4.4,
       "position": [
         980,
         340
@@ -192,13 +191,13 @@
           "value": "YOUR_SLACK_CHANNEL_ID",
           "mode": "list"
         },
-        "text": "=📋 *Meeting Summary: {{ $('Format Meeting Data').item.json.meetingTitle }}*\n\n📅 *Date:* {{ $('Format Meeting Data').item.json.meetingDate || 'N/A' }}\n👥 *Attendees:* {{ $('Format Meeting Data').item.json.attendeeList }}\n\n---\n\n✅ *Decisions Made ({{ $('Format Meeting Data').item.json.decisionCount }}):*\n{{ $('Format Meeting Data').item.json.decisionList }}\n\n---\n\n📌 *Action Items ({{ $('Format Meeting Data').item.json.actionCount }}):*\n{{ $('Format Meeting Data').item.json.actionList }}\n\n---\n\n{{ $('Format Meeting Data').item.json.followUpMeeting ? '📆 *Next Meeting:* ' + $('Format Meeting Data').item.json.followUpMeeting.date + ' - ' + $('Format Meeting Data').item.json.followUpMeeting.purpose : '' }}\n\n<https://drive.google.com/file/d/{{ $('Format Meeting Data').item.json.fileId }}/view|📄 View Full Notes>",
+        "text": "=📋 *Meeting Summary: {{ $('Format Meeting Data').item.json.meetingTitle }}*\n\n📅 *Date:* {{ $('Format Meeting Data').item.json.meetingDate }}\n⏱ *Duration:* {{ $('Format Meeting Data').item.json.meetingDuration }}\n👥 *Attendees:* {{ $('Format Meeting Data').item.json.attendeeList }}\n\n---\n\n✅ *Decisions Made ({{ $('Format Meeting Data').item.json.decisionCount }}):*\n{{ $('Format Meeting Data').item.json.decisionList }}\n\n---\n\n📌 *Action Items ({{ $('Format Meeting Data').item.json.actionCount }}):*\n{{ $('Format Meeting Data').item.json.actionList }}\n\n---\n\n{{ $('Format Meeting Data').item.json.followUpDate !== 'N/A' ? '📆 *Next Meeting:* ' + $('Format Meeting Data').item.json.followUpDate + ' — ' + $('Format Meeting Data').item.json.followUpPurpose : '' }}\n\n<https://drive.google.com/file/d/{{ $('Format Meeting Data').item.json.fileId }}/view|📄 View Full Notes>",
         "otherOptions": {}
       },
       "id": "slack-summary",
       "name": "Post Summary to Slack",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1180,
         340
@@ -273,7 +272,6 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "staticData": null,
   "tags": [
     {
       "name": "PDF Vector"
