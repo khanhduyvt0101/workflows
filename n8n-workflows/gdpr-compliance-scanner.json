@@ -89,16 +89,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "prompt": "Analyze this privacy policy for GDPR compliance. Extract: company name, last updated date, data controller info, DPO contact, types of data collected, legal bases for processing, data retention periods, third parties data is shared with, user rights mentioned (access, rectification, erasure, portability, objection), consent mechanisms, international transfer safeguards, and any compliance gaps or missing required elements.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"companyName\":{\"type\":\"string\"},\"lastUpdated\":{\"type\":\"string\"},\"jurisdiction\":{\"type\":\"string\"},\"dataController\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"}}},\"dpoContact\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"}}},\"dataCollected\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"category\":{\"type\":\"string\"},\"types\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"purpose\":{\"type\":\"string\"}}}},\"legalBases\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"retentionPeriods\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"dataType\":{\"type\":\"string\"},\"period\":{\"type\":\"string\"}}}},\"thirdParties\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"purpose\":{\"type\":\"string\"},\"location\":{\"type\":\"string\"}}}},\"userRights\":{\"type\":\"object\",\"properties\":{\"access\":{\"type\":\"boolean\"},\"rectification\":{\"type\":\"boolean\"},\"erasure\":{\"type\":\"boolean\"},\"portability\":{\"type\":\"boolean\"},\"objection\":{\"type\":\"boolean\"},\"restrictProcessing\":{\"type\":\"boolean\"},\"withdrawConsent\":{\"type\":\"boolean\"}}},\"consentMechanism\":{\"type\":\"string\"},\"internationalTransfers\":{\"type\":\"object\",\"properties\":{\"transfers\":{\"type\":\"boolean\"},\"safeguards\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}},\"breachNotification\":{\"type\":\"boolean\"},\"complianceGaps\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"companyName\"],\"additionalProperties\":false}"
+        "prompt": "Analyze this privacy policy or data protection document for GDPR compliance as flat fields. companyName, documentTitle, lastUpdated (YYYY-MM-DD), dataControllerName, dataControllerAddress, dpoName, dpoEmail, dpoPhone, hasDpo (true/false), dataCollectedList (semicolon-separated types of personal data collected), legalBasesList (semicolon-separated legal bases: consent/contract/legal obligation/vital interests/public task/legitimate interests), retentionSummary (semicolon-separated formatted as: dataType retentionPeriod), thirdPartiesList (semicolon-separated third parties data is shared with), internationalTransfers (true/false), transferCountries (semicolon-separated), safeguardMechanisms, userRightsList (semicolon-separated rights mentioned: access/rectification/erasure/portability/restriction/objection/withdraw-consent), missingRightsList (semicolon-separated GDPR rights NOT mentioned), complianceGapsList (semicolon-separated compliance issues found), complianceScore (number 0-100), complianceStatus (one of: Compliant, Partially Compliant, Non-Compliant).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"companyName\": {\"type\": \"string\"}, \"documentTitle\": {\"type\": \"string\"}, \"lastUpdated\": {\"type\": \"string\"}, \"dataControllerName\": {\"type\": \"string\"}, \"dataControllerAddress\": {\"type\": \"string\"}, \"dpoName\": {\"type\": \"string\"}, \"dpoEmail\": {\"type\": \"string\"}, \"dpoPhone\": {\"type\": \"string\"}, \"hasDpo\": {\"type\": \"boolean\"}, \"dataCollectedList\": {\"type\": \"string\"}, \"legalBasesList\": {\"type\": \"string\"}, \"retentionSummary\": {\"type\": \"string\"}, \"thirdPartiesList\": {\"type\": \"string\"}, \"internationalTransfers\": {\"type\": \"boolean\"}, \"transferCountries\": {\"type\": \"string\"}, \"safeguardMechanisms\": {\"type\": \"string\"}, \"userRightsList\": {\"type\": \"string\"}, \"missingRightsList\": {\"type\": \"string\"}, \"complianceGapsList\": {\"type\": \"string\"}, \"complianceScore\": {\"type\": \"number\"}, \"complianceStatus\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Analyze Policy",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         680,
         260
@@ -112,7 +111,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const policy = $input.first().json.data;\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId = $('Google Drive Trigger').item.json.id;\n\n// Check user rights coverage\nconst rights = policy.userRights || {};\nconst requiredRights = ['access', 'rectification', 'erasure', 'portability', 'objection', 'withdrawConsent'];\nconst coveredRights = requiredRights.filter(r => rights[r] === true);\nconst missingRights = requiredRights.filter(r => rights[r] !== true);\nconst rightsScore = Math.round((coveredRights.length / requiredRights.length) * 100);\n\n// Check for compliance gaps\nlet gaps = policy.complianceGaps || [];\nif (!policy.dpoContact?.email) gaps.push('Missing DPO contact information');\nif (!policy.legalBases || policy.legalBases.length === 0) gaps.push('No legal basis specified');\nif (!policy.breachNotification) gaps.push('No breach notification policy');\nif (policy.internationalTransfers?.transfers && (!policy.internationalTransfers?.safeguards || policy.internationalTransfers.safeguards.length === 0)) {\n  gaps.push('International transfers without safeguards');\n}\nif (missingRights.length > 0) gaps.push(`Missing user rights: ${missingRights.join(', ')}`);\n\n// Calculate overall compliance score\nlet score = 100;\nscore -= gaps.length * 10;\nscore = Math.max(0, Math.min(100, score));\n\n// Determine status\nlet status = 'Compliant';\nif (score < 50) status = 'Non-Compliant';\nelse if (score < 80) status = 'Needs Attention';\n\n// Format third parties\nconst thirdParties = policy.thirdParties || [];\nconst thirdPartyList = thirdParties.map(tp => `${tp.name} (${tp.purpose})`).join(', ') || 'None disclosed';\n\n// Format data collected\nconst dataCollected = policy.dataCollected || [];\nconst dataList = dataCollected.map(d => `${d.category}: ${d.types?.join(', ') || 'N/A'}`).join('\\n') || 'Not specified';\n\n// Format retention periods\nconst retention = policy.retentionPeriods || [];\nconst retentionList = retention.map(r => `${r.dataType}: ${r.period}`).join(', ') || 'Not specified';\n\n// Format legal bases\nconst legalBases = policy.legalBases || [];\nconst legalBasesList = legalBases.join(', ') || 'Not specified';\n\nreturn [{\n  json: {\n    ...policy,\n    fileName: fileName,\n    fileId: fileId,\n    complianceScore: score,\n    status: status,\n    rightsScore: rightsScore,\n    coveredRights: coveredRights.join(', ') || 'None',\n    missingRights: missingRights.join(', ') || 'None',\n    gapCount: gaps.length,\n    gapsList: gaps.join('\\n') || 'None identified',\n    thirdPartyCount: thirdParties.length,\n    thirdPartyList: thirdPartyList,\n    dataList: dataList,\n    retentionList: retentionList,\n    legalBasesList: legalBasesList,\n    hasDPO: policy.dpoContact?.email ? true : false,\n    hasInternationalTransfers: policy.internationalTransfers?.transfers || false,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId   = $('Google Drive Trigger').item.json.id;\n\nconst gaps         = (data.complianceGapsList  || '').split(';').filter(g => g.trim());\nconst rights       = (data.userRightsList       || '').split(';').filter(r => r.trim());\nconst missing      = (data.missingRightsList    || '').split(';').filter(r => r.trim());\nconst thirdParties = (data.thirdPartiesList     || '').split(';').filter(t => t.trim());\n\nreturn [{ json: {\n  companyName:            data.companyName        || 'Unknown',\n  documentTitle:          data.documentTitle      || 'N/A',\n  lastUpdated:            data.lastUpdated        || 'N/A',\n  complianceScore:        parseFloat(data.complianceScore) || 0,\n  complianceStatus:       data.complianceStatus   || 'Unknown',\n  status:                 data.complianceStatus   || 'Unknown',\n  hasDpo:                 data.hasDpo             || false,\n  hasDPO:                 data.hasDpo             || false,\n  dpoName:                data.dpoName            || 'N/A',\n  dpoEmail:               data.dpoEmail           || 'N/A',\n  userRightsList:         data.userRightsList     || 'None',\n  coveredRights:          rights.join('; ')       || 'None',\n  missingRightsList:      data.missingRightsList  || 'None',\n  missingRights:          missing.join('; ')      || 'None',\n  complianceGapsList:     data.complianceGapsList || 'None',\n  gapsList:               gaps.join('\\n')         || 'None',\n  thirdPartiesList:       data.thirdPartiesList   || 'None',\n  thirdPartyCount:        thirdParties.length,\n  internationalTransfers: data.internationalTransfers || false,\n  hasInternationalTransfers: data.internationalTransfers || false,\n  transferCountries:      data.transferCountries  || 'N/A',\n  dataCollectedList:      data.dataCollectedList  || 'N/A',\n  legalBasesList:         data.legalBasesList     || 'N/A',\n  gapCount:               gaps.length,\n  rightsScore:            rights.length,\n  missingCount:           missing.length,\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "analyze-compliance",
       "name": "Analyze Compliance",
@@ -142,15 +141,15 @@
           "mappingMode": "defineBelow",
           "value": {
             "Company": "={{ $json.companyName }}",
-            "Last Updated": "={{ $json.lastUpdated || 'N/A' }}",
-            "Compliance Score": "={{ $json.complianceScore }}%",
-            "Status": "={{ $json.status }}",
-            "User Rights Score": "={{ $json.rightsScore }}%",
-            "Missing Rights": "={{ $json.missingRights }}",
+            "Last Updated": "={{ $json.lastUpdated }}",
+            "Compliance Score": "={{ $json.complianceScore }}",
+            "Status": "={{ $json.complianceStatus }}",
+            "User Rights Score": "={{ $json.rightsScore }}",
+            "Missing Rights": "={{ $json.missingRightsList }}",
             "Gaps Found": "={{ $json.gapCount }}",
-            "Third Parties": "={{ $json.thirdPartyCount }}",
-            "Has DPO": "={{ $json.hasDPO ? 'Yes' : 'No' }}",
-            "International Transfers": "={{ $json.hasInternationalTransfers ? 'Yes' : 'No' }}",
+            "Third Parties": "={{ $json.thirdPartiesList }}",
+            "Has DPO": "={{ $json.hasDpo ? 'Yes' : 'No' }}",
+            "International Transfers": "={{ $json.internationalTransfers ? 'Yes' : 'No' }}",
             "Scanned Date": "={{ $json.processedAt.split('T')[0] }}"
           },
           "matchingColumns": [],
@@ -317,13 +316,13 @@
           "mode": "list",
           "cachedResultName": "compliance-alerts"
         },
-        "text": "=🔒 *GDPR Compliance Scan Complete*\n\n*Company:* {{ $('Analyze Compliance').item.json.companyName }}\n*Policy Updated:* {{ $('Analyze Compliance').item.json.lastUpdated || 'Not specified' }}\n\n📊 *Compliance Score:* {{ $('Analyze Compliance').item.json.complianceScore }}%\n⚠️ *Status:* {{ $('Analyze Compliance').item.json.status }}\n\n👤 *User Rights Score:* {{ $('Analyze Compliance').item.json.rightsScore }}%\n✅ *Covered:* {{ $('Analyze Compliance').item.json.coveredRights || 'None' }}\n❌ *Missing:* {{ $('Analyze Compliance').item.json.missingRights || 'None' }}\n\n🔍 *Compliance Gaps ({{ $('Analyze Compliance').item.json.gapCount }}):*\n{{ $('Analyze Compliance').item.json.gapsList }}\n\n🏢 *Third Parties:* {{ $('Analyze Compliance').item.json.thirdPartyCount }}\n👨‍💼 *Has DPO:* {{ $('Analyze Compliance').item.json.hasDPO ? 'Yes' : 'No' }}\n🌍 *International Transfers:* {{ $('Analyze Compliance').item.json.hasInternationalTransfers ? 'Yes' : 'No' }}\n\n<https://drive.google.com/file/d/{{ $('Analyze Compliance').item.json.fileId }}/view|📄 View Policy Document>",
+        "text": "=🔒 *GDPR Compliance Scan Complete*\n\n*Company:* {{ $('Analyze Compliance').item.json.companyName }}\n*Policy Updated:* {{ $('Analyze Compliance').item.json.lastUpdated || 'Not specified' }}\n\n📊 *Compliance Score:* {{ $('Analyze Compliance').item.json.complianceScore }}%\n⚠️ *Status:* {{ $('Analyze Compliance').item.json.status }}\n\n👤 *User Rights Score:* {{ $('Analyze Compliance').item.json.rightsScore }}/7 rights\n✅ *Covered:* {{ $('Analyze Compliance').item.json.coveredRights || 'None' }}\n❌ *Missing:* {{ $('Analyze Compliance').item.json.missingRights || 'None' }}\n\n🔍 *Compliance Gaps ({{ $('Analyze Compliance').item.json.gapCount }}):*\n{{ $('Analyze Compliance').item.json.gapsList }}\n\n🏢 *Third Parties:* {{ $('Analyze Compliance').item.json.thirdPartyCount }}\n👨‍💼 *Has DPO:* {{ $('Analyze Compliance').item.json.hasDPO ? 'Yes' : 'No' }}\n🌍 *International Transfers:* {{ $('Analyze Compliance').item.json.hasInternationalTransfers ? 'Yes' : 'No' }}\n\n<https://drive.google.com/file/d/{{ $('Analyze Compliance').item.json.fileId }}/view|📄 View Policy Document>",
         "otherOptions": {}
       },
       "id": "slack-alert",
       "name": "Alert Compliance Team",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1480,
         160
@@ -411,7 +410,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
