@@ -102,17 +102,16 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "attachment_0",
-        "prompt": "Extract all purchase order information: PO number, vendor details, ship-to address, order date, required delivery date, line items with item numbers, descriptions, quantities, unit prices, and totals, subtotal, shipping, tax, and grand total.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"poNumber\":{\"type\":\"string\"},\"orderDate\":{\"type\":\"string\"},\"requiredDate\":{\"type\":\"string\"},\"vendor\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"contact\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"}}},\"shipTo\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"attention\":{\"type\":\"string\"}}},\"billTo\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"}}},\"lineItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"lineNumber\":{\"type\":\"number\"},\"itemNumber\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unit\":{\"type\":\"string\"},\"unitPrice\":{\"type\":\"number\"},\"total\":{\"type\":\"number\"}}}},\"subtotal\":{\"type\":\"number\"},\"shippingCost\":{\"type\":\"number\"},\"tax\":{\"type\":\"number\"},\"grandTotal\":{\"type\":\"number\"},\"paymentTerms\":{\"type\":\"string\"},\"shippingMethod\":{\"type\":\"string\"},\"notes\":{\"type\":\"string\"}},\"required\":[\"poNumber\",\"vendor\",\"grandTotal\"],\"additionalProperties\":false}"
+        "prompt": "Extract purchase order data as flat fields. poNumber, orderDate (YYYY-MM-DD), requiredDate (YYYY-MM-DD), vendorName, vendorAddress, vendorContact, vendorEmail, vendorPhone, shipToName, shipToAddress, shipToAttention, billToName, billToAddress, lineItemsList (semicolon-separated formatted as: qty x description @ unitPrice = total), lineItemCount (number), subtotal (number), shippingCost (number), tax (number), grandTotal (number), paymentTerms, shippingMethod, notes.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"poNumber\": {\"type\": \"string\"}, \"orderDate\": {\"type\": \"string\"}, \"requiredDate\": {\"type\": \"string\"}, \"vendorName\": {\"type\": \"string\"}, \"vendorAddress\": {\"type\": \"string\"}, \"vendorContact\": {\"type\": \"string\"}, \"vendorEmail\": {\"type\": \"string\"}, \"vendorPhone\": {\"type\": \"string\"}, \"shipToName\": {\"type\": \"string\"}, \"shipToAddress\": {\"type\": \"string\"}, \"shipToAttention\": {\"type\": \"string\"}, \"billToName\": {\"type\": \"string\"}, \"billToAddress\": {\"type\": \"string\"}, \"lineItemsList\": {\"type\": \"string\"}, \"lineItemCount\": {\"type\": \"number\"}, \"subtotal\": {\"type\": \"number\"}, \"shippingCost\": {\"type\": \"number\"}, \"tax\": {\"type\": \"number\"}, \"grandTotal\": {\"type\": \"number\"}, \"paymentTerms\": {\"type\": \"string\"}, \"shippingMethod\": {\"type\": \"string\"}, \"notes\": {\"type\": \"string\"}}, \"additionalProperties\": false}",
+        "binaryPropertyName": "attachment_0"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Extract PO",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         480,
         300
@@ -126,7 +125,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const po = $input.first().json.data;\n\n// Generate internal tracking number\nconst trackingId = `PO-${Date.now().toString(36).toUpperCase()}`;\n\n// Count and format line items\nconst lineItems = po.lineItems || [];\nconst lineItemCount = lineItems.length;\nconst lineItemsList = lineItems.map(item => \n  `${item.quantity} x ${item.description} @ $${item.unitPrice} = $${item.total}`\n).join('\\n');\n\n// Calculate values\nconst subtotal = po.subtotal || lineItems.reduce((sum, item) => sum + (item.total || 0), 0);\nconst grandTotal = po.grandTotal || subtotal;\n\n// Format grand total with commas\nconst grandTotalFormatted = grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\n// Determine approval level\nlet approvalLevel = 'Auto-Approve';\nlet approver = 'System';\nif (grandTotal >= 25000) {\n  approvalLevel = 'VP/CFO Approval';\n  approver = 'finance-leadership';\n} else if (grandTotal >= 5000) {\n  approvalLevel = 'Director Approval';\n  approver = 'department-director';\n} else if (grandTotal >= 1000) {\n  approvalLevel = 'Manager Approval';\n  approver = 'department-manager';\n}\n\n// Check urgency based on delivery date\nlet urgency = 'Normal';\nlet daysUntilRequired = null;\nif (po.requiredDate) {\n  const required = new Date(po.requiredDate);\n  const today = new Date();\n  daysUntilRequired = Math.ceil((required - today) / (1000 * 60 * 60 * 24));\n  if (daysUntilRequired <= 3) urgency = 'Urgent';\n  else if (daysUntilRequired <= 7) urgency = 'High';\n}\n\nreturn [{\n  json: {\n    trackingId: trackingId,\n    ...po,\n    lineItemCount: lineItemCount,\n    lineItemsList: lineItemsList,\n    subtotal: subtotal,\n    grandTotal: grandTotal,\n    grandTotalFormatted: grandTotalFormatted,\n    approvalLevel: approvalLevel,\n    approver: approver,\n    urgency: urgency,\n    daysUntilRequired: daysUntilRequired,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const po = ($input.first().json?.data || $input.first().json) || {};\nconst trackingId = `PO-${Date.now().toString(36).toUpperCase()}`;\nconst grandTotal = parseFloat(po.grandTotal) || 0;\nconst subtotal   = parseFloat(po.subtotal)   || 0;\nconst grandTotalFormatted = grandTotal.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});\n\nlet approvalLevel = 'Auto-Approve';\nif (grandTotal >= 25000)     approvalLevel = 'VP/CFO Approval';\nelse if (grandTotal >= 5000) approvalLevel = 'Director Approval';\nelse if (grandTotal >= 1000) approvalLevel = 'Manager Approval';\n\nlet urgency = 'Normal'; let daysUntilRequired = null;\nif (po.requiredDate) {\n  const req = new Date(po.requiredDate); const today = new Date();\n  daysUntilRequired = Math.ceil((req - today) / (1000*60*60*24));\n  if (daysUntilRequired <= 3) urgency = 'Urgent';\n  else if (daysUntilRequired <= 7) urgency = 'High';\n}\n\nreturn [{ json: {\n  trackingId,\n  poNumber:     po.poNumber     || 'N/A',\n  vendorName:   po.vendorName   || 'N/A',\n  orderDate:    po.orderDate    || 'N/A',\n  requiredDate: po.requiredDate || 'N/A',\n  lineItemCount: parseInt(po.lineItemCount) || 0,\n  lineItemsList: po.lineItemsList || 'N/A',\n  subtotal, grandTotal, grandTotalFormatted,\n  shippingCost: parseFloat(po.shippingCost) || 0,\n  tax:          parseFloat(po.tax)          || 0,\n  approvalLevel, urgency, daysUntilRequired,\n  paymentTerms: po.paymentTerms || 'N/A',\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "process-po",
       "name": "Process PO",
@@ -155,7 +154,7 @@
           "value": {
             "Tracking ID": "={{ $json.trackingId }}",
             "PO Number": "={{ $json.poNumber }}",
-            "Vendor": "={{ $json.vendor.name }}",
+            "Vendor": "={{ $json.vendorName }}",
             "Order Date": "={{ $json.orderDate || 'N/A' }}",
             "Required Date": "={{ $json.requiredDate || 'N/A' }}",
             "Line Items": "={{ $json.lineItemCount }}",
@@ -175,7 +174,7 @@
       "id": "sheets-log",
       "name": "Log to PO Tracker",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
+      "typeVersion": 4.4,
       "position": [
         880,
         300
@@ -196,13 +195,13 @@
           "value": "YOUR_SLACK_CHANNEL_ID",
           "mode": "list"
         },
-        "text": "=📦 *New Purchase Order Received*\n\n*Tracking:* {{ $('Process PO').item.json.trackingId }}\n*PO Number:* {{ $('Process PO').item.json.poNumber }}\n*Vendor:* {{ $('Process PO').item.json.vendor.name }}\n\n📋 *Line Items:* {{ $('Process PO').item.json.lineItemCount }}\n{{ $('Process PO').item.json.lineItemsList }}\n\n💰 *Total:* ${{ $('Process PO').item.json.grandTotalFormatted }}\n📅 *Required By:* {{ $('Process PO').item.json.requiredDate || 'N/A' }}\n\n🔐 *Approval Required:* {{ $('Process PO').item.json.approvalLevel }}\n⚡ *Urgency:* {{ $('Process PO').item.json.urgency }}",
+        "text": "=📦 *New Purchase Order Received*\n\n*Tracking:* {{ $('Process PO').item.json.trackingId }}\n*PO Number:* {{ $('Process PO').item.json.poNumber }}\n*Vendor:* {{ $('Process PO').item.json.vendorName }}\n\n📋 *Line Items ({{ $('Process PO').item.json.lineItemCount }}):*\n{{ $('Process PO').item.json.lineItemsList }}\n\n💰 *Total:* ${{ $('Process PO').item.json.grandTotalFormatted }}\n📅 *Required By:* {{ $('Process PO').item.json.requiredDate }}\n\n🔐 *Approval Required:* {{ $('Process PO').item.json.approvalLevel }}\n⚡ *Urgency:* {{ $('Process PO').item.json.urgency }}",
         "otherOptions": {}
       },
       "id": "slack-notify",
       "name": "Notify Procurement",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1080,
         300
@@ -277,7 +276,6 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "staticData": null,
   "tags": [
     {
       "name": "PDF Vector"
