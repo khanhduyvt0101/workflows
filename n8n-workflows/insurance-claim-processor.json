@@ -1,5 +1,5 @@
 {
-  "name": "W12 - Insurance Claim Document Processor",
+  "name": "Insurance Claim Document Processor",
   "nodes": [
     {
       "parameters": {
@@ -101,17 +101,16 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "attachment_0",
-        "prompt": "Extract all insurance claim information: claim type, policy number, claimant info, date of incident, description, itemized costs, supporting documents, policy coverage details, and any pre-authorization references.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"claimType\":{\"type\":\"string\",\"enum\":[\"Medical\",\"Auto\",\"Property\",\"Life\",\"Disability\",\"Travel\",\"Other\"]},\"policyNumber\":{\"type\":\"string\"},\"claimNumber\":{\"type\":\"string\"},\"claimant\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"policyHolder\":{\"type\":\"string\"},\"relationship\":{\"type\":\"string\"},\"dob\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"}}},\"incidentDate\":{\"type\":\"string\"},\"incidentDescription\":{\"type\":\"string\"},\"incidentLocation\":{\"type\":\"string\"},\"provider\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"npi\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"}}},\"diagnosis\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"code\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"}}}},\"procedures\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"code\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"}}}},\"totalAmount\":{\"type\":\"number\"},\"deductible\":{\"type\":\"number\"},\"coPayment\":{\"type\":\"number\"},\"amountRequested\":{\"type\":\"number\"},\"preAuthNumber\":{\"type\":\"string\"},\"supportingDocs\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"claimType\",\"policyNumber\"],\"additionalProperties\":false}"
+        "prompt": "Extract insurance claim data as flat fields. claimType (one of: Medical, Auto, Property, Life, Disability, Travel, Other), policyNumber, claimNumber, claimantName, claimantDob, claimantPhone, claimantEmail, policyHolderName, claimantRelationship, incidentDate (YYYY-MM-DD), incidentDescription, incidentLocation, providerName, providerNpi, providerAddress, diagnosisList (semicolon-separated formatted as: code description), proceduresList (semicolon-separated formatted as: code description amount), totalAmount (number), deductible (number), coPayment (number), amountRequested (number), preAuthNumber, supportingDocsList (comma-separated list of attached documents).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"claimType\": {\"type\": \"string\"}, \"policyNumber\": {\"type\": \"string\"}, \"claimNumber\": {\"type\": \"string\"}, \"claimantName\": {\"type\": \"string\"}, \"claimantDob\": {\"type\": \"string\"}, \"claimantPhone\": {\"type\": \"string\"}, \"claimantEmail\": {\"type\": \"string\"}, \"policyHolderName\": {\"type\": \"string\"}, \"claimantRelationship\": {\"type\": \"string\"}, \"incidentDate\": {\"type\": \"string\"}, \"incidentDescription\": {\"type\": \"string\"}, \"incidentLocation\": {\"type\": \"string\"}, \"providerName\": {\"type\": \"string\"}, \"providerNpi\": {\"type\": \"string\"}, \"providerAddress\": {\"type\": \"string\"}, \"diagnosisList\": {\"type\": \"string\"}, \"proceduresList\": {\"type\": \"string\"}, \"totalAmount\": {\"type\": \"number\"}, \"deductible\": {\"type\": \"number\"}, \"coPayment\": {\"type\": \"number\"}, \"amountRequested\": {\"type\": \"number\"}, \"preAuthNumber\": {\"type\": \"string\"}, \"supportingDocsList\": {\"type\": \"string\"}}, \"additionalProperties\": false}",
+        "binaryPropertyName": "attachment_0"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Extract Claim",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         540,
         340
@@ -125,7 +124,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const claim = $input.first().json.data;\n\n// Generate claim ID if not present\nconst claimId = claim.claimNumber || `CLM-${Date.now().toString(36).toUpperCase()}`;\n\n// Calculate reimbursement estimate\nconst totalAmount = claim.totalAmount || 0;\nconst deductible = claim.deductible || 0;\nconst copay = claim.coPayment || 0;\nconst estimatedReimbursement = Math.max(0, totalAmount - deductible - copay);\n\n// Format procedures/items\nconst procedures = claim.procedures || [];\nconst procedureList = procedures.map(p => `${p.code}: ${p.description} - $${p.amount}`).join('\\n') || 'N/A';\n\n// Format diagnosis\nconst diagnosis = claim.diagnosis || [];\nconst diagnosisList = diagnosis.map(d => `${d.code}: ${d.description}`).join('; ') || 'N/A';\n\n// Determine routing based on amount\nlet routeTo = 'Auto-Approve';\nif (totalAmount > 5000) routeTo = 'Senior Adjuster';\nelse if (totalAmount > 1000) routeTo = 'Claims Adjuster';\n\n// Check for flags\nlet flags = [];\nif (!claim.preAuthNumber && totalAmount > 500) flags.push('Missing Pre-Authorization');\nif (claim.supportingDocs && claim.supportingDocs.length === 0) flags.push('No Supporting Documents');\n\nreturn [{\n  json: {\n    claimId: claimId,\n    ...claim,\n    totalAmount: totalAmount,\n    estimatedReimbursement: estimatedReimbursement,\n    procedureList: procedureList,\n    diagnosisList: diagnosisList,\n    routeTo: routeTo,\n    flags: flags,\n    flagCount: flags.length,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\n\nconst claimId = data.claimNumber || `CLM-${Date.now().toString(36).toUpperCase()}`;\nconst totalAmount  = parseFloat(data.totalAmount)  || 0;\nconst deductible   = parseFloat(data.deductible)   || 0;\nconst copay        = parseFloat(data.coPayment)     || 0;\nconst estimatedReimbursement = Math.max(0, totalAmount - deductible - copay);\n\nlet routeTo = 'Auto-Approve';\nif (totalAmount > 5000)      routeTo = 'Senior Adjuster';\nelse if (totalAmount >= 1000) routeTo = 'Claims Adjuster';\n\nconst flags = [];\nif (!data.preAuthNumber && totalAmount > 500) flags.push('Missing Pre-Authorization');\nif (!data.supportingDocsList || data.supportingDocsList === 'None' || data.supportingDocsList === '') {\n  flags.push('No Supporting Documents');\n}\n\nreturn [{ json: {\n  claimId,\n  claimType:               data.claimType               || 'Other',\n  policyNumber:            data.policyNumber            || 'N/A',\n  claimantName:            data.claimantName            || 'N/A',\n  incidentDate:            data.incidentDate            || 'N/A',\n  incidentDescription:     data.incidentDescription     || 'N/A',\n  providerName:            data.providerName            || 'N/A',\n  diagnosisList:           data.diagnosisList           || 'N/A',\n  proceduresList:          data.proceduresList          || 'N/A',\n  totalAmount,\n  deductible,\n  estimatedReimbursement,\n  routeTo,\n  flags:     flags.join(', ') || 'None',\n  flagCount: flags.length,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "process-claim",
       "name": "Process Claim",
@@ -155,15 +154,15 @@
             "Claim ID": "={{ $json.claimId }}",
             "Claim Type": "={{ $json.claimType }}",
             "Policy Number": "={{ $json.policyNumber }}",
-            "Claimant": "={{ $json.claimant ? $json.claimant.name : 'N/A' }}",
+            "Claimant": "={{ $json.claimantName }}",
             "Incident Date": "={{ $json.incidentDate || 'N/A' }}",
-            "Provider": "={{ $json.provider ? $json.provider.name : 'N/A' }}",
+            "Provider": "={{ $json.providerName }}",
             "Diagnosis": "={{ $json.diagnosisList }}",
             "Total Amount": "={{ $json.totalAmount }}",
             "Deductible": "={{ $json.deductible || 0 }}",
             "Est. Reimbursement": "={{ $json.estimatedReimbursement }}",
             "Route To": "={{ $json.routeTo }}",
-            "Flags": "={{ $json.flags.join(', ') || 'None' }}",
+            "Flags": "={{ $json.flags }}",
             "Status": "=Pending Review",
             "Received Date": "={{ $json.processedAt.split('T')[0] }}"
           }
@@ -173,7 +172,7 @@
       "id": "sheets-log",
       "name": "Log Claim",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
+      "typeVersion": 4.4,
       "position": [
         940,
         340
@@ -194,13 +193,13 @@
           "value": "YOUR_SLACK_CHANNEL_ID",
           "mode": "list"
         },
-        "text": "=📋 *New Insurance Claim*\n\n*Claim ID:* {{ $('Process Claim').item.json.claimId }}\n*Type:* {{ $('Process Claim').item.json.claimType }}\n*Policy:* {{ $('Process Claim').item.json.policyNumber }}\n\n👤 *Claimant:* {{ $('Process Claim').item.json.claimant ? $('Process Claim').item.json.claimant.name : 'N/A' }}\n📅 *Incident Date:* {{ $('Process Claim').item.json.incidentDate || 'N/A' }}\n\n💰 *Financial Summary:*\n• Total Claimed: ${{ $('Process Claim').item.json.totalAmount }}\n• Deductible: ${{ $('Process Claim').item.json.deductible || 0 }}\n• Est. Reimbursement: ${{ $('Process Claim').item.json.estimatedReimbursement }}\n\n📤 *Route To:* {{ $('Process Claim').item.json.routeTo }}\n{{ $('Process Claim').item.json.flagCount > 0 ? '\\n⚠️ *Flags:* ' + $('Process Claim').item.json.flags.join(', ') : '' }}",
+        "text": "=📋 *New Insurance Claim*\n\n*Claim ID:* {{ $('Process Claim').item.json.claimId }}\n*Type:* {{ $('Process Claim').item.json.claimType }}\n*Policy:* {{ $('Process Claim').item.json.policyNumber }}\n\n👤 *Claimant:* {{ $('Process Claim').item.json.claimantName }}\n📅 *Incident Date:* {{ $('Process Claim').item.json.incidentDate }}\n\n💰 *Financial Summary:*\n• Total Claimed: ${{ $('Process Claim').item.json.totalAmount }}\n• Deductible: ${{ $('Process Claim').item.json.deductible }}\n• Est. Reimbursement: ${{ $('Process Claim').item.json.estimatedReimbursement }}\n\n📤 *Route To:* {{ $('Process Claim').item.json.routeTo }}\n{{ $('Process Claim').item.json.flagCount > 0 ? '\\n⚠️ *Flags:* ' + $('Process Claim').item.json.flags : '' }}",
         "otherOptions": {}
       },
       "id": "slack-notify",
       "name": "Notify Claims Team",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1140,
         340
@@ -275,7 +274,6 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "staticData": null,
   "tags": [
     {
       "name": "PDF Vector"
