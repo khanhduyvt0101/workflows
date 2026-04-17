@@ -90,16 +90,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "prompt": "Extract competitive intelligence from this document: company name, document type, key financial metrics (revenue, growth rate, market share), product announcements, strategic initiatives, partnerships, acquisitions, market expansion plans, technology investments, and any threats or opportunities mentioned.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"companyName\":{\"type\":\"string\"},\"documentType\":{\"type\":\"string\",\"enum\":[\"Annual Report\",\"Earnings Call\",\"Press Release\",\"Industry Report\",\"Marketing Material\",\"SEC Filing\",\"Other\"]},\"reportPeriod\":{\"type\":\"string\"},\"financials\":{\"type\":\"object\",\"properties\":{\"revenue\":{\"type\":\"number\"},\"revenueGrowth\":{\"type\":\"number\"},\"netIncome\":{\"type\":\"number\"},\"marketShare\":{\"type\":\"number\"},\"employees\":{\"type\":\"number\"}}},\"products\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"status\":{\"type\":\"string\",\"enum\":[\"New\",\"Updated\",\"Existing\",\"Discontinued\"]}}}},\"strategicInitiatives\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"initiative\":{\"type\":\"string\"},\"priority\":{\"type\":\"string\"},\"timeline\":{\"type\":\"string\"}}}},\"partnerships\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"acquisitions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"marketExpansion\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"technologyInvestments\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"threats\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"opportunities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"keyQuotes\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"companyName\"],\"additionalProperties\":false}"
+        "prompt": "Extract competitor intelligence as flat fields. competitorName, documentType, reportPeriod, revenue (number), revenueGrowth, grossMargin, netIncome, newProductsList (semicolon-separated new products/features announced), partnershipsList (semicolon-separated new partnerships), acquisitionsList (semicolon-separated acquisitions), marketExpansionList (semicolon-separated new markets entered), technologyInvestments (semicolon-separated tech investments), threatsList (semicolon-separated threats to our business), opportunitiesList (semicolon-separated opportunities we can exploit), keyQuotesList (semicolon-separated notable executive quotes), headcountChange, strategicPriority1, strategicPriority2, strategicPriority3.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"competitorName\": {\"type\": \"string\"}, \"documentType\": {\"type\": \"string\"}, \"reportPeriod\": {\"type\": \"string\"}, \"revenue\": {\"type\": \"number\"}, \"revenueGrowth\": {\"type\": \"string\"}, \"grossMargin\": {\"type\": \"string\"}, \"netIncome\": {\"type\": \"number\"}, \"newProductsList\": {\"type\": \"string\"}, \"partnershipsList\": {\"type\": \"string\"}, \"acquisitionsList\": {\"type\": \"string\"}, \"marketExpansionList\": {\"type\": \"string\"}, \"technologyInvestments\": {\"type\": \"string\"}, \"threatsList\": {\"type\": \"string\"}, \"opportunitiesList\": {\"type\": \"string\"}, \"keyQuotesList\": {\"type\": \"string\"}, \"headcountChange\": {\"type\": \"string\"}, \"strategicPriority1\": {\"type\": \"string\"}, \"strategicPriority2\": {\"type\": \"string\"}, \"strategicPriority3\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "c5b05f18-dbba-4aaa-adb5-4ac4d1510545",
       "name": "PDF Vector - Extract Intel",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         592,
         128
@@ -128,15 +127,14 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
-        "prompt": "Based on this document, provide: 1) A 2-3 sentence executive summary of the competitor's current position, 2) The top 3 strategic moves we should watch, 3) How this might impact our business, and 4) Recommended actions for our team."
+        "question": "Based on this document, provide: 1) A 2-3 sentence executive summary of the competitor's current position, 2) The top 3 strategic moves we should watch, 3) How this might impact our business, and 4) Recommended actions for our team."
       },
       "id": "2dfde235-53e9-40ca-96cc-abffdf995ba2",
       "name": "PDF Vector - Strategic Insights",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         976,
         272
@@ -150,7 +148,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const intel = $('PDF Vector - Extract Intel').item.json.data;\nconst insights = $input.first().json.markdown;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\n// Format products\nconst products = intel.products || [];\nconst newProducts = products.filter(p => p.status === 'New').map(p => p.name).join(', ') || 'None';\n\n// Format initiatives\nconst initiatives = intel.strategicInitiatives || [];\nconst initiativesList = initiatives.map(i => `• ${i.initiative}`).join('\\n') || 'None identified';\n\n// Format threats & opportunities\nconst threats = intel.threats || [];\nconst opportunities = intel.opportunities || [];\n\n// Financial summary\nconst fin = intel.financials || {};\nconst financialSummary = fin.revenue \n  ? `Revenue: $${(fin.revenue / 1000000).toFixed(1)}M | Growth: ${fin.revenueGrowth || 'N/A'}% | Market Share: ${fin.marketShare || 'N/A'}%`\n  : 'Financial data not available';\n\nreturn [{\n  json: {\n    ...intel,\n    strategicInsights: insights,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    newProducts: newProducts,\n    initiativesList: initiativesList,\n    threatCount: threats.length,\n    opportunityCount: opportunities.length,\n    financialSummary: financialSummary,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const intel = $('PDF Vector - Extract Intel').item.json.data || $('PDF Vector - Extract Intel').item.json;\nconst insights = $input.first().json.answer || $input.first().json.markdown || '';\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId   = $('Google Drive Trigger').item.json.id;\n\n// Count threats and opportunities\nconst threats      = (intel.threatsList      || '').split(';').filter(t => t.trim()).length;\nconst opportunities= (intel.opportunitiesList|| '').split(';').filter(o => o.trim()).length;\n\n// Build initiatives list\nconst initiatives = [intel.strategicPriority1, intel.strategicPriority2, intel.strategicPriority3]\n  .filter(Boolean).map((p,i) => `${i+1}. ${p}`).join('\\n') || 'N/A';\n\n// Financial summary\nconst financialSummary = intel.revenue\n  ? `Revenue: $${intel.revenue.toLocaleString()} | Growth: ${intel.revenueGrowth || 'N/A'} | Margin: ${intel.grossMargin || 'N/A'}`\n  : `Growth: ${intel.revenueGrowth || 'N/A'} | Margin: ${intel.grossMargin || 'N/A'}`;\n\nreturn [{ json: {\n  companyName:       intel.competitorName       || 'Unknown',\n  documentType:      intel.documentType         || 'N/A',\n  reportPeriod:      intel.reportPeriod         || 'N/A',\n  financialSummary,\n  newProducts:       intel.newProductsList      || 'None',\n  partnershipsList:  intel.partnershipsList     || 'None',\n  acquisitionsList:  intel.acquisitionsList     || 'None',\n  initiativesList:   initiatives,\n  threatsList:       intel.threatsList          || 'None',\n  opportunitiesList: intel.opportunitiesList    || 'None',\n  threatCount:       threats,\n  opportunityCount:  opportunities,\n  strategicInsights: insights,\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "b76cd1f5-00e1-4b57-82ea-ed86b2096359",
       "name": "Compile Intelligence",
@@ -183,13 +181,13 @@
           "value": {
             "Competitor": "={{ $json.companyName }}",
             "Document Type": "={{ $json.documentType }}",
-            "Report Period": "={{ $json.reportPeriod || 'N/A' }}",
+            "Report Period": "={{ $json.reportPeriod }}",
             "Financials": "={{ $json.financialSummary }}",
             "New Products": "={{ $json.newProducts }}",
-            "Partnerships": "={{ $json.partnerships ? $json.partnerships.join(', ') : 'None' }}",
-            "Acquisitions": "={{ $json.acquisitions ? $json.acquisitions.join(', ') : 'None' }}",
-            "Threats Identified": "={{ $json.threatCount }}",
-            "Opportunities": "={{ $json.opportunityCount }}",
+            "Partnerships": "={{ $json.partnershipsList }}",
+            "Acquisitions": "={{ $json.acquisitionsList }}",
+            "Threats Identified": "={{ $json.threatsList }}",
+            "Opportunities": "={{ $json.opportunitiesList }}",
             "Source Document": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
             "Analysis Date": "={{ $json.processedAt.split('T')[0] }}"
           },
@@ -331,7 +329,7 @@
       "id": "b137913d-3c99-4b39-b115-c583ab1be5a2",
       "name": "Share with Strategy Team",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1584,
         272
@@ -434,17 +432,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
-  "tags": [
-    {
-      "name": "PDF Vector"
-    },
-    {
-      "name": "Business Intelligence"
-    },
-    {
-      "name": "Market Research"
-    }
-  ]
+  "tags": []
 }
