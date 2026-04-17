@@ -90,16 +90,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "prompt": "Extract employee onboarding information from this HR document: document type, employee name, employee ID, start date, department, position, manager, salary/compensation, tax withholding info, direct deposit details (bank name only, no account numbers), emergency contacts, and any signatures with dates.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\",\"enum\":[\"Offer Letter\",\"I-9 Form\",\"W-4 Form\",\"Direct Deposit\",\"Emergency Contact\",\"Policy Acknowledgment\",\"Benefits Enrollment\",\"NDA\",\"Other\"]},\"employee\":{\"type\":\"object\",\"properties\":{\"fullName\":{\"type\":\"string\"},\"employeeId\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"ssn\":{\"type\":\"string\"},\"dateOfBirth\":{\"type\":\"string\"}}},\"employment\":{\"type\":\"object\",\"properties\":{\"startDate\":{\"type\":\"string\"},\"department\":{\"type\":\"string\"},\"position\":{\"type\":\"string\"},\"manager\":{\"type\":\"string\"},\"employmentType\":{\"type\":\"string\"},\"salary\":{\"type\":\"number\"},\"payFrequency\":{\"type\":\"string\"}}},\"taxInfo\":{\"type\":\"object\",\"properties\":{\"filingStatus\":{\"type\":\"string\"},\"allowances\":{\"type\":\"number\"},\"additionalWithholding\":{\"type\":\"number\"}}},\"directDeposit\":{\"type\":\"object\",\"properties\":{\"bankName\":{\"type\":\"string\"},\"accountType\":{\"type\":\"string\"}}},\"emergencyContacts\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"relationship\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"}}}},\"signatures\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"signer\":{\"type\":\"string\"},\"role\":{\"type\":\"string\"},\"date\":{\"type\":\"string\"}}}},\"isComplete\":{\"type\":\"boolean\"},\"missingFields\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"documentType\",\"employee\"],\"additionalProperties\":false}"
+        "prompt": "Extract employee onboarding document data as flat fields. documentType (one of: Offer Letter, I-9, W-4, Direct Deposit, NDA, Benefits Enrollment, Employee Handbook Acknowledgment, Other), employeeFirstName, employeeLastName, employeeEmail, employeePhone, employeeId, position, department, startDate (YYYY-MM-DD), salary, employmentType, taxFilingStatus, federalAllowances, stateAllowances, bankName, accountType, routingNumber, accountNumberLast4, emergencyContact1Name, emergencyContact1Phone, emergencyContact1Relation, emergencyContact2Name, emergencyContact2Phone, missingFieldsList (semicolon-separated list of required fields that are missing or blank), signaturePresent (true/false), signatureDate (YYYY-MM-DD), completionStatus (one of: Complete, Incomplete, Needs Review).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"documentType\": {\"type\": \"string\"}, \"employeeFirstName\": {\"type\": \"string\"}, \"employeeLastName\": {\"type\": \"string\"}, \"employeeEmail\": {\"type\": \"string\"}, \"employeePhone\": {\"type\": \"string\"}, \"employeeId\": {\"type\": \"string\"}, \"position\": {\"type\": \"string\"}, \"department\": {\"type\": \"string\"}, \"startDate\": {\"type\": \"string\"}, \"salary\": {\"type\": \"number\"}, \"employmentType\": {\"type\": \"string\"}, \"taxFilingStatus\": {\"type\": \"string\"}, \"federalAllowances\": {\"type\": \"number\"}, \"stateAllowances\": {\"type\": \"number\"}, \"bankName\": {\"type\": \"string\"}, \"accountType\": {\"type\": \"string\"}, \"routingNumber\": {\"type\": \"string\"}, \"accountNumberLast4\": {\"type\": \"string\"}, \"emergencyContact1Name\": {\"type\": \"string\"}, \"emergencyContact1Phone\": {\"type\": \"string\"}, \"emergencyContact1Relation\": {\"type\": \"string\"}, \"emergencyContact2Name\": {\"type\": \"string\"}, \"emergencyContact2Phone\": {\"type\": \"string\"}, \"missingFieldsList\": {\"type\": \"string\"}, \"signaturePresent\": {\"type\": \"boolean\"}, \"signatureDate\": {\"type\": \"string\"}, \"completionStatus\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "ee9fead9-31bc-4ce1-9b2e-14ca09d5c095",
       "name": "PDF Vector - Extract HR Data",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         672,
         192
@@ -113,7 +112,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const doc = $input.first().json.data;\nconst fileName = $('Google Drive Trigger').item.json.name;\n\nconst employee = doc.employee || {};\nconst employment = doc.employment || {};\n\n// Check completeness\nlet issues = doc.missingFields || [];\nif (!doc.signatures || doc.signatures.length === 0) issues.push('Missing signatures');\n\n// Format emergency contacts\nconst contacts = doc.emergencyContacts || [];\nconst contactsList = contacts.map(c => `${c.name} (${c.relationship}): ${c.phone}`).join('; ') || 'Not provided';\n\n// Check I-9 specifics if applicable\nlet i9Status = 'N/A';\nif (doc.documentType === 'I-9 Form') {\n  if (doc.isComplete) i9Status = 'Complete';\n  else i9Status = 'Incomplete - Action Required';\n}\n\n// Determine document status\nlet status = 'Complete';\nif (issues.length > 0) status = 'Incomplete';\nif (!doc.isComplete) status = 'Needs Review';\n\nreturn [{\n  json: {\n    ...doc,\n    fileName: fileName,\n    fileId: $('Google Drive Trigger').item.json.id,\n    employeeName: employee.fullName || 'Unknown',\n    employeeId: employee.employeeId || 'TBD',\n    employeeEmail: employee.email || 'N/A',\n    department: employment.department || 'N/A',\n    position: employment.position || 'N/A',\n    startDate: employment.startDate || 'N/A',\n    salary: employment.salary,\n    contactsList: contactsList,\n    i9Status: i9Status,\n    issueCount: issues.length,\n    issuesList: issues.join(', ') || 'None',\n    status: status,\n    processedAt: new Date().toISOString().split('T')[0]\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId   = $('Google Drive Trigger').item.json.id;\nconst employeeId = data.employeeId || `EMP-${Date.now().toString(36).toUpperCase()}`;\nconst employeeName = `${data.employeeFirstName || ''} ${data.employeeLastName || ''}`.trim() || 'Unknown';\n\nconst emergencyContacts = [\n  data.emergencyContact1Name ? `${data.emergencyContact1Name} (${data.emergencyContact1Relation || 'N/A'}) ${data.emergencyContact1Phone || ''}` : null,\n  data.emergencyContact2Name ? `${data.emergencyContact2Name} ${data.emergencyContact2Phone || ''}` : null\n].filter(Boolean).join('; ') || 'None provided';\n\nconst issuesList = data.missingFieldsList || '';\nconst issueCount = issuesList ? issuesList.split(';').filter(i => i.trim()).length : 0;\nconst status = data.completionStatus || 'Needs Review';\n\nreturn [{ json: {\n  employeeId,\n  employeeName,\n  fullName: employeeName,\n  email:            data.employeeEmail    || 'N/A',\n  documentType:     data.documentType     || 'Other',\n  department:       data.department       || 'N/A',\n  position:         data.position         || 'N/A',\n  startDate:        data.startDate        || 'N/A',\n  status,\n  completionStatus: status,\n  issuesList,\n  issueCount,\n  missingFieldsList: issuesList,\n  emergencyContacts,\n  signaturePresent: data.signaturePresent || false,\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "ae6e8be3-ab4a-490b-9194-fa34489a1eac",
       "name": "Process Document",
@@ -144,18 +143,18 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Employee Name": "={{ $json.employeeName }}",
+            "Employee Name": "={{ $json.fullName }}",
             "Employee ID": "={{ $json.employeeId }}",
-            "Email": "={{ $json.employeeEmail }}",
+            "Email": "={{ $json.email }}",
             "Document Type": "={{ $json.documentType }}",
             "Department": "={{ $json.department }}",
             "Position": "={{ $json.position }}",
             "Start Date": "={{ $json.startDate }}",
-            "Status": "={{ $json.status }}",
-            "Issues": "={{ $json.issuesList }}",
-            "Emergency Contacts": "={{ $json.contactsList }}",
+            "Status": "={{ $json.completionStatus }}",
+            "Issues": "={{ $json.missingFieldsList }}",
+            "Emergency Contacts": "={{ $json.emergencyContacts }}",
             "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
-            "Processed Date": "={{ $json.processedAt }}"
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -304,7 +303,7 @@
       "id": "807001f9-cbed-4dc5-8645-6cb59bad7fb7",
       "name": "Notify HR Team",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1280,
         192
@@ -380,7 +379,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
