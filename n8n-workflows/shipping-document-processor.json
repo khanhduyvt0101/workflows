@@ -1,11 +1,12 @@
 {
-  "name": "W10 - Shipping Document & Bill of Lading Processor",
+  "name": "Shipping Document Processor",
   "nodes": [
     {
       "parameters": {
-        "content": "## 🚢 Shipping Document Processor\n\n**Handles:**\n- Bills of Lading (B/L)\n- Packing Lists\n- Commercial Invoices\n- Customs Documents\n- Shipping Manifests\n\n**Features:**\n- Auto-extraction of shipment details\n- Container tracking\n- ETA monitoring\n- Multi-carrier support\n\n**Setup Required:**\n1. Gmail credential\n2. PDF Vector credential\n3. Google Sheets credential\n4. Slack credential",
-        "height": 400,
-        "width": 320
+        "content": "## 🚢 Shipping Document Processor\n\n### What this workflow does\n1. Watches Gmail for shipping docs\n2. Extracts B/L, containers, route, ETA\n3. Calculates days to arrival\n4. Logs to shipment tracker\n5. Alerts on arrivals within 3 days\n\n### Handles\n- Bills of Lading (B/L)\n- Packing Lists\n- Commercial Invoices\n- Customs Documents\n\n### Setup steps\n1. Connect Gmail OAuth2 credentials\n2. Get PDF Vector API key from pdfvector.com/api-keys\n3. Create Google Sheet with columns below\n4. Connect Slack for notifications\n5. Update credential IDs in the nodes\n\n### Sheet columns\nShipment ID, Document Type, B/L Number, Shipper, Consignee, Route, Vessel, ETD, ETA, Days to Arrival, Containers, Container Count, Total Weight (kg), HS Codes, Incoterms, Received Date\n\n### Perfect for\n- Freight forwarders\n- Import/export teams\n- Logistics managers",
+        "height": 560,
+        "width": 320,
+        "color": 5
       },
       "id": "sticky-main",
       "name": "Sticky Note",
@@ -13,52 +14,22 @@
       "typeVersion": 1,
       "position": [
         60,
-        80
+        60
       ]
     },
     {
       "parameters": {
-        "content": "## 📦 Tracked Fields\n\n- Shipper/Consignee info\n- Container numbers & types\n- HS codes (customs)\n- Weight/Volume\n- Port of origin/destination\n- Vessel/Voyage info\n- Cargo description\n- ETD/ETA dates\n- Incoterms (FOB, CIF, etc.)",
-        "height": 260,
+        "content": "## ⏰ ETA Status\n\nAlerts based on days to arrival:\n- Arrived/Overdue: ≤0 days\n- Arriving Soon: 1-3 days → urgent alert\n- In Transit: >3 days → normal notification",
+        "height": 140,
         "width": 260
       },
-      "id": "sticky-fields",
+      "id": "sticky-eta",
       "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        400,
-        80
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## 📊 Google Sheets Columns\n\nShipment ID | Document Type | B/L Number | Shipper | Consignee | Route | Vessel | ETD | ETA | Days to Arrival | Containers | Container Count | Total Weight (kg) | HS Codes | Incoterms | Received Date",
-        "height": 120,
-        "width": 500
-      },
-      "id": "sticky-sheets",
-      "name": "Sticky Note2",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        60,
-        500
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## ⏰ ETA Status\n\n🔴 Arrived/Overdue: ≤0 days\n🟠 Arriving Soon: 1-3 days\n🟢 In Transit: >3 days",
-        "height": 120,
-        "width": 220
-      },
-      "id": "sticky-eta",
-      "name": "Sticky Note3",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
         680,
-        80
+        60
       ]
     },
     {
@@ -116,17 +87,16 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "attachment_0",
         "prompt": "Extract all shipping information from this document:\n\n1. Document Identification:\n   - Document type (Bill of Lading, Packing List, Commercial Invoice, etc.)\n   - B/L number or booking number\n\n2. Parties:\n   - Shipper name, address, country\n   - Consignee name, address, country\n   - Notify party if present\n\n3. Container Information:\n   - Container numbers\n   - Container types (20GP, 40GP, 40HC, etc.)\n   - Seal numbers\n\n4. Voyage Details:\n   - Vessel name\n   - Voyage number\n   - Port of Loading\n   - Port of Discharge\n   - Place of Delivery\n   - ETD (Estimated Time of Departure)\n   - ETA (Estimated Time of Arrival)\n\n5. Cargo Details:\n   - Cargo description\n   - HS codes (tariff codes)\n   - Number of packages\n   - Gross weight\n   - Volume/CBM\n\n6. Terms:\n   - Freight terms (Prepaid/Collect)\n   - Incoterms (FOB, CIF, EXW, etc.)\n   - Special instructions",
-        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\",\"enum\":[\"Bill of Lading\",\"Packing List\",\"Commercial Invoice\",\"Customs Declaration\",\"Shipping Manifest\",\"Arrival Notice\",\"Delivery Order\",\"Other\"]},\"blNumber\":{\"type\":\"string\",\"description\":\"Bill of Lading number\"},\"bookingNumber\":{\"type\":\"string\",\"description\":\"Booking reference number\"},\"shipper\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"country\":{\"type\":\"string\"}}},\"consignee\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"country\":{\"type\":\"string\"}}},\"notifyParty\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"contact\":{\"type\":\"string\"}}},\"containers\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"number\":{\"type\":\"string\"},\"type\":{\"type\":\"string\"},\"sealNumber\":{\"type\":\"string\"}}}},\"vessel\":{\"type\":\"string\",\"description\":\"Vessel/ship name\"},\"voyageNumber\":{\"type\":\"string\"},\"portOfLoading\":{\"type\":\"string\"},\"portOfDischarge\":{\"type\":\"string\"},\"placeOfDelivery\":{\"type\":\"string\"},\"etd\":{\"type\":\"string\",\"description\":\"Estimated departure date\"},\"eta\":{\"type\":\"string\",\"description\":\"Estimated arrival date\"},\"cargo\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"hsCode\":{\"type\":\"string\"},\"packages\":{\"type\":\"number\"},\"grossWeight\":{\"type\":\"number\"},\"volume\":{\"type\":\"number\"}}}},\"freightTerms\":{\"type\":\"string\",\"description\":\"Prepaid or Collect\"},\"incoterms\":{\"type\":\"string\",\"description\":\"FOB, CIF, EXW, etc.\"},\"totalWeight\":{\"type\":\"number\",\"description\":\"Total gross weight in kg\"},\"totalVolume\":{\"type\":\"number\",\"description\":\"Total volume in CBM\"},\"specialInstructions\":{\"type\":\"string\"}},\"required\":[\"documentType\"],\"additionalProperties\":false}"
+        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\",\"enum\":[\"Bill of Lading\",\"Packing List\",\"Commercial Invoice\",\"Customs Declaration\",\"Shipping Manifest\",\"Arrival Notice\",\"Delivery Order\",\"Other\"]},\"blNumber\":{\"type\":\"string\",\"description\":\"Bill of Lading number\"},\"bookingNumber\":{\"type\":\"string\",\"description\":\"Booking reference number\"},\"shipper\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"country\":{\"type\":\"string\"}}},\"consignee\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"country\":{\"type\":\"string\"}}},\"notifyParty\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"contact\":{\"type\":\"string\"}}},\"containers\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"number\":{\"type\":\"string\"},\"type\":{\"type\":\"string\"},\"sealNumber\":{\"type\":\"string\"}}}},\"vessel\":{\"type\":\"string\",\"description\":\"Vessel/ship name\"},\"voyageNumber\":{\"type\":\"string\"},\"portOfLoading\":{\"type\":\"string\"},\"portOfDischarge\":{\"type\":\"string\"},\"placeOfDelivery\":{\"type\":\"string\"},\"etd\":{\"type\":\"string\",\"description\":\"Estimated departure date\"},\"eta\":{\"type\":\"string\",\"description\":\"Estimated arrival date\"},\"cargo\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"hsCode\":{\"type\":\"string\"},\"packages\":{\"type\":\"number\"},\"grossWeight\":{\"type\":\"number\"},\"volume\":{\"type\":\"number\"}}}},\"freightTerms\":{\"type\":\"string\",\"description\":\"Prepaid or Collect\"},\"incoterms\":{\"type\":\"string\",\"description\":\"FOB, CIF, EXW, etc.\"},\"totalWeight\":{\"type\":\"number\",\"description\":\"Total gross weight in kg\"},\"totalVolume\":{\"type\":\"number\",\"description\":\"Total volume in CBM\"},\"specialInstructions\":{\"type\":\"string\"}},\"required\":[\"documentType\"],\"additionalProperties\":false}",
+        "binaryPropertyName": "attachment_0"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Extract Shipping",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         540,
         340
@@ -182,7 +152,7 @@
             "Total Weight (kg)": "={{ $json.totalWeight }}",
             "HS Codes": "={{ $json.hsCodes }}",
             "Incoterms": "={{ $json.incoterms }}",
-            "Received Date": "={{ $json.receivedDate.split('T')[0] }}"
+            "Received Date": "={{ $json.receivedDate }}"
           }
         },
         "options": {}
@@ -190,7 +160,7 @@
       "id": "sheets-log",
       "name": "Log to Shipment Tracker",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
+      "typeVersion": 4.4,
       "position": [
         940,
         340
@@ -219,6 +189,15 @@
                 "type": "string",
                 "operation": "equals"
               }
+            },
+            {
+              "id": "arrived-check",
+              "leftValue": "={{ $('Process Shipping Data').item.json.etaStatus }}",
+              "rightValue": "Arrived/Overdue",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "or"
@@ -228,7 +207,7 @@
       "id": "if-arriving-soon",
       "name": "Arriving Soon?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         1140,
         340
@@ -249,7 +228,7 @@
       "id": "slack-urgent",
       "name": "Urgent - Arriving Soon",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1340,
         240
@@ -276,7 +255,7 @@
       "id": "slack-normal",
       "name": "Notify Logistics Team",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1340,
         440
@@ -368,7 +347,6 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "staticData": null,
   "tags": [
     {
       "name": "PDF Vector"
