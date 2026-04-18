@@ -93,17 +93,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract HIPAA compliance-related information from this document including: document type (security policy/BAA/training record/incident log/risk assessment/procedure), organization name, document date, version number, last review date, next review date, covered entity or business associate name, administrative safeguards mentioned, physical safeguards mentioned, technical safeguards mentioned, encryption requirements, access control policies, audit controls, breach notification procedures, employee training requirements, sanctions policy, contingency plans, and any specific compliance certifications or attestations.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\"},\"organizationName\":{\"type\":\"string\"},\"documentDate\":{\"type\":\"string\"},\"versionNumber\":{\"type\":\"string\"},\"lastReviewDate\":{\"type\":\"string\"},\"nextReviewDate\":{\"type\":\"string\"},\"coveredEntity\":{\"type\":\"string\"},\"businessAssociate\":{\"type\":\"string\"},\"administrativeSafeguards\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"safeguard\":{\"type\":\"string\"},\"implemented\":{\"type\":\"boolean\"},\"details\":{\"type\":\"string\"}}}},\"physicalSafeguards\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"safeguard\":{\"type\":\"string\"},\"implemented\":{\"type\":\"boolean\"},\"details\":{\"type\":\"string\"}}}},\"technicalSafeguards\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"safeguard\":{\"type\":\"string\"},\"implemented\":{\"type\":\"boolean\"},\"details\":{\"type\":\"string\"}}}},\"encryptionPolicy\":{\"type\":\"string\"},\"accessControlPolicy\":{\"type\":\"string\"},\"auditControls\":{\"type\":\"string\"},\"breachNotificationProcedure\":{\"type\":\"string\"},\"trainingRequirements\":{\"type\":\"string\"},\"sanctionsPolicy\":{\"type\":\"string\"},\"contingencyPlan\":{\"type\":\"string\"},\"certifications\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"documentType\",\"organizationName\"],\"additionalProperties\":false}"
+        "prompt": "Extract HIPAA compliance document data as flat fields. organizationName, documentType, assessmentDate (YYYY-MM-DD), assessor, adminSafeguardsList (semicolon-separated administrative safeguards present), adminGapsList (semicolon-separated administrative safeguard gaps), physicalSafeguardsList (semicolon-separated physical safeguards present), physicalGapsList (semicolon-separated physical safeguard gaps), technicalSafeguardsList (semicolon-separated technical safeguards present), technicalGapsList (semicolon-separated technical safeguard gaps), certificationsList (semicolon-separated certifications held), overallComplianceScore (number 0-100), riskLevel (one of: Low, Medium, High, Critical), criticalFindingsList (semicolon-separated critical findings), remediationList (semicolon-separated recommended remediations), totalGapsCount (number), breachHistoryNoted (true/false).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"organizationName\": {\"type\": \"string\"}, \"documentType\": {\"type\": \"string\"}, \"assessmentDate\": {\"type\": \"string\"}, \"assessor\": {\"type\": \"string\"}, \"adminSafeguardsList\": {\"type\": \"string\"}, \"adminGapsList\": {\"type\": \"string\"}, \"physicalSafeguardsList\": {\"type\": \"string\"}, \"physicalGapsList\": {\"type\": \"string\"}, \"technicalSafeguardsList\": {\"type\": \"string\"}, \"technicalGapsList\": {\"type\": \"string\"}, \"certificationsList\": {\"type\": \"string\"}, \"overallComplianceScore\": {\"type\": \"number\"}, \"riskLevel\": {\"type\": \"string\"}, \"criticalFindingsList\": {\"type\": \"string\"}, \"remediationList\": {\"type\": \"string\"}, \"totalGapsCount\": {\"type\": \"number\"}, \"breachHistoryNoted\": {\"type\": \"boolean\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "Extract Compliance Data",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         900,
         220
@@ -117,16 +115,14 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Perform a HIPAA Security Rule compliance gap analysis on this document. Evaluate against the following requirements:\n\n**ADMINISTRATIVE SAFEGUARDS (§164.308):**\n- Security management process (risk analysis, risk management, sanctions, review)\n- Assigned security responsibility\n- Workforce security (authorization, clearance, termination)\n- Information access management\n- Security awareness training\n- Security incident procedures\n- Contingency plan (backup, recovery, emergency)\n- Evaluation\n- Business associate contracts\n\n**PHYSICAL SAFEGUARDS (§164.310):**\n- Facility access controls\n- Workstation use and security\n- Device and media controls\n\n**TECHNICAL SAFEGUARDS (§164.312):**\n- Access control (unique IDs, emergency access, auto-logoff, encryption)\n- Audit controls\n- Integrity controls\n- Person authentication\n- Transmission security\n\nFor each requirement, identify:\n1. Requirement name\n2. Status: COMPLIANT / GAP IDENTIFIED / NOT ADDRESSED / PARTIAL\n3. Evidence found in document\n4. Specific gap description if applicable\n5. Severity: CRITICAL / HIGH / MEDIUM / LOW\n6. Remediation recommendation\n\nProvide an overall compliance score (0-100) and prioritized remediation roadmap."
+        "question": "Perform a HIPAA Security Rule compliance gap analysis on this document. Evaluate against the following requirements:\n\n**ADMINISTRATIVE SAFEGUARDS (§164.308):**\n- Security management process (risk analysis, risk management, sanctions, review)\n- Assigned security responsibility\n- Workforce security (authorization, clearance, termination)\n- Information access management\n- Security awareness training\n- Security incident procedures\n- Contingency plan (backup, recovery, emergency)\n- Evaluation\n- Business associate contracts\n\n**PHYSICAL SAFEGUARDS (§164.310):**\n- Facility access controls\n- Workstation use and security\n- Device and media controls\n\n**TECHNICAL SAFEGUARDS (§164.312):**\n- Access control (unique IDs, emergency access, auto-logoff, encryption)\n- Audit controls\n- Integrity controls\n- Person authentication\n- Transmission security\n\nFor each requirement, identify:\n1. Requirement name\n2. Status: COMPLIANT / GAP IDENTIFIED / NOT ADDRESSED / PARTIAL\n3. Evidence found in document\n4. Specific gap description if applicable\n5. Severity: CRITICAL / HIGH / MEDIUM / LOW\n6. Remediation recommendation\n\nProvide an overall compliance score (0-100) and prioritized remediation roadmap."
       },
       "id": "pdfvector-analyze",
       "name": "Gap Analysis",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         900,
         380
@@ -151,7 +147,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get all items from Merge (Extract is index 0, Analysis is index 1)\nconst allItems = $input.all();\n\n// Extract data from first item\nconst extractItem = allItems[0]?.json || {};\nconst docData = extractItem.data || extractItem;\n\n// Analysis data from second item\nconst analysisItem = allItems[1]?.json || {};\nconst gapAnalysis = analysisItem.markdown || analysisItem.answer || analysisItem.text || 'No analysis generated';\n\n// Get trigger data for file info\nconst triggerData = $('New Compliance Doc').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Count safeguards\nconst adminSafeguards = docData.administrativeSafeguards || [];\nconst physicalSafeguards = docData.physicalSafeguards || [];\nconst technicalSafeguards = docData.technicalSafeguards || [];\n\nconst totalSafeguards = adminSafeguards.length + physicalSafeguards.length + technicalSafeguards.length;\nconst implementedCount = [\n  ...adminSafeguards.filter(s => s.implemented),\n  ...physicalSafeguards.filter(s => s.implemented),\n  ...technicalSafeguards.filter(s => s.implemented)\n].length;\n\n// Determine risk level based on gap analysis content\nlet riskLevel = 'Low';\nlet criticalCount = 0;\nlet highCount = 0;\n\nconst analysisLower = gapAnalysis.toLowerCase();\nif (analysisLower.includes('critical')) {\n  criticalCount = (analysisLower.match(/critical/g) || []).length;\n}\nif (analysisLower.includes('high')) {\n  highCount = (analysisLower.match(/high/g) || []).length;\n}\n\nif (criticalCount >= 2) riskLevel = 'Critical';\nelse if (criticalCount >= 1 || highCount >= 3) riskLevel = 'High';\nelse if (highCount >= 1) riskLevel = 'Medium';\n\n// Calculate compliance score\nconst complianceScore = totalSafeguards > 0 ? Math.round((implementedCount / totalSafeguards) * 100) : 0;\n\nreturn [{\n  json: {\n    documentType: docData.documentType || 'Unknown',\n    organizationName: docData.organizationName || 'Unknown',\n    documentDate: docData.documentDate || 'N/A',\n    versionNumber: docData.versionNumber || 'N/A',\n    lastReviewDate: docData.lastReviewDate || 'N/A',\n    nextReviewDate: docData.nextReviewDate || 'N/A',\n    adminSafeguardsCount: adminSafeguards.length,\n    physicalSafeguardsCount: physicalSafeguards.length,\n    technicalSafeguardsCount: technicalSafeguards.length,\n    totalSafeguards: totalSafeguards,\n    implementedSafeguards: implementedCount,\n    gapAnalysis: gapAnalysis,\n    riskLevel: riskLevel,\n    criticalIssues: criticalCount,\n    highIssues: highCount,\n    complianceScore: complianceScore,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const allInputs = $input.all();\nconst data = (allInputs[0]?.json?.data || allInputs[0]?.json) || {};\nconst gapAnalysis = allInputs[1]?.json?.answer || allInputs[1]?.json?.markdown || '';\nconst fileName = $('New Compliance Doc').item.json.name;\nconst fileId   = $('New Compliance Doc').item.json.id;\n\nconst criticals = (data.criticalFindingsList || '').split(';').filter(Boolean);\nconst remediations = (data.remediationList || '').split(';').filter(Boolean);\nconst criticalList = criticals.map(c => `🚨 ${c.trim()}`).join('\\n') || 'None';\nconst remediationList = remediations.map(r => `→ ${r.trim()}`).join('\\n') || 'None';\n\nreturn [{ json: {\n  organizationName:  data.organizationName  || 'Unknown',\n  documentType:      data.documentType      || 'N/A',\n  assessmentDate:    data.assessmentDate    || 'N/A',\n  overallComplianceScore: parseFloat(data.overallComplianceScore) || 0,\n  riskLevel:         data.riskLevel         || 'Unknown',\n  totalGapsCount:    parseInt(data.totalGapsCount) || 0,\n  criticalFindingsList: data.criticalFindingsList || 'None',\n  criticalList, criticalCount: criticals.length,\n  remediationList, remediationCount: remediations.length,\n  certificationsList: data.certificationsList || 'None',\n  breachHistoryNoted: data.breachHistoryNoted || false,\n  gapAnalysis,\n  fileName, fileId,\n  processedAt: new Date().toISOString(),\n  fileId: fileId,\n  complianceScore: parseFloat(data.overallComplianceScore) || 0,\n  documentDate: data.assessmentDate || \"N/A\",\n  lastReviewDate: data.assessmentDate || \"N/A\",\n  nextReviewDate: \"N/A\",\n  versionNumber: \"1.0\",\n  totalSafeguards: 0,\n  implementedSafeguards: 0,\n  adminSafeguardsCount: (data.adminSafeguardsList || \"\").split(\";\").filter(Boolean).length,\n  physicalSafeguardsCount: (data.physicalSafeguardsList || \"\").split(\";\").filter(Boolean).length,\n  technicalSafeguardsCount: (data.technicalSafeguardsList || \"\").split(\";\").filter(Boolean).length,\n  criticalIssues: criticalList,\n  highIssues: \"N/A\",\n}}];"
       },
       "id": "format-data",
       "name": "Format Assessment",
@@ -190,7 +186,13 @@
             "Implemented": "={{ $json.implementedSafeguards }}",
             "Compliance Score": "={{ $json.complianceScore }}%",
             "Next Review": "={{ $json.nextReviewDate }}",
-            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}",
+            "Assessment Date": "={{ $json.assessmentDate }}",
+            "Score": "={{ $json.overallComplianceScore }}",
+            "Total Gaps": "={{ $json.totalGapsCount }}",
+            "Critical Findings": "={{ $json.criticalCount }}",
+            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -430,7 +432,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
