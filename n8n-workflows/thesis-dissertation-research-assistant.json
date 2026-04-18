@@ -96,17 +96,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract academic content from this thesis or dissertation chapter. Identify: title, author name, institution, degree type (PhD/Masters/etc), chapter or section title, main thesis statement or argument, key concepts and terms, research methodology, theoretical framework, main findings or claims, research questions, and keywords useful for literature search.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"description\":\"Document or thesis title\"},\"author\":{\"type\":\"string\",\"description\":\"Author name\"},\"institution\":{\"type\":\"string\",\"description\":\"University or institution\"},\"degreeType\":{\"type\":\"string\",\"description\":\"PhD, Masters, etc\"},\"chapterTitle\":{\"type\":\"string\",\"description\":\"Chapter or section title if applicable\"},\"thesisStatement\":{\"type\":\"string\",\"description\":\"Main argument or thesis statement\"},\"keyConcepts\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Key concepts and terms\"},\"methodology\":{\"type\":\"string\",\"description\":\"Research methodology described\"},\"theoreticalFramework\":{\"type\":\"string\",\"description\":\"Theoretical framework or lens\"},\"mainFindings\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Main findings or claims\"},\"researchQuestions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Research questions if stated\"},\"keywords\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Keywords for literature search\"}},\"required\":[\"title\"],\"additionalProperties\":false}"
+        "prompt": "Extract thesis or research document content as flat fields. documentTitle, chapterTitle, authorName, institution, year, thesisStatement (main argument or claim), methodology, theoreticalFramework, keyConceptsList (comma-separated key concepts), mainFindingsList (semicolon-separated main findings), researchQuestionsList (semicolon-separated research questions), keywordsList (comma-separated keywords for academic search), citationCount (number), pageCount (number), fieldOfStudy.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"documentTitle\": {\"type\": \"string\"}, \"chapterTitle\": {\"type\": \"string\"}, \"authorName\": {\"type\": \"string\"}, \"institution\": {\"type\": \"string\"}, \"year\": {\"type\": \"string\"}, \"thesisStatement\": {\"type\": \"string\"}, \"methodology\": {\"type\": \"string\"}, \"theoreticalFramework\": {\"type\": \"string\"}, \"keyConceptsList\": {\"type\": \"string\"}, \"mainFindingsList\": {\"type\": \"string\"}, \"researchQuestionsList\": {\"type\": \"string\"}, \"keywordsList\": {\"type\": \"string\"}, \"citationCount\": {\"type\": \"number\"}, \"pageCount\": {\"type\": \"number\"}, \"fieldOfStudy\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Extract Content",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         680,
         200
@@ -114,21 +112,21 @@
     },
     {
       "parameters": {
-        "resource": "academic",
         "operation": "search",
-        "query": "={{ $json.data && $json.data.keywords ? $json.data.keywords.slice(0, 4).join(' ') + ' ' + ($json.data.theoreticalFramework || '') : ($json.data ? $json.data.title : 'research') }}",
+        "query": "={{ $json.data?.keywordsList ? $json.data.keywordsList.split(',').slice(0,4).join(' ') : $json.data?.documentTitle || '' }}",
         "providers": [
           "semantic-scholar",
           "pubmed",
           "arxiv"
         ],
         "limit": 15,
-        "additionalFields": {}
+        "additionalFields": {},
+        "resource": "academic"
       },
       "id": "pdfvector-search",
       "name": "PDF Vector - Find Related Papers",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         880,
         200
@@ -136,7 +134,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const extractNode = $('PDF Vector - Extract Content').item.json;\nconst doc = extractNode.data || {};\nconst searchResult = $input.first().json;\nconst papers = searchResult.results || [];\nconst driveFile = $('Google Drive Trigger').item.json;\n\n// Sort papers by citation count (highest first)\nconst topPapers = papers\n  .filter(p => p && p.title)\n  .sort((a, b) => (b.citationCount || b.totalCitations || 0) - (a.citationCount || a.totalCitations || 0))\n  .slice(0, 10);\n\n// Generate formatted reading list\nconst readingList = topPapers.map((p, i) => {\n  const authors = p.authors ? p.authors.slice(0, 2).map(a => a.name || 'Unknown').join(', ') : 'Unknown';\n  const citations = p.citationCount || p.totalCitations || 0;\n  return `${i + 1}. ${p.title} (${p.year || 'N/A'}) - ${authors} - ${citations} citations`;\n}).join('\\n') || 'No papers found';\n\n// Format research questions\nconst questions = doc.researchQuestions || [];\nconst questionsList = questions.length > 0 \n  ? questions.map((q, i) => `RQ${i + 1}: ${q}`).join('\\n') \n  : 'None identified';\n\n// Combine and deduplicate search terms\nconst concepts = doc.keyConcepts || [];\nconst keywords = doc.keywords || [];\nconst searchTerms = [...new Set([...concepts, ...keywords])].slice(0, 10).join(', ') || 'N/A';\n\n// Format main findings\nconst findings = doc.mainFindings || [];\nconst findingsList = findings.length > 0\n  ? findings.map((f, i) => `• ${f}`).join('\\n')\n  : 'None identified';\n\nreturn [{\n  json: {\n    title: doc.title || driveFile.name || 'Untitled',\n    author: doc.author || 'Unknown',\n    institution: doc.institution || 'N/A',\n    degreeType: doc.degreeType || 'N/A',\n    chapterTitle: doc.chapterTitle || 'N/A',\n    thesisStatement: doc.thesisStatement || 'N/A',\n    methodology: doc.methodology || 'N/A',\n    theoreticalFramework: doc.theoreticalFramework || 'N/A',\n    keyConcepts: concepts.join(', ') || 'N/A',\n    searchTerms: searchTerms,\n    researchQuestions: questionsList,\n    mainFindings: findingsList,\n    readingList: readingList,\n    paperCount: topPapers.length,\n    topPapers: topPapers,\n    fileName: driveFile.name || 'document',\n    fileId: driveFile.id || '',\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($('PDF Vector - Extract Content').item.json?.data || $('PDF Vector - Extract Content').item.json) || {};\nconst papers = $input.first().json.results || [];\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId   = $('Google Drive Trigger').item.json.id;\n\nconst topPapers = papers.slice(0, 5);\nconst relatedPapersList = topPapers.map((p,i) =>\n  `${i+1}. ${p.title || 'Untitled'} (${p.year || 'N/A'}) — ${p.citationCount || 0} citations`\n).join('\\n') || 'None found';\n\nconst searchTerms = (data.keywordsList || data.documentTitle || '').split(',').slice(0,4).join(', ');\n\nreturn [{ json: {\n  title:            data.documentTitle      || 'Unknown',\n  documentTitle:    data.documentTitle      || 'Unknown',\n  chapterTitle:     data.chapterTitle       || 'N/A',\n  thesisStatement:  data.thesisStatement    || 'N/A',\n  methodology:      data.methodology        || 'N/A',\n  theoreticalFramework: data.theoreticalFramework || 'N/A',\n  keyConcepts:      data.keyConceptsList    || 'N/A',\n  keyConceptsList:  data.keyConceptsList    || 'N/A',\n  mainFindingsList: data.mainFindingsList   || 'N/A',\n  researchQuestions: data.researchQuestionsList || 'N/A',\n  researchQuestionsList: data.researchQuestionsList || 'N/A',\n  keywordsList:     data.keywordsList       || 'N/A',\n  searchTerms,\n  papersFound:      papers.length,\n  paperCount:       papers.length,\n  relatedPapersList,\n  readingList:      relatedPapersList,\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "compile-research",
       "name": "Compile Research",
@@ -165,15 +163,15 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Title": "={{ $json.title }}",
+            "Title": "={{ $json.documentTitle }}",
             "Chapter": "={{ $json.chapterTitle }}",
             "Thesis Statement": "={{ $json.thesisStatement }}",
             "Methodology": "={{ $json.methodology }}",
             "Framework": "={{ $json.theoreticalFramework }}",
-            "Key Concepts": "={{ $json.keyConcepts }}",
+            "Key Concepts": "={{ $json.keyConceptsList }}",
             "Search Terms": "={{ $json.searchTerms }}",
-            "Papers Found": "={{ $json.paperCount }}",
-            "Research Questions": "={{ $json.researchQuestions }}",
+            "Papers Found": "={{ $json.papersFound }}",
+            "Research Questions": "={{ $json.researchQuestionsList }}",
             "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
           },
           "matchingColumns": [],
@@ -297,7 +295,7 @@
       "id": "slack-notify",
       "name": "Send Research Summary",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1480,
         200
@@ -378,7 +376,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
