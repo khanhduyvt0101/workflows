@@ -94,16 +94,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
         "binaryPropertyName": "data",
-        "prompt": "={{ $json.question }}\n\nProvide a clear, helpful answer based on this product manual. Include specific page numbers or section references where the information can be found. If the information is not in the manual, say \"Information not found in this document.\""
+        "question": "={{ $json.question }}\n\nProvide a clear, helpful answer based on this product manual. Include specific page numbers or section references where the information can be found. If the information is not in the manual, say \"Information not found in this document.\""
       },
       "id": "pdfvector-ask",
       "name": "PDF Vector Ask",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         880,
         240
@@ -216,7 +215,8 @@
           "cachedResultName": "support-answers"
         },
         "text": "=🤖 *Product Manual Q&A*\n\n📄 *File:* {{ $('Format Answer').item.json.fileName }}\n\n❓ *Question:* {{ $('Format Answer').item.json.question }}\n\n✅ *Answer Found:* {{ $('Format Answer').item.json.answerFound ? 'Yes' : 'No' }}\n\n💬 *Answer:*\n{{ $('Format Answer').item.json.answer }}\n\n---\n🔗 <https://drive.google.com/file/d/{{ $('Format Answer').item.json.fileId }}/view|View Manual>",
-        "options": {}
+        "options": {},
+        "authentication": "oAuth2"
       },
       "id": "slack-notify",
       "name": "Send Answer",
@@ -225,7 +225,13 @@
       "position": [
         1480,
         240
-      ]
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -302,7 +308,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
