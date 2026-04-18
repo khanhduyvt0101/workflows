@@ -59,7 +59,7 @@
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "GFPq3crPajyoq1jG",
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
           "name": "Gmail account"
         }
       }
@@ -90,7 +90,7 @@
       "id": "3e26ca13-8e5d-496a-bd80-c44bffa31c1b",
       "name": "Has PDF Attachment?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         -208,
         1200
@@ -111,15 +111,14 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
-        "prompt": "Analyze this newsletter/document and provide a structured summary:\n\n1. DOCUMENT INFO: What is this document? Who published it?\n\n2. MAIN TOPICS (list 3-5): What are the primary subjects covered?\n\n3. KEY STORIES: Summarize the 2-3 most important stories or sections in 1-2 sentences each.\n\n4. STATS & DATA: List any specific numbers, statistics, or data points mentioned.\n\n5. TRENDS: What emerging trends or themes does this document highlight?\n\nFormat your response with clear section headers."
+        "question": "Analyze this newsletter/document and provide a structured summary:\n\n1. DOCUMENT INFO: What is this document? Who published it?\n\n2. MAIN TOPICS (list 3-5): What are the primary subjects covered?\n\n3. KEY STORIES: Summarize the 2-3 most important stories or sections in 1-2 sentences each.\n\n4. STATS & DATA: List any specific numbers, statistics, or data points mentioned.\n\n5. TRENDS: What emerging trends or themes does this document highlight?\n\nFormat your response with clear section headers."
       },
       "id": "abcbe0d0-56d3-4b23-a7a8-a01d4e5d2c04",
       "name": "PDF Vector - Analyze Content",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         208,
         1104
@@ -290,12 +289,11 @@
       "id": "1cfcccbe-d733-4d33-978b-5c23d4377388",
       "name": "Share Digest",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         800,
         1104
-      ],
-      "webhookId": "f82f2840-fc5c-430d-a320-2c5414bd7e3a"
+      ]
     }
   ],
   "pinData": {},
@@ -372,11 +370,8 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "addfa805-f40f-44b8-bc68-7409716c6fca",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "7e8b6f52685b44af41a4db7413ae11ea45e1bca0d97fac82a65f08260302d00e"
+    "templateCredsSetupCompleted": false
   },
-  "id": "HNKezjdVX3mS6RQOVkyYe",
   "tags": []
 }
