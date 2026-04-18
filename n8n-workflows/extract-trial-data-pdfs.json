@@ -78,17 +78,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract clinical trial document information including: study identifier, protocol number, phase (I/II/III/IV), sponsor name, indication/disease area, study design (randomized/blinded/controlled), primary endpoint with definition, secondary endpoints, sample size (target enrollment), study duration, inclusion criteria, exclusion criteria, dosing schedule, adverse events summary, serious adverse events count, efficacy results if available, statistical methods, regulatory status, and any key findings or conclusions.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"studyId\":{\"type\":\"string\"},\"protocolNumber\":{\"type\":\"string\"},\"phase\":{\"type\":\"string\"},\"sponsor\":{\"type\":\"string\"},\"indication\":{\"type\":\"string\"},\"studyDesign\":{\"type\":\"string\"},\"primaryEndpoint\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"definition\":{\"type\":\"string\"},\"measurementMethod\":{\"type\":\"string\"}}},\"secondaryEndpoints\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"definition\":{\"type\":\"string\"}}}},\"sampleSize\":{\"type\":\"object\",\"properties\":{\"target\":{\"type\":\"number\"},\"enrolled\":{\"type\":\"number\"},\"completed\":{\"type\":\"number\"}}},\"studyDuration\":{\"type\":\"string\"},\"inclusionCriteria\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"exclusionCriteria\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"dosingSchedule\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"arm\":{\"type\":\"string\"},\"dose\":{\"type\":\"string\"},\"frequency\":{\"type\":\"string\"},\"route\":{\"type\":\"string\"}}}},\"adverseEvents\":{\"type\":\"object\",\"properties\":{\"total\":{\"type\":\"number\"},\"serious\":{\"type\":\"number\"},\"commonEvents\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}},\"efficacyResults\":{\"type\":\"string\"},\"statisticalMethods\":{\"type\":\"string\"},\"regulatoryStatus\":{\"type\":\"string\"},\"keyFindings\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"studyId\",\"phase\"],\"additionalProperties\":false}"
+        "prompt": "Extract clinical trial document data as flat fields. trialTitle, trialId, phase (e.g. Phase I, Phase II, Phase III), studyType, sponsor, indication, targetPopulation, primaryEndpointDescription, primaryEndpointMetric, secondaryEndpointsList (semicolon-separated secondary endpoints), totalSampleSize (number), treatmentGroupSize (number), controlGroupSize (number), inclusionCriteriaList (semicolon-separated inclusion criteria), exclusionCriteriaList (semicolon-separated exclusion criteria), drugName, dosage, routeOfAdministration, treatmentDuration, adverseEventsList (semicolon-separated adverse events with frequency), primaryResultSummary, statisticalSignificance, pValue, keyFindingsList (semicolon-separated key findings), trialStatus (ongoing/completed/terminated), studyStartDate, studyEndDate, clinicalTrialsGovId, irb, fundingSource.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"trialTitle\": {\"type\": \"string\"}, \"trialId\": {\"type\": \"string\"}, \"phase\": {\"type\": \"string\"}, \"studyType\": {\"type\": \"string\"}, \"sponsor\": {\"type\": \"string\"}, \"indication\": {\"type\": \"string\"}, \"targetPopulation\": {\"type\": \"string\"}, \"primaryEndpointDescription\": {\"type\": \"string\"}, \"primaryEndpointMetric\": {\"type\": \"string\"}, \"secondaryEndpointsList\": {\"type\": \"string\"}, \"totalSampleSize\": {\"type\": \"number\"}, \"treatmentGroupSize\": {\"type\": \"number\"}, \"controlGroupSize\": {\"type\": \"number\"}, \"inclusionCriteriaList\": {\"type\": \"string\"}, \"exclusionCriteriaList\": {\"type\": \"string\"}, \"drugName\": {\"type\": \"string\"}, \"dosage\": {\"type\": \"string\"}, \"routeOfAdministration\": {\"type\": \"string\"}, \"treatmentDuration\": {\"type\": \"string\"}, \"adverseEventsList\": {\"type\": \"string\"}, \"primaryResultSummary\": {\"type\": \"string\"}, \"statisticalSignificance\": {\"type\": \"string\"}, \"pValue\": {\"type\": \"string\"}, \"keyFindingsList\": {\"type\": \"string\"}, \"trialStatus\": {\"type\": \"string\"}, \"studyStartDate\": {\"type\": \"string\"}, \"studyEndDate\": {\"type\": \"string\"}, \"clinicalTrialsGovId\": {\"type\": \"string\"}, \"irb\": {\"type\": \"string\"}, \"fundingSource\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "Extract Trial Data",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         880,
         280
@@ -102,7 +100,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const extractData = $input.first().json.data || $input.first().json;\nconst triggerData = $('New Trial Document').item.json;\n\nconst trial = extractData;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Format secondary endpoints\nconst secondaryEndpoints = trial.secondaryEndpoints || [];\nconst secondaryList = secondaryEndpoints.map(e => e.name).join(', ') || 'None listed';\n\n// Format adverse events\nconst ae = trial.adverseEvents || {};\nconst aeTotal = ae.total || 0;\nconst aeSAE = ae.serious || 0;\nconst aeCommon = (ae.commonEvents || []).join(', ') || 'Not reported';\n\n// Format key findings\nconst findings = trial.keyFindings || [];\nconst findingsList = findings.map((f, i) => `${i + 1}. ${f}`).join('\\n') || 'None extracted';\n\n// Sample size info\nconst sampleSize = trial.sampleSize || {};\nconst sampleTarget = sampleSize.target || 'N/A';\nconst sampleEnrolled = sampleSize.enrolled || 'N/A';\nconst sampleCompleted = sampleSize.completed || 'N/A';\n\n// Primary endpoint info\nconst primaryEP = trial.primaryEndpoint || {};\nconst primaryName = primaryEP.name || 'Not specified';\nconst primaryDef = primaryEP.definition || '';\n\nreturn [{\n  json: {\n    studyId: trial.studyId || 'Unknown',\n    protocolNumber: trial.protocolNumber || 'N/A',\n    phase: trial.phase || 'Unknown',\n    sponsor: trial.sponsor || 'Unknown',\n    indication: trial.indication || 'Not specified',\n    studyDesign: trial.studyDesign || 'Not specified',\n    primaryEndpoint: primaryName,\n    primaryEndpointDefinition: primaryDef,\n    secondaryEndpoints: secondaryList,\n    secondaryCount: secondaryEndpoints.length,\n    sampleTarget: sampleTarget,\n    sampleEnrolled: sampleEnrolled,\n    sampleCompleted: sampleCompleted,\n    studyDuration: trial.studyDuration || 'N/A',\n    aeTotal: aeTotal,\n    aeSAE: aeSAE,\n    aeCommon: aeCommon,\n    regulatoryStatus: trial.regulatoryStatus || 'Unknown',\n    keyFindings: findingsList,\n    findingsCount: findings.length,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\nconst fileName = $('New Trial Document').item.json.name;\nconst fileId   = $('New Trial Document').item.json.id;\n\nconst findings = (data.keyFindingsList || '').split(';').filter(Boolean);\nconst adverse  = (data.adverseEventsList || '').split(';').filter(Boolean);\nconst findingsList = findings.map((f,i) => `${i+1}. ${f.trim()}`).join('\\n') || 'N/A';\nconst adverseList  = adverse.map(a => `• ${a.trim()}`).join('\\n') || 'None reported';\n\nreturn [{ json: {\n  trialTitle:   data.trialTitle   || 'Unknown Trial',\n  trialId:      data.trialId      || 'N/A',\n  phase:        data.phase        || 'N/A',\n  studyType:    data.studyType    || 'N/A',\n  sponsor:      data.sponsor      || 'N/A',\n  indication:   data.indication   || 'N/A',\n  drugName:     data.drugName     || 'N/A',\n  dosage:       data.dosage       || 'N/A',\n  treatmentDuration: data.treatmentDuration || 'N/A',\n  totalSampleSize:   parseInt(data.totalSampleSize) || 0,\n  primaryEndpointDescription: data.primaryEndpointDescription || 'N/A',\n  primaryResultSummary: data.primaryResultSummary || 'N/A',\n  statisticalSignificance: data.statisticalSignificance || 'N/A',\n  pValue:       data.pValue       || 'N/A',\n  findingsList, findingsCount: findings.length,\n  adverseList,  adverseCount:  adverse.length,\n  trialStatus:  data.trialStatus  || 'N/A',\n  studyStartDate: data.studyStartDate || 'N/A',\n  studyEndDate:   data.studyEndDate   || 'N/A',\n  clinicalTrialsGovId: data.clinicalTrialsGovId || 'N/A',\n  fundingSource: data.fundingSource || 'N/A',\n  fileName, fileId,\n  processedAt: new Date().toISOString(),\n  fileId: fileId,\n  studyId: data.clinicalTrialsGovId || data.trialId || \"N/A\",\n  protocolNumber: data.trialId || \"N/A\",\n  studyDesign: data.studyType || \"N/A\",\n  studyDuration: data.treatmentDuration || \"N/A\",\n  primaryEndpoint: data.primaryEndpointDescription || \"N/A\",\n  sampleTarget: parseInt(data.totalSampleSize) || 0,\n  sampleEnrolled: parseInt(data.totalSampleSize) || 0,\n  sampleCompleted: parseInt(data.totalSampleSize) || 0,\n  secondaryCount: (data.secondaryEndpointsList || \"\").split(\";\").filter(Boolean).length,\n  aeTotal: adverse.length,\n  aeSAE: 0,\n  aeCommon: adverse.slice(0,3).map(a => a.trim()).join(\"; \") || \"None\",\n}}];"
       },
       "id": "format-data",
       "name": "Format Trial Data",
@@ -137,14 +135,20 @@
             "Sponsor": "={{ $json.sponsor }}",
             "Indication": "={{ $json.indication }}",
             "Design": "={{ $json.studyDesign }}",
-            "Primary Endpoint": "={{ $json.primaryEndpoint }}",
+            "Primary Endpoint": "={{ $json.primaryEndpointDescription }}",
             "Secondary Endpoints": "={{ $json.secondaryCount }}",
-            "Sample Size": "={{ $json.sampleTarget }}",
+            "Sample Size": "={{ $json.totalSampleSize }}",
             "Duration": "={{ $json.studyDuration }}",
             "Total AEs": "={{ $json.aeTotal }}",
             "SAEs": "={{ $json.aeSAE }}",
-            "Status": "={{ $json.regulatoryStatus }}",
-            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+            "Status": "={{ $json.trialStatus }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}",
+            "Trial ID": "={{ $json.trialId }}",
+            "Drug": "={{ $json.drugName }}",
+            "Key Findings": "={{ $json.findingsCount }}",
+            "Adverse Events": "={{ $json.adverseCount }}",
+            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -384,7 +388,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
