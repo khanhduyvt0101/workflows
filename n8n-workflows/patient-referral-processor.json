@@ -78,17 +78,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract patient referral information including: patient full name, date of birth, gender, phone number, address, insurance provider, insurance ID, referring physician name, referring physician practice, referring physician phone, referring physician fax, referring physician NPI, referral date, diagnosis or reason for referral, ICD-10 codes if present, urgency level (routine/urgent/emergent/stat), requested services or specialty, requested provider if specified, relevant medical history, current medications, allergies, recent test results mentioned, and any special instructions or notes.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"patientName\":{\"type\":\"string\"},\"dateOfBirth\":{\"type\":\"string\"},\"gender\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"insuranceProvider\":{\"type\":\"string\"},\"insuranceId\":{\"type\":\"string\"},\"referringPhysician\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"practice\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"fax\":{\"type\":\"string\"},\"npi\":{\"type\":\"string\"}}},\"referralDate\":{\"type\":\"string\"},\"diagnosis\":{\"type\":\"string\"},\"icdCodes\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"urgencyLevel\":{\"type\":\"string\"},\"requestedService\":{\"type\":\"string\"},\"requestedProvider\":{\"type\":\"string\"},\"medicalHistory\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"currentMedications\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"allergies\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"recentTests\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"specialInstructions\":{\"type\":\"string\"}},\"required\":[\"patientName\",\"referringPhysician\"],\"additionalProperties\":false}"
+        "prompt": "Extract patient referral letter data as flat fields. patientName, patientDob, patientId, patientPhone, patientEmail, patientAddress, referringPhysicianName, referringPhysicianNpi, referringClinic, referringPhone, referringFax, specialistType, specialistName, referralDate (YYYY-MM-DD), urgency (Routine/Urgent/STAT), icdCodesList (semicolon-separated ICD-10 codes with descriptions), referralReason, clinicalSummary, medicalHistoryList (semicolon-separated relevant history), currentMedicationsList (semicolon-separated medications with doses), allergiesList (semicolon-separated allergies with reactions), recentTestsList (semicolon-separated recent tests with results), insuranceProvider, policyNumber, authorizationNumber, specialInstructions, attachmentsList.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"patientName\": {\"type\": \"string\"}, \"patientDob\": {\"type\": \"string\"}, \"patientId\": {\"type\": \"string\"}, \"patientPhone\": {\"type\": \"string\"}, \"patientEmail\": {\"type\": \"string\"}, \"patientAddress\": {\"type\": \"string\"}, \"referringPhysicianName\": {\"type\": \"string\"}, \"referringPhysicianNpi\": {\"type\": \"string\"}, \"referringClinic\": {\"type\": \"string\"}, \"referringPhone\": {\"type\": \"string\"}, \"referringFax\": {\"type\": \"string\"}, \"specialistType\": {\"type\": \"string\"}, \"specialistName\": {\"type\": \"string\"}, \"referralDate\": {\"type\": \"string\"}, \"urgency\": {\"type\": \"string\"}, \"icdCodesList\": {\"type\": \"string\"}, \"referralReason\": {\"type\": \"string\"}, \"clinicalSummary\": {\"type\": \"string\"}, \"medicalHistoryList\": {\"type\": \"string\"}, \"currentMedicationsList\": {\"type\": \"string\"}, \"allergiesList\": {\"type\": \"string\"}, \"recentTestsList\": {\"type\": \"string\"}, \"insuranceProvider\": {\"type\": \"string\"}, \"policyNumber\": {\"type\": \"string\"}, \"authorizationNumber\": {\"type\": \"string\"}, \"specialInstructions\": {\"type\": \"string\"}, \"attachmentsList\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "Extract Referral Data",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         880,
         280
@@ -102,7 +100,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const extractData = $input.first().json.data || $input.first().json;\nconst triggerData = $('New Referral Letter').item.json;\n\nconst referral = extractData;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Referring physician info\nconst refMD = referral.referringPhysician || {};\n\n// Format ICD codes\nconst icdCodes = referral.icdCodes || [];\nconst icdList = icdCodes.join(', ') || 'None specified';\n\n// Format medications\nconst meds = referral.currentMedications || [];\nconst medsList = meds.join(', ') || 'None listed';\n\n// Format allergies\nconst allergies = referral.allergies || [];\nconst allergiesList = allergies.join(', ') || 'NKDA';\n\n// Determine department based on requested service\nconst service = (referral.requestedService || '').toLowerCase();\nlet department = 'General';\n\nif (service.includes('cardio') || service.includes('heart')) department = 'Cardiology';\nelse if (service.includes('ortho') || service.includes('bone') || service.includes('joint')) department = 'Orthopedics';\nelse if (service.includes('neuro') || service.includes('brain')) department = 'Neurology';\nelse if (service.includes('gastro') || service.includes('gi')) department = 'Gastroenterology';\nelse if (service.includes('pulmo') || service.includes('lung')) department = 'Pulmonology';\nelse if (service.includes('oncol') || service.includes('cancer')) department = 'Oncology';\nelse if (service.includes('derma') || service.includes('skin')) department = 'Dermatology';\nelse if (service.includes('endo') || service.includes('diabetes')) department = 'Endocrinology';\nelse if (service.includes('psych') || service.includes('mental')) department = 'Psychiatry';\nelse if (service.includes('surgery')) department = 'Surgery';\nelse if (service.includes('radiol') || service.includes('imaging')) department = 'Radiology';\n\n// Determine priority flag\nconst urgency = (referral.urgencyLevel || 'routine').toLowerCase();\nlet priorityFlag = '🟢';\nif (urgency.includes('stat') || urgency.includes('emergent')) priorityFlag = '🔴';\nelse if (urgency.includes('urgent')) priorityFlag = '🟡';\n\nreturn [{\n  json: {\n    patientName: referral.patientName || 'Unknown',\n    dateOfBirth: referral.dateOfBirth || 'N/A',\n    gender: referral.gender || 'N/A',\n    phone: referral.phone || 'N/A',\n    insuranceProvider: referral.insuranceProvider || 'Unknown',\n    insuranceId: referral.insuranceId || 'N/A',\n    referringMDName: refMD.name || 'Unknown',\n    referringMDPractice: refMD.practice || 'N/A',\n    referringMDPhone: refMD.phone || 'N/A',\n    referringMDFax: refMD.fax || 'N/A',\n    referralDate: referral.referralDate || 'N/A',\n    diagnosis: referral.diagnosis || 'Not specified',\n    icdCodes: icdList,\n    urgencyLevel: referral.urgencyLevel || 'Routine',\n    priorityFlag: priorityFlag,\n    requestedService: referral.requestedService || 'Not specified',\n    requestedProvider: referral.requestedProvider || 'Any available',\n    department: department,\n    currentMedications: medsList,\n    allergies: allergiesList,\n    specialInstructions: referral.specialInstructions || 'None',\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\nconst fileName = $('New Referral Letter').item.json.name;\nconst fileId   = $('New Referral Letter').item.json.id;\n\nconst urgency = data.urgency || 'Routine';\nlet urgencyEmoji = '📋';\nif (urgency === 'STAT') urgencyEmoji = '🚨';\nelse if (urgency === 'Urgent') urgencyEmoji = '⚠️';\n\nreturn [{ json: {\n  patientName:           data.patientName           || 'Unknown',\n  patientDob:            data.patientDob            || 'N/A',\n  referringPhysicianName: data.referringPhysicianName || 'N/A',\n  referringClinic:       data.referringClinic       || 'N/A',\n  specialistType:        data.specialistType        || 'N/A',\n  specialistName:        data.specialistName        || 'N/A',\n  referralDate:          data.referralDate          || 'N/A',\n  urgency, urgencyEmoji,\n  icdCodesList:          data.icdCodesList          || 'N/A',\n  referralReason:        data.referralReason        || 'N/A',\n  clinicalSummary:       data.clinicalSummary       || 'N/A',\n  currentMedicationsList: data.currentMedicationsList || 'None',\n  allergiesList:         data.allergiesList         || 'NKDA',\n  recentTestsList:       data.recentTestsList       || 'None',\n  insuranceProvider:     data.insuranceProvider     || 'N/A',\n  authorizationNumber:   data.authorizationNumber   || 'N/A',\n  specialInstructions:   data.specialInstructions   || 'None',\n  fileName, fileId,\n  processedAt: new Date().toISOString(),\n  fileId: fileId,\n  dateOfBirth: data.patientDob || \"N/A\",\n  phone: data.patientPhone || \"N/A\",\n  diagnosis: data.icdCodesList || \"N/A\",\n  icdCodes: data.icdCodesList || \"N/A\",\n  requestedService: data.specialistType || \"N/A\",\n  department: data.specialistType || \"N/A\",\n  currentMedications: data.currentMedicationsList || \"None\",\n  allergies: data.allergiesList || \"NKDA\",\n  insuranceId: data.policyNumber || \"N/A\",\n  referringMDName: data.referringPhysicianName || \"N/A\",\n  referringMDPhone: data.referringPhone || \"N/A\",\n  referringMDPractice: data.referringClinic || \"N/A\",\n  urgencyLevel: urgency,\n  priorityFlag: urgencyEmoji,\n}}];"
       },
       "id": "format-data",
       "name": "Format and Route",
@@ -135,16 +133,21 @@
             "DOB": "={{ $json.dateOfBirth }}",
             "Phone": "={{ $json.phone }}",
             "Insurance": "={{ $json.insuranceProvider }}",
-            "Referring MD": "={{ $json.referringMDName }}",
+            "Referring MD": "={{ $json.referringPhysicianName }}",
             "MD Practice": "={{ $json.referringMDPractice }}",
             "Diagnosis": "={{ $json.diagnosis }}",
             "ICD Codes": "={{ $json.icdCodes }}",
-            "Urgency": "={{ $json.urgencyLevel }}",
+            "Urgency": "={{ $json.urgency }}",
             "Requested Service": "={{ $json.requestedService }}",
             "Department": "={{ $json.department }}",
             "Status": "New",
             "Referral Date": "={{ $json.referralDate }}",
-            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}",
+            "Patient": "={{ $json.patientName }}",
+            "Specialist Type": "={{ $json.specialistType }}",
+            "Reason": "={{ $json.referralReason }}",
+            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -384,7 +387,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
