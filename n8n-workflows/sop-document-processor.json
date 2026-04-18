@@ -81,17 +81,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract SOP (Standard Operating Procedure) information: document title, SOP number, version, effective date, author, approver, department, purpose, scope, responsibilities by role, required equipment/materials, safety precautions, step-by-step procedures with substeps, quality checkpoints, and revision history.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"sopNumber\":{\"type\":\"string\"},\"version\":{\"type\":\"string\"},\"effectiveDate\":{\"type\":\"string\"},\"author\":{\"type\":\"string\"},\"approver\":{\"type\":\"string\"},\"department\":{\"type\":\"string\"},\"purpose\":{\"type\":\"string\"},\"scope\":{\"type\":\"string\"},\"responsibilities\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"role\":{\"type\":\"string\"},\"duties\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}},\"equipment\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"safetyPrecautions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"procedures\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"stepNumber\":{\"type\":\"number\"},\"action\":{\"type\":\"string\"},\"details\":{\"type\":\"string\"},\"caution\":{\"type\":\"string\"}}}},\"qualityCheckpoints\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"checkpoint\":{\"type\":\"string\"},\"criteria\":{\"type\":\"string\"}}}},\"revisionHistory\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"version\":{\"type\":\"string\"},\"date\":{\"type\":\"string\"},\"changes\":{\"type\":\"string\"}}}}},\"required\":[\"title\"],\"additionalProperties\":false}"
+        "prompt": "Extract SOP (Standard Operating Procedure) as flat fields. title, sopNumber, version, effectiveDate (YYYY-MM-DD), author, approver, department, purpose, scope, responsibilitiesList (semicolon-separated formatted as: role: duties), equipmentList (semicolon-separated required equipment/materials), safetyPrecautionsList (semicolon-separated safety warnings), proceduresList (semicolon-separated steps formatted as: stepNumber. action - details), qualityCheckpointsList (semicolon-separated formatted as: checkpoint: criteria), revisionHistory (semicolon-separated formatted as: version date changes), procedureCount (number), safetyCount (number), checkpointCount (number).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"title\": {\"type\": \"string\"}, \"sopNumber\": {\"type\": \"string\"}, \"version\": {\"type\": \"string\"}, \"effectiveDate\": {\"type\": \"string\"}, \"author\": {\"type\": \"string\"}, \"approver\": {\"type\": \"string\"}, \"department\": {\"type\": \"string\"}, \"purpose\": {\"type\": \"string\"}, \"scope\": {\"type\": \"string\"}, \"responsibilitiesList\": {\"type\": \"string\"}, \"equipmentList\": {\"type\": \"string\"}, \"safetyPrecautionsList\": {\"type\": \"string\"}, \"proceduresList\": {\"type\": \"string\"}, \"qualityCheckpointsList\": {\"type\": \"string\"}, \"revisionHistory\": {\"type\": \"string\"}, \"procedureCount\": {\"type\": \"number\"}, \"safetyCount\": {\"type\": \"number\"}, \"checkpointCount\": {\"type\": \"number\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector Extract",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         700,
         300
@@ -99,7 +97,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const sop = $input.first().json.data || $input.first().json;\nconst triggerData = $('New SOP Document').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Format procedures as checklist\nconst procedures = sop.procedures || [];\nconst checklistItems = procedures.map(p => \n  `☐ Step ${p.stepNumber || '?'}: ${p.action || ''}${p.caution ? ' ⚠️' : ''}`\n).join('\\n') || 'No procedures found';\n\n// Format safety items\nconst safety = sop.safetyPrecautions || [];\nconst safetyList = safety.map(s => `⚠️ ${s}`).join('\\n') || 'None specified';\n\n// Format quality checkpoints\nconst checkpoints = sop.qualityCheckpoints || [];\nconst checkpointList = checkpoints.map(c => `✓ ${c.checkpoint}: ${c.criteria || ''}`).join('\\n') || 'None specified';\n\n// Count elements\nconst procedureCount = procedures.length;\nconst safetyCount = safety.length;\nconst checkpointCount = checkpoints.length;\n\n// Get latest revision\nconst revisions = sop.revisionHistory || [];\nconst latestRevision = revisions.length > 0 ? revisions[revisions.length - 1] : null;\n\nreturn [{\n  json: {\n    title: sop.title || 'Untitled SOP',\n    sopNumber: sop.sopNumber || 'N/A',\n    version: sop.version || '1.0',\n    effectiveDate: sop.effectiveDate || 'N/A',\n    author: sop.author || 'N/A',\n    approver: sop.approver || 'N/A',\n    department: sop.department || 'N/A',\n    purpose: sop.purpose || '',\n    scope: sop.scope || '',\n    fileName: fileName,\n    fileId: fileId,\n    checklistItems: checklistItems,\n    safetyList: safetyList,\n    checkpointList: checkpointList,\n    procedureCount: procedureCount,\n    safetyCount: safetyCount,\n    checkpointCount: checkpointCount,\n    latestRevision: latestRevision,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\nconst fileName = $('New SOP Document').item.json.name;\nconst fileId   = $('New SOP Document').item.json.id;\n\nconst procedures = (data.proceduresList || '').split(';').filter(p => p.trim());\nconst safety     = (data.safetyPrecautionsList || '').split(';').filter(s => s.trim());\nconst checkpoints= (data.qualityCheckpointsList || '').split(';').filter(c => c.trim());\n\nconst checklistItems = procedures.map(p => `☐ ${p.trim()}`).join('\\n') || 'No procedures found';\nconst safetyList     = safety.map(s => `⚠️ ${s.trim()}`).join('\\n')     || 'None specified';\nconst checkpointList = checkpoints.map(c => `✓ ${c.trim()}`).join('\\n') || 'None specified';\n\nreturn [{ json: {\n  title:           data.title          || 'Untitled SOP',\n  sopNumber:       data.sopNumber      || 'N/A',\n  version:         data.version        || '1.0',\n  effectiveDate:   data.effectiveDate  || 'N/A',\n  author:          data.author         || 'N/A',\n  approver:        data.approver       || 'N/A',\n  department:      data.department     || 'N/A',\n  purpose:         data.purpose        || 'N/A',\n  scope:           data.scope          || 'N/A',\n  checklistItems, safetyList, checkpointList,\n  procedureCount:  parseInt(data.procedureCount)  || procedures.length,\n  safetyCount:     parseInt(data.safetyCount)     || safety.length,\n  checkpointCount: parseInt(data.checkpointCount) || checkpoints.length,\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "process-sop",
       "name": "Process SOP",
@@ -349,7 +347,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
