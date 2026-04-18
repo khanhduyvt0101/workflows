@@ -81,7 +81,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Store file metadata and pass through binary data\nconst triggerData = $('New Financial Report').item.json;\n\nreturn [{\n  json: {\n    fileName: triggerData.name || 'unknown.pdf',\n    fileId: triggerData.id || '',\n    mimeType: triggerData.mimeType || ''\n  },\n  binary: $input.first().binary\n}];"
+        "jsCode": "const triggerData = $('New Financial Report').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\nreturn [{\n  json: { fileName, fileId },\n  binary: $input.first().binary\n}];"
       },
       "id": "store-metadata",
       "name": "Store File Info",
@@ -94,17 +94,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract key financial data from this report: company name, ticker symbol, report type (10-K, 10-Q, etc.), fiscal period, revenue, revenue growth YoY, net income, EPS, gross margin, operating margin, net margin, total assets, total liabilities, cash and equivalents, long-term debt, free cash flow, key risk factors mentioned, and management's outlook or guidance.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"company\":{\"type\":\"string\"},\"ticker\":{\"type\":\"string\"},\"reportType\":{\"type\":\"string\"},\"fiscalPeriod\":{\"type\":\"string\"},\"fiscalYear\":{\"type\":\"number\"},\"revenue\":{\"type\":\"number\"},\"revenueGrowthYoY\":{\"type\":\"number\"},\"netIncome\":{\"type\":\"number\"},\"eps\":{\"type\":\"number\"},\"grossMargin\":{\"type\":\"number\"},\"operatingMargin\":{\"type\":\"number\"},\"netMargin\":{\"type\":\"number\"},\"totalAssets\":{\"type\":\"number\"},\"totalLiabilities\":{\"type\":\"number\"},\"shareholderEquity\":{\"type\":\"number\"},\"cash\":{\"type\":\"number\"},\"longTermDebt\":{\"type\":\"number\"},\"freeCashFlow\":{\"type\":\"number\"},\"riskFactors\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"managementOutlook\":{\"type\":\"string\"}},\"required\":[\"company\"],\"additionalProperties\":false}"
+        "prompt": "Extract financial report data as flat fields. companyName, tickerSymbol, reportType (e.g. Q1 2025, Annual 2024), fiscalPeriod, reportDate (YYYY-MM-DD), revenue (number in millions), revenuePriorPeriod (number), revenueGrowthPct (number), grossProfit (number), grossMarginPct (number), operatingIncome (number), operatingMarginPct (number), netIncome (number), netMarginPct (number), eps (number), epsPriorPeriod (number), cashAndEquivalents (number), totalDebt (number), debtToEquityRatio (number), freeCashFlow (number), capitalExpenditures (number), guidance (next period revenue or EPS guidance as string), riskFactorsList (semicolon-separated top risk factors), keyHighlightsList (semicolon-separated key business highlights).",
+        "schema": "{\"type\": \"object\", \"properties\": {\"companyName\": {\"type\": \"string\"}, \"tickerSymbol\": {\"type\": \"string\"}, \"reportType\": {\"type\": \"string\"}, \"fiscalPeriod\": {\"type\": \"string\"}, \"reportDate\": {\"type\": \"string\"}, \"revenue\": {\"type\": \"number\"}, \"revenuePriorPeriod\": {\"type\": \"number\"}, \"revenueGrowthPct\": {\"type\": \"number\"}, \"grossProfit\": {\"type\": \"number\"}, \"grossMarginPct\": {\"type\": \"number\"}, \"operatingIncome\": {\"type\": \"number\"}, \"operatingMarginPct\": {\"type\": \"number\"}, \"netIncome\": {\"type\": \"number\"}, \"netMarginPct\": {\"type\": \"number\"}, \"eps\": {\"type\": \"number\"}, \"epsPriorPeriod\": {\"type\": \"number\"}, \"cashAndEquivalents\": {\"type\": \"number\"}, \"totalDebt\": {\"type\": \"number\"}, \"debtToEquityRatio\": {\"type\": \"number\"}, \"freeCashFlow\": {\"type\": \"number\"}, \"capitalExpenditures\": {\"type\": \"number\"}, \"guidance\": {\"type\": \"string\"}, \"riskFactorsList\": {\"type\": \"string\"}, \"keyHighlightsList\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector Extract",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         920,
         200
@@ -112,16 +110,14 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Based on this financial report, provide: 1) A brief executive summary (2-3 sentences), 2) The top 3 positive highlights, 3) The top 3 concerns or risks, and 4) An overall assessment of the company's financial health (Strong/Stable/Concerning/Weak) with brief justification."
+        "question": "Based on this financial report, provide: 1) A brief executive summary (2-3 sentences), 2) The top 3 positive highlights, 3) The top 3 concerns or risks, and 4) An overall assessment of the company's financial health (Strong/Stable/Concerning/Weak) with brief justification."
       },
       "id": "pdfvector-assess",
       "name": "PDF Vector Assessment",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         920,
         400
@@ -144,7 +140,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get extraction data from first input (PDF Vector Extract)\nconst extractItem = $input.all()[0];\nconst extractData = extractItem.json.data || extractItem.json;\n\n// Get assessment data from second input (PDF Vector Assessment)\nconst assessItem = $input.all()[1] || $input.all()[0];\nconst assessmentData = assessItem.json;\n\n// Get file info from Store File Info node\nconst fileInfo = $('Store File Info').item.json;\n\nconst report = extractData;\nconst assessment = assessmentData.markdown || assessmentData.answer || 'No assessment generated';\nconst fileName = fileInfo.fileName || 'unknown';\nconst fileId = fileInfo.fileId || '';\n\n// Format large numbers\nconst formatLargeNumber = (num) => {\n  if (!num && num !== 0) return 'N/A';\n  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;\n  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;\n  if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;\n  return `$${num.toLocaleString()}`;\n};\n\n// Calculate debt-to-equity ratio\nconst debtToEquity = report.shareholderEquity && report.longTermDebt \n  ? (report.longTermDebt / report.shareholderEquity).toFixed(2)\n  : 'N/A';\n\n// Format risk factors\nconst risks = report.riskFactors || [];\nconst topRisks = risks.slice(0, 5).map((r, i) => `${i + 1}. ${r}`).join('\\n') || 'None listed';\n\nreturn [{\n  json: {\n    company: report.company || 'Unknown',\n    ticker: report.ticker || 'N/A',\n    reportType: report.reportType || 'N/A',\n    fiscalPeriod: report.fiscalPeriod || 'N/A',\n    revenue: report.revenue,\n    revenueGrowthYoY: report.revenueGrowthYoY,\n    netIncome: report.netIncome,\n    eps: report.eps,\n    netMargin: report.netMargin,\n    cash: report.cash,\n    freeCashFlow: report.freeCashFlow,\n    assessment: assessment,\n    fileName: fileName,\n    fileId: fileId,\n    revenueFormatted: formatLargeNumber(report.revenue),\n    netIncomeFormatted: formatLargeNumber(report.netIncome),\n    cashFormatted: formatLargeNumber(report.cash),\n    fcfFormatted: formatLargeNumber(report.freeCashFlow),\n    debtToEquity: debtToEquity,\n    topRisks: topRisks,\n    riskCount: risks.length,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const fin = $('PDF Vector Extract').item.json.data || $('PDF Vector Extract').item.json;\nconst assessment = $('PDF Vector Assessment').item.json.answer || $('PDF Vector Assessment').item.json.markdown || '';\nconst fileName = $('Store File Info').item.json.fileName;\nconst fileId   = $('Store File Info').item.json.fileId;\n\nconst riskCount = (fin.riskFactorsList || '').split(';').filter(r => r.trim()).length;\n\nreturn [{ json: {\n  companyName:      fin.companyName      || 'Unknown',\n  tickerSymbol:     fin.tickerSymbol     || 'N/A',\n  reportType:       fin.reportType       || 'N/A',\n  fiscalPeriod:     fin.fiscalPeriod     || 'N/A',\n  revenue:          fin.revenue          || 0,\n  revenueGrowthPct: fin.revenueGrowthPct || 0,\n  netIncome:        fin.netIncome        || 0,\n  eps:              fin.eps              || 0,\n  netMarginPct:     fin.netMarginPct     || 0,\n  cashAndEquivalents: fin.cashAndEquivalents || 0,\n  freeCashFlow:     fin.freeCashFlow     || 0,\n  debtToEquityRatio: fin.debtToEquityRatio || 0,\n  riskFactorsList:  fin.riskFactorsList  || 'None',\n  keyHighlightsList: fin.keyHighlightsList || 'None',\n  riskCount,\n  guidance:         fin.guidance         || 'Not provided',\n  assessment,\n  company:          fin.companyName      || 'Unknown',\n  ticker:           fin.tickerSymbol     || 'N/A',\n  debtToEquity:     fin.debtToEquityRatio || 0,\n  topRisks:         fin.riskFactorsList  || 'None',\n  revenueFormatted: '$' + (fin.revenue||0).toLocaleString() + 'M',\n  netIncomeFormatted: '$' + (fin.netIncome||0).toLocaleString() + 'M',\n  fcfFormatted:     '$' + (fin.freeCashFlow||0).toLocaleString() + 'M',\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "compile-analysis",
       "name": "Compile Analysis",
@@ -173,18 +169,18 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Company": "={{ $json.company }}",
-            "Ticker": "={{ $json.ticker }}",
+            "Company": "={{ $json.companyName }}",
+            "Ticker": "={{ $json.tickerSymbol }}",
             "Report Type": "={{ $json.reportType }}",
             "Fiscal Period": "={{ $json.fiscalPeriod }}",
-            "Revenue": "={{ $json.revenueFormatted }}",
-            "Revenue Growth": "={{ $json.revenueGrowthYoY ? $json.revenueGrowthYoY + '%' : 'N/A' }}",
-            "Net Income": "={{ $json.netIncomeFormatted }}",
-            "EPS": "={{ $json.eps || 'N/A' }}",
-            "Net Margin": "={{ $json.netMargin ? $json.netMargin + '%' : 'N/A' }}",
-            "Cash": "={{ $json.cashFormatted }}",
-            "FCF": "={{ $json.fcfFormatted }}",
-            "D/E Ratio": "={{ $json.debtToEquity }}",
+            "Revenue": "={{ $json.revenue }}",
+            "Revenue Growth": "={{ $json.revenueGrowthPct }}%",
+            "Net Income": "={{ $json.netIncome }}",
+            "EPS": "={{ $json.eps }}",
+            "Net Margin": "={{ $json.netMarginPct }}%",
+            "Cash": "={{ $json.cashAndEquivalents }}",
+            "FCF": "={{ $json.freeCashFlow }}",
+            "D/E Ratio": "={{ $json.debtToEquityRatio }}",
             "Risk Factors": "={{ $json.riskCount }}",
             "Report Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
             "Analyzed Date": "={{ $json.processedAt.split('T')[0] }}"
@@ -462,7 +458,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
