@@ -81,17 +81,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract property listing information: property address (street, city, state, zip), listing price, property type, bedrooms, bathrooms, square footage, lot size, year built, parking, listing status, MLS number, property description, features and amenities, HOA fees, property taxes, listing agent name, agent phone, agent email, brokerage, and listing date.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"street\":{\"type\":\"string\"},\"city\":{\"type\":\"string\"},\"state\":{\"type\":\"string\"},\"zip\":{\"type\":\"string\"},\"listPrice\":{\"type\":\"number\"},\"propertyType\":{\"type\":\"string\"},\"bedrooms\":{\"type\":\"number\"},\"bathrooms\":{\"type\":\"number\"},\"squareFeet\":{\"type\":\"number\"},\"lotSize\":{\"type\":\"string\"},\"yearBuilt\":{\"type\":\"number\"},\"parkingType\":{\"type\":\"string\"},\"parkingSpaces\":{\"type\":\"number\"},\"listingStatus\":{\"type\":\"string\"},\"mlsNumber\":{\"type\":\"string\"},\"daysOnMarket\":{\"type\":\"number\"},\"description\":{\"type\":\"string\"},\"features\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"hoaFees\":{\"type\":\"number\"},\"hoaFrequency\":{\"type\":\"string\"},\"propertyTaxes\":{\"type\":\"number\"},\"agentName\":{\"type\":\"string\"},\"agentPhone\":{\"type\":\"string\"},\"agentEmail\":{\"type\":\"string\"},\"brokerage\":{\"type\":\"string\"},\"listDate\":{\"type\":\"string\"}},\"required\":[\"street\",\"listPrice\"],\"additionalProperties\":false}"
+        "prompt": "Extract real estate property listing data as flat fields. streetAddress, city, state, zipCode, county, listingPrice (number), pricePerSqFt (number), propertyType (e.g. Single Family, Condo, Townhouse, Multi-Family), bedrooms (number), bathrooms (number), squareFeet (number), lotSizeSqFt (number), yearBuilt (number), garageSpaces (number), stories (number), mlsNumber, listingStatus (Active/Pending/Sold/Off Market), daysOnMarket (number), hoaMonthly (number), propertyTaxAnnual (number), indoorFeaturesList (semicolon-separated indoor features), outdoorFeaturesList (semicolon-separated outdoor features), appliancesList (semicolon-separated appliances included), listingAgentName, listingAgentPhone, listingAgentEmail, brokerageName, estimatedMortgage (number), description.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"streetAddress\": {\"type\": \"string\"}, \"city\": {\"type\": \"string\"}, \"state\": {\"type\": \"string\"}, \"zipCode\": {\"type\": \"string\"}, \"listingPrice\": {\"type\": \"number\"}, \"pricePerSqFt\": {\"type\": \"number\"}, \"propertyType\": {\"type\": \"string\"}, \"bedrooms\": {\"type\": \"number\"}, \"bathrooms\": {\"type\": \"number\"}, \"squareFeet\": {\"type\": \"number\"}, \"lotSizeSqFt\": {\"type\": \"number\"}, \"yearBuilt\": {\"type\": \"number\"}, \"garageSpaces\": {\"type\": \"number\"}, \"stories\": {\"type\": \"number\"}, \"mlsNumber\": {\"type\": \"string\"}, \"listingStatus\": {\"type\": \"string\"}, \"daysOnMarket\": {\"type\": \"number\"}, \"hoaMonthly\": {\"type\": \"number\"}, \"propertyTaxAnnual\": {\"type\": \"number\"}, \"indoorFeaturesList\": {\"type\": \"string\"}, \"outdoorFeaturesList\": {\"type\": \"string\"}, \"appliancesList\": {\"type\": \"string\"}, \"listingAgentName\": {\"type\": \"string\"}, \"listingAgentPhone\": {\"type\": \"string\"}, \"listingAgentEmail\": {\"type\": \"string\"}, \"brokerageName\": {\"type\": \"string\"}, \"estimatedMortgage\": {\"type\": \"number\"}, \"description\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector Extract",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         700,
         280
@@ -99,7 +97,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const listing = $input.first().json.data || $input.first().json;\nconst triggerData = $('New Listing').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Format full address\nconst fullAddress = [listing.street, listing.city, listing.state, listing.zip]\n  .filter(Boolean).join(', ') || 'Address not found';\n\n// Calculate price per square foot\nconst pricePerSqft = listing.squareFeet && listing.listPrice\n  ? Math.round(listing.listPrice / listing.squareFeet)\n  : null;\n\n// Format features\nconst features = listing.features || [];\nconst featuresList = features.slice(0, 10).join(', ') || 'None listed';\n\n// Format HOA\nconst hoaText = listing.hoaFees\n  ? `$${listing.hoaFees}/${listing.hoaFrequency || 'month'}`\n  : 'None';\n\n// Calculate monthly costs estimate\nconst monthlyTaxes = listing.propertyTaxes ? Math.round(listing.propertyTaxes / 12) : 0;\nconst monthlyHoa = listing.hoaFees || 0;\nconst estimatedMortgage = listing.listPrice ? Math.round(listing.listPrice * 0.006) : 0;\nconst totalMonthlyCost = estimatedMortgage + monthlyTaxes + monthlyHoa;\n\nreturn [{\n  json: {\n    fullAddress: fullAddress,\n    listPrice: listing.listPrice || 0,\n    propertyType: listing.propertyType || 'N/A',\n    bedrooms: listing.bedrooms,\n    bathrooms: listing.bathrooms,\n    squareFeet: listing.squareFeet,\n    pricePerSqft: pricePerSqft,\n    yearBuilt: listing.yearBuilt,\n    lotSize: listing.lotSize || 'N/A',\n    hoaText: hoaText,\n    hoaFees: listing.hoaFees,\n    propertyTaxes: listing.propertyTaxes,\n    monthlyTaxes: monthlyTaxes,\n    estimatedMonthlyCost: totalMonthlyCost,\n    mlsNumber: listing.mlsNumber || 'N/A',\n    listingStatus: listing.listingStatus || 'Active',\n    daysOnMarket: listing.daysOnMarket,\n    agentName: listing.agentName || 'N/A',\n    agentPhone: listing.agentPhone || 'N/A',\n    featuresList: featuresList,\n    featureCount: features.length,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\nconst fileName = $('New Listing').item.json.name;\nconst fileId   = $('New Listing').item.json.id;\n\nconst address = [data.streetAddress, data.city, data.state, data.zipCode].filter(Boolean).join(', ') || 'N/A';\nconst cleanNum = v => parseFloat(String(v || 0).replace(/[^0-9.]/g, '')) || 0;\nconst price = cleanNum(data.listingPrice);\nconst priceFormatted = '$' + price.toLocaleString();\nconst sqFt  = parseFloat(data.squareFeet)   || 0;\nconst pricePerSqFt = data.pricePerSqFt || (sqFt > 0 ? Math.round(price / sqFt) : 0);\nconst hoaMonthly = cleanNum(data.hoaMonthly);\nconst taxAnnual  = cleanNum(data.propertyTaxAnnual);\nconst mortgage   = cleanNum(data.estimatedMortgage);\nconst estMonthly = mortgage + hoaMonthly + Math.round(taxAnnual / 12);\n\nreturn [{ json: {\n  address,\n  streetAddress:   data.streetAddress  || 'N/A',\n  city:            data.city           || 'N/A',\n  state:           data.state          || 'N/A',\n  listingPrice:    price,\n  priceFormatted:  '$' + price.toLocaleString(),\n  pricePerSqFt,\n  propertyType:    data.propertyType   || 'N/A',\n  bedrooms:        data.bedrooms        || 0,\n  bathrooms:       data.bathrooms       || 0,\n  squareFeet:      sqFt,\n  lotSizeSqFt:     data.lotSizeSqFt    || 0,\n  yearBuilt:       data.yearBuilt       || 'N/A',\n  garageSpaces:    data.garageSpaces    || 0,\n  mlsNumber:       data.mlsNumber       || 'N/A',\n  listingStatus:   data.listingStatus   || 'N/A',\n  daysOnMarket:    data.daysOnMarket    || 0,\n  hoaMonthly,\n  propertyTaxAnnual: taxAnnual,\n  estimatedMortgage: mortgage,\n  estMonthly,\n  indoorFeaturesList:  data.indoorFeaturesList  || 'N/A',\n  outdoorFeaturesList: data.outdoorFeaturesList || 'N/A',\n  listingAgentName:  data.listingAgentName  || 'N/A',\n  listingAgentPhone: data.listingAgentPhone || 'N/A',\n  brokerageName:     data.brokerageName     || 'N/A',\n  description:       data.description       || 'N/A',\n  fileName, fileId,\n  processedAt: new Date().toISOString(),\n  fullAddress: address,\n  listPrice: priceFormatted || '$0',\n  pricePerSqft: pricePerSqFt,\n  featuresList: data.indoorFeaturesList || 'N/A',\n  hoaText: hoaMonthly > 0 ? '$' + hoaMonthly + '/mo' : 'None',\n  monthlyTaxes: Math.round(taxAnnual / 12),\n  estimatedMonthlyCost: estMonthly,\n}}];"
       },
       "id": "process-listing",
       "name": "Process Listing",
@@ -128,23 +126,23 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Address": "={{ $json.fullAddress }}",
-            "Price": "={{ $json.listPrice }}",
+            "Address": "={{ $json.address }}",
+            "Price": "={{ $json.listingPrice }}",
             "Type": "={{ $json.propertyType }}",
-            "Beds": "={{ $json.bedrooms || 'N/A' }}",
-            "Baths": "={{ $json.bathrooms || 'N/A' }}",
-            "Sq Ft": "={{ $json.squareFeet || 'N/A' }}",
-            "$/Sq Ft": "={{ $json.pricePerSqft || 'N/A' }}",
-            "Year Built": "={{ $json.yearBuilt || 'N/A' }}",
-            "Lot Size": "={{ $json.lotSize }}",
-            "HOA": "={{ $json.hoaText }}",
-            "Taxes/Year": "={{ $json.propertyTaxes || 'N/A' }}",
-            "Est. Monthly": "={{ $json.estimatedMonthlyCost }}",
+            "Beds": "={{ $json.bedrooms }}",
+            "Baths": "={{ $json.bathrooms }}",
+            "Sq Ft": "={{ $json.squareFeet }}",
+            "$/Sq Ft": "={{ $json.pricePerSqFt }}",
+            "Year Built": "={{ $json.yearBuilt }}",
+            "Lot Size": "={{ $json.lotSizeSqFt }}",
+            "HOA": "={{ $json.hoaMonthly }}",
+            "Taxes/Year": "={{ $json.propertyTaxAnnual }}",
+            "Est. Monthly": "={{ $json.estMonthly }}",
             "MLS #": "={{ $json.mlsNumber }}",
             "Status": "={{ $json.listingStatus }}",
-            "DOM": "={{ $json.daysOnMarket || 'N/A' }}",
-            "Agent": "={{ $json.agentName }}",
-            "Agent Phone": "={{ $json.agentPhone }}",
+            "DOM": "={{ $json.daysOnMarket }}",
+            "Agent": "={{ $json.listingAgentName }}",
+            "Agent Phone": "={{ $json.listingAgentPhone }}",
             "Listing Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
             "Added Date": "={{ $json.processedAt.split('T')[0] }}"
           },
@@ -419,7 +417,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
