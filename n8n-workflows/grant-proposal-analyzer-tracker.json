@@ -86,7 +86,7 @@
       "id": "if-has-pdf",
       "name": "Has PDF?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         500,
         280
@@ -94,17 +94,16 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
         "binaryPropertyName": "={{ Object.keys($binary).find(key => $binary[key].mimeType === 'application/pdf') || 'attachment_0' }}",
-        "prompt": "Extract grant/funding opportunity information: funder name, grant program name, funding opportunity number, funding type, funding amount range (min and max), project duration, eligibility requirements (organization types, geographic restrictions), key dates (LOI deadline, proposal deadline, award notification, project start), required documents list, evaluation criteria, contact information, matching requirements, and indirect cost rate.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"funder\":{\"type\":\"string\"},\"programName\":{\"type\":\"string\"},\"opportunityNumber\":{\"type\":\"string\"},\"fundingType\":{\"type\":\"string\"},\"fundingMin\":{\"type\":\"number\"},\"fundingMax\":{\"type\":\"number\"},\"projectDuration\":{\"type\":\"string\"},\"organizationTypes\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"geographicRestrictions\":{\"type\":\"string\"},\"loiDeadline\":{\"type\":\"string\"},\"proposalDeadline\":{\"type\":\"string\"},\"awardNotification\":{\"type\":\"string\"},\"projectStart\":{\"type\":\"string\"},\"requiredDocuments\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"evaluationCriteria\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"criterion\":{\"type\":\"string\"},\"weight\":{\"type\":\"number\"}}}},\"contactName\":{\"type\":\"string\"},\"contactEmail\":{\"type\":\"string\"},\"contactPhone\":{\"type\":\"string\"},\"matchingRequired\":{\"type\":\"boolean\"},\"indirectCostRate\":{\"type\":\"number\"}},\"required\":[\"funder\",\"programName\"],\"additionalProperties\":false}"
+        "prompt": "Extract grant opportunity data as flat fields. funderName, programName, opportunityNumber, grantType, fundingMin (number), fundingMax (number), projectDurationMonths (number), loiDeadline (YYYY-MM-DD), proposalDeadline (YYYY-MM-DD), eligibleOrgTypesList (semicolon-separated eligible organization types), geographicRestrictions, matchingRequired (true/false), matchingPercent (number), indirectCostRate (number), requiredDocumentsList (semicolon-separated required documents), evaluationCriteriaList (semicolon-separated criteria formatted as: criterion weight%), programPrioritiesList (semicolon-separated program priorities), contactName, contactEmail, contactPhone, programUrl.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"funderName\": {\"type\": \"string\"}, \"programName\": {\"type\": \"string\"}, \"opportunityNumber\": {\"type\": \"string\"}, \"grantType\": {\"type\": \"string\"}, \"fundingMin\": {\"type\": \"number\"}, \"fundingMax\": {\"type\": \"number\"}, \"projectDurationMonths\": {\"type\": \"number\"}, \"loiDeadline\": {\"type\": \"string\"}, \"proposalDeadline\": {\"type\": \"string\"}, \"eligibleOrgTypesList\": {\"type\": \"string\"}, \"geographicRestrictions\": {\"type\": \"string\"}, \"matchingRequired\": {\"type\": \"boolean\"}, \"matchingPercent\": {\"type\": \"number\"}, \"indirectCostRate\": {\"type\": \"number\"}, \"requiredDocumentsList\": {\"type\": \"string\"}, \"evaluationCriteriaList\": {\"type\": \"string\"}, \"programPrioritiesList\": {\"type\": \"string\"}, \"contactName\": {\"type\": \"string\"}, \"contactEmail\": {\"type\": \"string\"}, \"contactPhone\": {\"type\": \"string\"}, \"programUrl\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector Extract",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         700,
         280
@@ -112,7 +111,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const grant = $input.first().json.data || $input.first().json;\nconst emailData = $('Grant Email').item.json;\n\nlet daysUntilDeadline = 'N/A';\nlet urgency = 'Normal';\nconst deadline = grant.proposalDeadline || grant.loiDeadline;\n\nif (deadline) {\n  try {\n    const deadlineDate = new Date(deadline);\n    const today = new Date();\n    const days = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));\n    if (!isNaN(days)) {\n      daysUntilDeadline = days;\n      if (days <= 14) urgency = 'Urgent';\n      else if (days <= 30) urgency = 'High';\n    }\n  } catch (e) {}\n}\n\nconst fundingRange = (grant.fundingMin || grant.fundingMax)\n  ? `$${(grant.fundingMin || 0).toLocaleString()} - $${(grant.fundingMax || 0).toLocaleString()}`\n  : 'Not specified';\n\nconst docs = grant.requiredDocuments || [];\nconst docsList = docs.map(d => `- ${d}`).join(', ') || 'See RFP';\n\nconst criteria = grant.evaluationCriteria || [];\nconst criteriaList = criteria.map(c => `${c.criterion}: ${c.weight || '?'}%`).join(' | ') || 'Not specified';\n\nconst eligibleOrgs = grant.organizationTypes || [];\nconst eligibilityText = eligibleOrgs.join(', ') || 'See requirements';\n\nlet senderEmail = 'unknown';\nif (emailData.from && emailData.from.value && emailData.from.value[0]) {\n  senderEmail = emailData.from.value[0].address || 'unknown';\n}\n\nreturn [{\n  json: {\n    funder: grant.funder || 'Unknown',\n    programName: grant.programName || 'Unknown',\n    opportunityNumber: grant.opportunityNumber || 'N/A',\n    fundingType: grant.fundingType || 'N/A',\n    fundingRange: fundingRange,\n    projectDuration: grant.projectDuration || 'N/A',\n    loiDeadline: grant.loiDeadline || 'N/A',\n    proposalDeadline: grant.proposalDeadline || 'N/A',\n    daysUntilDeadline: daysUntilDeadline,\n    urgency: urgency,\n    eligibilityText: eligibilityText,\n    docsList: docsList,\n    docCount: docs.length,\n    criteriaList: criteriaList,\n    matchingRequired: grant.matchingRequired || false,\n    indirectCostRate: grant.indirectCostRate,\n    contactEmail: grant.contactEmail || 'N/A',\n    senderEmail: senderEmail,\n    receivedDate: emailData.date || new Date().toISOString(),\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\nconst emailData = $('Grant Email').item.json || {};\nconst fileId = '';\n\nlet daysUntil = 'N/A'; let urgency = 'Normal';\nif (data.proposalDeadline) {\n  const days = Math.ceil((new Date(data.proposalDeadline) - new Date()) / (1000*60*60*24));\n  daysUntil = days;\n  if (days < 0)        urgency = 'OVERDUE';\n  else if (days <= 14) urgency = 'Urgent';\n  else if (days <= 30) urgency = 'High';\n}\n\nconst fundingRange = data.fundingMin && data.fundingMax\n  ? `$${(data.fundingMin||0).toLocaleString()} - $${(data.fundingMax||0).toLocaleString()}`\n  : data.fundingMax ? `Up to $${(data.fundingMax||0).toLocaleString()}` : 'N/A';\n\nreturn [{ json: {\n  funderName:      data.funderName      || 'Unknown',\n  programName:     data.programName     || 'N/A',\n  opportunityNumber: data.opportunityNumber || 'N/A',\n  grantType:       data.grantType       || 'N/A',\n  fundingRange,\n  fundingMin:      data.fundingMin      || 0,\n  fundingMax:      data.fundingMax      || 0,\n  projectDurationMonths: data.projectDurationMonths || 0,\n  loiDeadline:     data.loiDeadline     || 'N/A',\n  proposalDeadline: data.proposalDeadline || 'N/A',\n  daysUntil, urgency,\n  eligibleOrgTypesList: data.eligibleOrgTypesList || 'N/A',\n  matchingRequired: data.matchingRequired || false,\n  matchingPercent:  data.matchingPercent  || 0,\n  indirectCostRate: data.indirectCostRate || 0,\n  requiredDocumentsList: data.requiredDocumentsList || 'N/A',\n  evaluationCriteriaList: data.evaluationCriteriaList || 'N/A',\n  programPrioritiesList: data.programPrioritiesList || 'N/A',\n  contactName:     data.contactName     || 'N/A',\n  contactEmail:    data.contactEmail    || 'N/A',\n  processedAt: new Date().toISOString(),\n  funder: data.funderName || 'Unknown',\n  fundingType: data.grantType || 'N/A',\n  projectDuration: (data.projectDurationMonths || 0) + ' months',\n  daysUntilDeadline: daysUntil,\n  criteriaList: data.evaluationCriteriaList || 'N/A',\n  docsList: data.requiredDocumentsList || 'N/A',\n  docCount: (data.requiredDocumentsList || '').split(';').filter(d => d.trim()).length,\n  urgencyLevel: urgency,\n}}];"
       },
       "id": "process-grant",
       "name": "Process Grant",
@@ -141,20 +140,20 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Funder": "={{ $json.funder }}",
+            "Funder": "={{ $json.funderName }}",
             "Program": "={{ $json.programName }}",
             "Opportunity #": "={{ $json.opportunityNumber }}",
-            "Type": "={{ $json.fundingType }}",
+            "Type": "={{ $json.grantType }}",
             "Funding Range": "={{ $json.fundingRange }}",
-            "Duration": "={{ $json.projectDuration }}",
+            "Duration": "={{ $json.projectDurationMonths }} months",
             "LOI Deadline": "={{ $json.loiDeadline }}",
             "Proposal Deadline": "={{ $json.proposalDeadline }}",
-            "Days Until": "={{ $json.daysUntilDeadline }}",
+            "Days Until": "={{ $json.daysUntil }}",
             "Urgency": "={{ $json.urgency }}",
-            "Eligibility": "={{ $json.eligibilityText }}",
-            "Required Docs": "={{ $json.docCount }}",
+            "Eligibility": "={{ $json.eligibleOrgTypesList }}",
+            "Required Docs": "={{ $json.requiredDocumentsList }}",
             "Matching Required": "={{ $json.matchingRequired ? 'Yes' : 'No' }}",
-            "IDC Rate": "={{ $json.indirectCostRate ? $json.indirectCostRate + '%' : 'N/A' }}",
+            "IDC Rate": "={{ $json.indirectCostRate }}%",
             "Contact": "={{ $json.contactEmail }}",
             "Status": "=New",
             "Added Date": "={{ $json.processedAt.split('T')[0] }}"
@@ -412,7 +411,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
