@@ -77,16 +77,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "prompt": "Extract vendor quote details: vendor name, address, contact person, email, phone, quote number, quote date, validity period, all line items with description, part number, quantity, unit price, extended price, subtotal, any discounts (type, amount, percentage), tax amount, shipping cost, grand total, currency, payment terms, delivery timeline in days, warranty duration and coverage, and any special conditions or notes.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"vendor\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"address\":{\"type\":\"string\"},\"contact\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"}}},\"quoteNumber\":{\"type\":\"string\"},\"quoteDate\":{\"type\":\"string\"},\"validUntil\":{\"type\":\"string\"},\"lineItems\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\"},\"partNumber\":{\"type\":\"string\"},\"quantity\":{\"type\":\"number\"},\"unitPrice\":{\"type\":\"number\"},\"extendedPrice\":{\"type\":\"number\"}}}},\"subtotal\":{\"type\":\"number\"},\"discount\":{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"},\"percentage\":{\"type\":\"number\"}}},\"tax\":{\"type\":\"number\"},\"shipping\":{\"type\":\"number\"},\"grandTotal\":{\"type\":\"number\"},\"currency\":{\"type\":\"string\"},\"paymentTerms\":{\"type\":\"string\"},\"deliveryTimeline\":{\"type\":\"string\"},\"deliveryDays\":{\"type\":\"number\"},\"warranty\":{\"type\":\"object\",\"properties\":{\"duration\":{\"type\":\"string\"},\"coverage\":{\"type\":\"string\"}}},\"specialConditions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"vendor\",\"grandTotal\"],\"additionalProperties\":false}"
+        "prompt": "Extract vendor quote data as flat fields. vendorName, vendorAddress, vendorContact, vendorEmail, vendorPhone, quoteNumber, quoteDate (YYYY-MM-DD), validUntil (YYYY-MM-DD), lineItemsList (semicolon-separated formatted as: itemCode description qty unit unitPrice total), itemCount (number), subtotal (number), discountAmount (number), discountPercent (number), shippingCost (number), taxAmount (number), taxRate (number), grandTotal (number), currency, deliveryDays (number), deliveryTerms, paymentTerms, warrantyMonths (number), warrantyDetails, specialConditions, notes.",
+        "schema": "{\"type\": \"object\", \"properties\": {\"vendorName\": {\"type\": \"string\"}, \"vendorAddress\": {\"type\": \"string\"}, \"vendorContact\": {\"type\": \"string\"}, \"vendorEmail\": {\"type\": \"string\"}, \"vendorPhone\": {\"type\": \"string\"}, \"quoteNumber\": {\"type\": \"string\"}, \"quoteDate\": {\"type\": \"string\"}, \"validUntil\": {\"type\": \"string\"}, \"lineItemsList\": {\"type\": \"string\"}, \"itemCount\": {\"type\": \"number\"}, \"subtotal\": {\"type\": \"number\"}, \"discountAmount\": {\"type\": \"number\"}, \"discountPercent\": {\"type\": \"number\"}, \"shippingCost\": {\"type\": \"number\"}, \"taxAmount\": {\"type\": \"number\"}, \"taxRate\": {\"type\": \"number\"}, \"grandTotal\": {\"type\": \"number\"}, \"currency\": {\"type\": \"string\"}, \"deliveryDays\": {\"type\": \"number\"}, \"deliveryTerms\": {\"type\": \"string\"}, \"paymentTerms\": {\"type\": \"string\"}, \"warrantyMonths\": {\"type\": \"number\"}, \"warrantyDetails\": {\"type\": \"string\"}, \"specialConditions\": {\"type\": \"string\"}, \"notes\": {\"type\": \"string\"}}, \"additionalProperties\": false}"
       },
       "id": "pdfvector-extract",
       "name": "PDF Vector - Extract Quote",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         680,
         220
@@ -94,7 +93,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const quote = $input.first().json.data;\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId = $('Google Drive Trigger').item.json.id;\n\nconst vendor = quote.vendor || {};\nconst lineItems = quote.lineItems || [];\n\n// Format line items\nconst itemsList = lineItems.map(item => \n  `• ${item.quantity || 1}x ${item.description} @ $${(item.unitPrice || 0).toFixed(2)} = $${(item.extendedPrice || 0).toFixed(2)}`\n).join('\\n') || 'No line items';\n\n// Calculate total quantity\nconst totalQuantity = lineItems.reduce((sum, item) => sum + (item.quantity || 0), 0);\n\n// Calculate effective price per unit\nconst grandTotal = quote.grandTotal || 0;\nconst effectivePricePerUnit = totalQuantity > 0 ? (grandTotal / totalQuantity).toFixed(2) : grandTotal.toFixed(2);\n\n// Check quote validity\nlet validityStatus = 'Valid';\nlet validityEmoji = '✅';\nif (quote.validUntil) {\n  try {\n    const validDate = new Date(quote.validUntil);\n    const today = new Date();\n    const daysLeft = Math.ceil((validDate - today) / (1000 * 60 * 60 * 24));\n    \n    if (daysLeft < 0) {\n      validityStatus = 'Expired';\n      validityEmoji = '❌';\n    } else if (daysLeft <= 7) {\n      validityStatus = `Expiring Soon (${daysLeft} days)`;\n      validityEmoji = '⚠️';\n    } else {\n      validityStatus = `Valid (${daysLeft} days left)`;\n    }\n  } catch (e) {\n    validityStatus = 'Unknown';\n    validityEmoji = '❓';\n  }\n}\n\n// Format discount\nlet discountText = 'None';\nif (quote.discount) {\n  if (quote.discount.percentage && quote.discount.amount) {\n    discountText = `${quote.discount.percentage}% (-$${quote.discount.amount.toFixed(2)})`;\n  } else if (quote.discount.percentage) {\n    discountText = `${quote.discount.percentage}%`;\n  } else if (quote.discount.amount) {\n    discountText = `-$${quote.discount.amount.toFixed(2)}`;\n  }\n}\n\n// Format warranty\nconst warrantyText = quote.warranty \n  ? `${quote.warranty.duration || 'N/A'}${quote.warranty.coverage ? ' - ' + quote.warranty.coverage : ''}`\n  : 'Not specified';\n\n// Format special conditions\nconst conditionsList = (quote.specialConditions || []).map(c => `• ${c}`).join('\\n') || 'None';\n\nreturn [{\n  json: {\n    ...quote,\n    fileName: fileName,\n    fileId: fileId,\n    vendorName: vendor.name || 'Unknown Vendor',\n    vendorContact: vendor.contact || 'N/A',\n    vendorEmail: vendor.email || 'N/A',\n    vendorPhone: vendor.phone || 'N/A',\n    itemCount: lineItems.length,\n    itemsList: itemsList,\n    totalQuantity: totalQuantity,\n    effectivePricePerUnit: effectivePricePerUnit,\n    discountText: discountText,\n    warrantyText: warrantyText,\n    conditionsList: conditionsList,\n    validityStatus: validityStatus,\n    validityEmoji: validityEmoji,\n    subtotalFormatted: (quote.subtotal || 0).toFixed(2),\n    shippingFormatted: (quote.shipping || 0).toFixed(2),\n    taxFormatted: (quote.tax || 0).toFixed(2),\n    grandTotalFormatted: grandTotal.toFixed(2),\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const data = ($input.first().json?.data || $input.first().json) || {};\nconst fileName = $('Google Drive Trigger').item.json.name;\nconst fileId   = $('Google Drive Trigger').item.json.id;\n\nconst cleanNum = v => parseFloat(String(v || 0).replace(/[^0-9.]/g, '')) || 0;\nconst grandTotal = cleanNum(data.grandTotal);\nconst subtotal   = cleanNum(data.subtotal);\nconst discount   = cleanNum(data.discountAmount);\nconst shipping   = cleanNum(data.shippingCost);\nconst tax        = cleanNum(data.taxAmount);\nconst fmt = n => '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});\nconst grandTotalFormatted = fmt(grandTotal);\nconst subtotalFormatted   = fmt(subtotal);\nconst shippingFormatted   = fmt(shipping);\nconst taxFormatted        = fmt(tax);\nconst discountText = discount > 0 ? `${fmt(discount)} (${data.discountPercent || 0}%)` : 'None';\nconst warrantyText = data.warrantyMonths ? `${data.warrantyMonths} months` : (data.warrantyDetails || 'N/A');\n\nlet validityStatus = 'Valid'; let validityEmoji = '✅';\nif (data.validUntil) {\n  const days = Math.ceil((new Date(data.validUntil) - new Date()) / (1000*60*60*24));\n  if (days < 0)        { validityStatus = 'Expired';       validityEmoji = '❌'; }\n  else if (days <= 7)  { validityStatus = 'Expiring Soon'; validityEmoji = '⚠️'; }\n}\n\nconst deliveryTimeline = data.deliveryDays ? `${data.deliveryDays} days` : (data.deliveryTerms || 'N/A');\nconst itemsList = data.lineItemsList || 'N/A';\n\nreturn [{ json: {\n  vendorName:    data.vendorName    || 'Unknown',\n  vendorContact: data.vendorContact || 'N/A',\n  vendorEmail:   data.vendorEmail   || 'N/A',\n  quoteNumber:   data.quoteNumber   || 'N/A',\n  quoteDate:     data.quoteDate     || 'N/A',\n  validUntil:    data.validUntil    || 'N/A',\n  validityStatus, validityEmoji,\n  quoteStatus:   validityStatus,\n  itemCount:     parseInt(data.itemCount) || 0,\n  itemsList, lineItemsList: itemsList,\n  subtotal, subtotalFormatted,\n  discountAmount: discount, discountText,\n  shippingCost: shipping, shippingFormatted,\n  taxAmount: tax, taxFormatted,\n  grandTotal, grandTotalFormatted,\n  currency:      data.currency      || 'USD',\n  deliveryDays:  parseInt(data.deliveryDays) || 0,\n  deliveryTimeline,\n  paymentTerms:  data.paymentTerms  || 'N/A',\n  warrantyMonths: parseInt(data.warrantyMonths) || 0,\n  warrantyText,\n  specialConditions: data.specialConditions || 'None',\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "process-quote",
       "name": "Process Quote",
@@ -124,20 +123,20 @@
           "mappingMode": "defineBelow",
           "value": {
             "Vendor": "={{ $json.vendorName }}",
-            "Quote #": "={{ $json.quoteNumber || 'N/A' }}",
-            "Quote Date": "={{ $json.quoteDate || 'N/A' }}",
-            "Valid Until": "={{ $json.validUntil || 'N/A' }}",
-            "Status": "={{ $json.validityStatus }}",
+            "Quote #": "={{ $json.quoteNumber }}",
+            "Quote Date": "={{ $json.quoteDate }}",
+            "Valid Until": "={{ $json.validUntil }}",
+            "Status": "={{ $json.quoteStatus }}",
             "Items": "={{ $json.itemCount }}",
-            "Subtotal": "={{ $json.subtotalFormatted }}",
-            "Discount": "={{ $json.discountText }}",
-            "Shipping": "={{ $json.shippingFormatted }}",
-            "Tax": "={{ $json.taxFormatted }}",
-            "Grand Total": "={{ $json.grandTotalFormatted }}",
-            "Currency": "={{ $json.currency || 'USD' }}",
-            "Delivery Days": "={{ $json.deliveryDays || $json.deliveryTimeline || 'N/A' }}",
-            "Payment Terms": "={{ $json.paymentTerms || 'N/A' }}",
-            "Warranty": "={{ $json.warrantyText }}",
+            "Subtotal": "={{ $json.subtotal }}",
+            "Discount": "={{ $json.discountAmount }}",
+            "Shipping": "={{ $json.shippingCost }}",
+            "Tax": "={{ $json.taxAmount }}",
+            "Grand Total": "={{ $json.grandTotal }}",
+            "Currency": "={{ $json.currency }}",
+            "Delivery Days": "={{ $json.deliveryDays }}",
+            "Payment Terms": "={{ $json.paymentTerms }}",
+            "Warranty": "={{ $json.warrantyMonths }} months",
             "Contact": "={{ $json.vendorEmail }}",
             "Quote Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
             "Added Date": "={{ $json.processedAt.split('T')[0] }}"
@@ -331,13 +330,13 @@
           "mode": "list",
           "cachedResultName": "procurement"
         },
-        "text": "={{ $('Process Quote').item.json.validityEmoji }} *New Vendor Quote Added*\n\n*Vendor:* {{ $('Process Quote').item.json.vendorName }}\n*Quote #:* {{ $('Process Quote').item.json.quoteNumber || 'N/A' }}\n*Quote Date:* {{ $('Process Quote').item.json.quoteDate || 'N/A' }}\n\n📋 *Line Items ({{ $('Process Quote').item.json.itemCount }}):*\n{{ $('Process Quote').item.json.itemsList }}\n\n💵 *Pricing:*\n• Subtotal: ${{ $('Process Quote').item.json.subtotalFormatted }}\n• Discount: {{ $('Process Quote').item.json.discountText }}\n• Shipping: ${{ $('Process Quote').item.json.shippingFormatted }}\n• Tax: ${{ $('Process Quote').item.json.taxFormatted }}\n• *Grand Total: ${{ $('Process Quote').item.json.grandTotalFormatted }} {{ $('Process Quote').item.json.currency || 'USD' }}*\n\n📅 *Validity:* {{ $('Process Quote').item.json.validUntil || 'N/A' }} ({{ $('Process Quote').item.json.validityStatus }})\n🚚 *Delivery:* {{ $('Process Quote').item.json.deliveryTimeline || $('Process Quote').item.json.deliveryDays + ' days' || 'N/A' }}\n💳 *Payment:* {{ $('Process Quote').item.json.paymentTerms || 'N/A' }}\n🛡️ *Warranty:* {{ $('Process Quote').item.json.warrantyText }}\n\n<https://drive.google.com/file/d/{{ $('Process Quote').item.json.fileId }}/view|📄 View Quote>",
+        "text": "={{ $('Process Quote').item.json.validityEmoji }} *New Vendor Quote Added*\n\n*Vendor:* {{ $('Process Quote').item.json.vendorName }}\n*Quote #:* {{ $('Process Quote').item.json.quoteNumber || 'N/A' }}\n*Quote Date:* {{ $('Process Quote').item.json.quoteDate || 'N/A' }}\n\n📋 *Line Items ({{ $('Process Quote').item.json.itemCount }}):*\n{{ $('Process Quote').item.json.itemsList }}\n\n💵 *Pricing:*\n• Subtotal: {{ $('Process Quote').item.json.subtotalFormatted }}\n• Discount: {{ $('Process Quote').item.json.discountText }}\n• Shipping: {{ $('Process Quote').item.json.shippingFormatted }}\n• Tax: {{ $('Process Quote').item.json.taxFormatted }}\n• *Grand Total: {{ $('Process Quote').item.json.grandTotalFormatted }} {{ $('Process Quote').item.json.currency || 'USD' }}*\n\n📅 *Validity:* {{ $('Process Quote').item.json.validUntil || 'N/A' }} ({{ $('Process Quote').item.json.validityStatus }})\n🚚 *Delivery:* {{ $('Process Quote').item.json.deliveryTimeline || $('Process Quote').item.json.deliveryDays + ' days' || 'N/A' }}\n💳 *Payment:* {{ $('Process Quote').item.json.paymentTerms || 'N/A' }}\n🛡️ *Warranty:* {{ $('Process Quote').item.json.warrantyText }}\n\n<https://drive.google.com/file/d/{{ $('Process Quote').item.json.fileId }}/view|📄 View Quote>",
         "otherOptions": {}
       },
       "id": "slack-notify",
       "name": "Notify Team",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.1,
+      "typeVersion": 2.2,
       "position": [
         1280,
         220
@@ -407,7 +406,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
