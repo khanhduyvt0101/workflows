@@ -77,7 +77,6 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
         "prompt": "Extract invoice information for three-way matching including: invoice number, invoice date, vendor name, vendor address, vendor ID or tax ID, purchase order number referenced, bill to name and address, ship to name and address, payment terms, due date, line items with item number/SKU, description, quantity ordered, quantity shipped, quantity invoiced, unit of measure, unit price, extended price, subtotal, freight/shipping charges, tax amount, total amount, and any notes or discrepancies mentioned.",
@@ -86,7 +85,7 @@
       "id": "91959f45-f32a-426d-9292-a6a83537d075",
       "name": "Extract Invoice Data",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         11168,
         3216
@@ -138,7 +137,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get invoice data from Extract node\nconst extractNode = $('Extract Invoice Data').first();\nconst invoiceData = extractNode.json.data || extractNode.json;\n\n// Get PO database from Sheets lookup\nconst poRecords = $('Lookup PO Database').all();\n\n// Get trigger data\nconst triggerData = $('New Invoice').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Invoice details\nconst invoiceNumber = invoiceData.invoiceNumber || 'Unknown';\nconst poNumber = invoiceData.poNumber || '';\nconst vendorName = invoiceData.vendorName || 'Unknown';\nconst invoiceTotal = invoiceData.totalAmount || 0;\nconst lineItems = invoiceData.lineItems || [];\n\n// Find matching PO\nlet poMatch = null;\nlet matchStatus = 'NO_PO_FOUND';\nlet poTotal = 0;\n\nfor (const po of poRecords) {\n  const poData = po.json;\n  if (poData['PO Number'] === poNumber || poData.poNumber === poNumber) {\n    poMatch = poData;\n    poTotal = parseFloat(poData['Total'] || poData.total || 0);\n    matchStatus = 'PO_FOUND';\n    break;\n  }\n}\n\n// Perform three-way matching analysis\nlet qtyMatch = 'N/A';\nlet priceMatch = 'N/A';\nlet discrepancies = [];\nlet discrepancyAmount = 0;\n\nif (poMatch) {\n  // Check total amount match (within 2% tolerance)\n  const tolerance = poTotal * 0.02;\n  const totalDiff = Math.abs(invoiceTotal - poTotal);\n  \n  if (totalDiff <= tolerance) {\n    priceMatch = 'MATCH';\n  } else {\n    priceMatch = 'MISMATCH';\n    discrepancyAmount = invoiceTotal - poTotal;\n    discrepancies.push(`Total: Invoice $${invoiceTotal.toFixed(2)} vs PO $${poTotal.toFixed(2)} (Diff: $${discrepancyAmount.toFixed(2)})`);\n  }\n  \n  // Check line item quantities\n  let qtyIssues = 0;\n  for (const item of lineItems) {\n    const ordered = item.quantityOrdered || 0;\n    const invoiced = item.quantityInvoiced || item.quantityShipped || ordered;\n    \n    if (invoiced > ordered) {\n      qtyIssues++;\n      discrepancies.push(`${item.description}: Qty ${invoiced} > ${ordered}`);\n    }\n  }\n  \n  qtyMatch = qtyIssues === 0 ? 'MATCH' : 'MISMATCH';\n  \n  // Determine overall status\n  if (priceMatch === 'MATCH' && qtyMatch === 'MATCH') {\n    matchStatus = 'FULL_MATCH';\n  } else {\n    matchStatus = 'PARTIAL_MATCH';\n  }\n} else {\n  discrepancies.push('No matching PO found in database');\n}\n\n// Determine priority\nlet priority = 'Low';\nif (matchStatus === 'NO_PO_FOUND') priority = 'High';\nelse if (matchStatus === 'PARTIAL_MATCH' && Math.abs(discrepancyAmount) > 1000) priority = 'High';\nelse if (matchStatus === 'PARTIAL_MATCH') priority = 'Medium';\n\nreturn [{\n  json: {\n    invoiceNumber: invoiceNumber,\n    invoiceDate: invoiceData.invoiceDate || 'N/A',\n    vendorName: vendorName,\n    poNumber: poNumber || 'Not Referenced',\n    invoiceTotal: invoiceTotal,\n    poTotal: poTotal,\n    matchStatus: matchStatus,\n    discrepancies: discrepancies.join('; ') || 'None',\n    priority: priority,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const extractNode = $('Extract Invoice Data').first();\nconst invoiceData = extractNode.json.data || extractNode.json;\nconst poRecords = $('Lookup PO Database').all();\nconst triggerData = $('New Invoice').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\nconst invoiceNumber = invoiceData.invoiceNumber || 'Unknown';\nconst poNumber      = invoiceData.poNumber      || '';\nconst vendorName    = invoiceData.vendorName    || 'Unknown';\nconst cleanNum = v => parseFloat(String(v||0).replace(/[^0-9.]/g,'')) || 0;\nconst invoiceTotal  = cleanNum(invoiceData.totalAmount);\n\nlet poMatch = null, matchStatus = 'NO_PO_FOUND', poTotal = 0;\nfor (const po of poRecords) {\n  const poData = po.json;\n  if (poData['PO Number'] === poNumber || poData.poNumber === poNumber) {\n    poMatch = poData;\n    poTotal = cleanNum(poData['Total'] || poData.total);\n    matchStatus = 'PO_FOUND';\n    break;\n  }\n}\n\nlet discrepancies = []; let discrepancyAmount = 0;\nif (poMatch) {\n  const tolerance = poTotal * 0.02;\n  const totalDiff = Math.abs(invoiceTotal - poTotal);\n  if (totalDiff > tolerance) {\n    discrepancyAmount = invoiceTotal - poTotal;\n    discrepancies.push(`Total: Invoice $${invoiceTotal.toFixed(2)} vs PO $${poTotal.toFixed(2)} (Diff: $${discrepancyAmount.toFixed(2)})`);\n    matchStatus = 'PARTIAL_MATCH';\n  } else {\n    matchStatus = 'FULL_MATCH';\n  }\n} else {\n  discrepancies.push('No matching PO found in database');\n}\n\nlet priority = 'Low';\nif (matchStatus === 'NO_PO_FOUND') priority = 'High';\nelse if (matchStatus === 'PARTIAL_MATCH' && Math.abs(discrepancyAmount) > 1000) priority = 'High';\nelse if (matchStatus === 'PARTIAL_MATCH') priority = 'Medium';\n\nreturn [{ json: {\n  invoiceNumber, invoiceDate: invoiceData.invoiceDate || 'N/A',\n  vendorName, poNumber: poNumber || 'Not Referenced',\n  invoiceTotal, poTotal, matchStatus,\n  discrepancies: discrepancies.join('; ') || 'None',\n  priority, fileName, fileId,\n  processedAt: new Date().toISOString(),\n  fileId: fileId,\n  matchStatus: matchStatus,\n  poNumber: poNumber || 'Not Referenced',\n  poTotal: poTotal,\n}}];"
       },
       "id": "729ac25d-d2cc-48d0-ba87-7267b9e6377d",
       "name": "Three-Way Match",
@@ -167,7 +166,13 @@
           "mappingMode": "defineBelow",
           "value": {
             "Invoice Number": "={{ $json.invoiceNumber }}",
-            "Vendor": "={{ $json.invoiceDate }}"
+            "Vendor": "={{ $json.vendorName }}",
+            "PO Number": "={{ $json.poNumber }}",
+            "Invoice Total": "={{ $json.invoiceTotal }}",
+            "PO Total": "={{ $json.poTotal }}",
+            "Status": "={{ $json.matchStatus }}",
+            "Discrepancies": "={{ $json.discrepancies }}",
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -284,7 +289,6 @@
         12048,
         3216
       ],
-      "webhookId": "e584fef1-0ca2-4a41-9098-87d1d864d8cb",
       "credentials": {
         "slackOAuth2Api": {
           "id": "YOUR_SLACK_CREDENTIAL_ID",
