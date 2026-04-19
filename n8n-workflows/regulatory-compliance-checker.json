@@ -93,15 +93,13 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "parse",
-        "inputType": "file",
-        "binaryPropertyName": "data"
+        "inputType": "file"
       },
       "id": "pdfvector-parse",
       "name": "Parse Regulation",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         900,
         220
@@ -115,16 +113,14 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Analyze this regulatory document and identify compliance requirements. Provide:\n\n**REGULATION OVERVIEW:**\n- Regulation name and number\n- Issuing authority/jurisdiction\n- Effective date and compliance deadlines\n- Scope (who is affected)\n\n**KEY PROVISIONS:**\nList the main requirements with section references:\n1. [Provision] - Section [X]\n2. [Provision] - Section [X]\n(continue for all major provisions)\n\n**POLICY IMPACT ANALYSIS:**\nFor typical internal policies, identify:\n\n1. DATA PROTECTION POLICIES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n2. EMPLOYEE POLICIES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n3. VENDOR/THIRD-PARTY POLICIES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n4. OPERATIONAL PROCEDURES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n**CONTRACT TEMPLATE IMPACT:**\n- Templates requiring updates: [list]\n- New clauses needed: [list]\n- Clauses to remove/modify: [list]\n\n**PRIORITY ACTIONS:**\nRank by urgency (Critical/High/Medium/Low):\n1. [Action] - [Priority] - [Deadline]\n2. [Action] - [Priority] - [Deadline]\n\n**PENALTIES FOR NON-COMPLIANCE:**\n- Financial penalties: [amount/range]\n- Other consequences: [list]\n\nProvide overall compliance complexity score (1-10) and estimated implementation effort (hours/days)."
+        "question": "Analyze this regulatory document and identify compliance requirements. Provide:\n\n**REGULATION OVERVIEW:**\n- Regulation name and number\n- Issuing authority/jurisdiction\n- Effective date and compliance deadlines\n- Scope (who is affected)\n\n**KEY PROVISIONS:**\nList the main requirements with section references:\n1. [Provision] - Section [X]\n2. [Provision] - Section [X]\n(continue for all major provisions)\n\n**POLICY IMPACT ANALYSIS:**\nFor typical internal policies, identify:\n\n1. DATA PROTECTION POLICIES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n2. EMPLOYEE POLICIES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n3. VENDOR/THIRD-PARTY POLICIES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n4. OPERATIONAL PROCEDURES:\n   - Required updates: [list]\n   - Gaps to address: [list]\n\n**CONTRACT TEMPLATE IMPACT:**\n- Templates requiring updates: [list]\n- New clauses needed: [list]\n- Clauses to remove/modify: [list]\n\n**PRIORITY ACTIONS:**\nRank by urgency (Critical/High/Medium/Low):\n1. [Action] - [Priority] - [Deadline]\n2. [Action] - [Priority] - [Deadline]\n\n**PENALTIES FOR NON-COMPLIANCE:**\n- Financial penalties: [amount/range]\n- Other consequences: [list]\n\nProvide overall compliance complexity score (1-10) and estimated implementation effort (hours/days)."
       },
       "id": "pdfvector-analyze",
       "name": "Policy Gap Analysis",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         900,
         380
@@ -149,7 +145,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get all items from Merge (Parse is index 0, Analysis is index 1)\nconst allItems = $input.all();\n\n// Parse data from first item\nconst parseItem = allItems[0]?.json || {};\nconst parsedMarkdown = parseItem.markdown || parseItem.text || 'No content parsed';\nconst pageCount = parseItem.pageCount || 0;\n\n// Analysis data from second item\nconst analysisItem = allItems[1]?.json || {};\nconst policyAnalysis = analysisItem.markdown || analysisItem.answer || analysisItem.text || 'No analysis generated';\n\n// Get trigger data for file info\nconst triggerData = $('New Regulation').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Extract regulation name from filename or content\nlet regulationName = fileName.replace(/\\.[^/.]+$/, '').replace(/_/g, ' ');\n\n// Determine jurisdiction from analysis\nlet jurisdiction = 'Unknown';\nconst analysisLower = policyAnalysis.toLowerCase();\nif (analysisLower.includes('european union') || analysisLower.includes('eu ')) jurisdiction = 'EU';\nelse if (analysisLower.includes('united states') || analysisLower.includes('federal')) jurisdiction = 'US Federal';\nelse if (analysisLower.includes('california')) jurisdiction = 'US - California';\nelse if (analysisLower.includes('colorado')) jurisdiction = 'US - Colorado';\nelse if (analysisLower.includes('new york')) jurisdiction = 'US - New York';\nelse if (analysisLower.includes('uk') || analysisLower.includes('united kingdom')) jurisdiction = 'UK';\n\n// Count policy gaps mentioned\nlet gapCount = 0;\nif (analysisLower.includes('gap')) {\n  gapCount = (analysisLower.match(/gap/g) || []).length;\n}\n\n// Determine priority\nlet priority = 'Medium';\nlet criticalCount = (analysisLower.match(/critical/g) || []).length;\nlet highCount = (analysisLower.match(/high/g) || []).length;\n\nif (criticalCount >= 2) priority = 'Critical';\nelse if (criticalCount >= 1 || highCount >= 3) priority = 'High';\nelse if (highCount >= 1) priority = 'Medium';\nelse priority = 'Low';\n\n// Extract action items count\nlet actionCount = 0;\nconst actionMatches = policyAnalysis.match(/\\d+\\./g);\nif (actionMatches) actionCount = actionMatches.length;\n\nreturn [{\n  json: {\n    regulationName: regulationName,\n    jurisdiction: jurisdiction,\n    pageCount: pageCount,\n    parsedContent: parsedMarkdown.substring(0, 500) + '...',\n    fullParsedContent: parsedMarkdown,\n    policyAnalysis: policyAnalysis,\n    gapCount: gapCount,\n    actionCount: actionCount,\n    priority: priority,\n    criticalItems: criticalCount,\n    highItems: highCount,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "// Get all items from Merge (Parse is index 0, Analysis is index 1)\nconst allItems = $input.all();\n\n// Parse data from first item\nconst parseItem = allItems[0]?.json || {};\nconst parsedMarkdown = parseItem.markdown || parseItem.text || 'No content parsed';\nconst pageCount = parseItem.pageCount || 0;\n\n// Analysis data from second item\nconst analysisItem = allItems[1]?.json || {};\nconst policyAnalysis = analysisItem.markdown || analysisItem.answer || analysisItem.text || 'No analysis generated';\n\n// Get trigger data for file info\nconst triggerData = $('New Regulation').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Extract regulation name from filename or content\nlet regulationName = fileName.replace(/\\.[^/.]+$/, '').replace(/_/g, ' ');\n\n// Determine jurisdiction from analysis\nlet jurisdiction = 'Unknown';\nconst analysisLower = policyAnalysis.toLowerCase();\nif (analysisLower.includes('european union') || analysisLower.includes('eu ')) jurisdiction = 'EU';\nelse if (analysisLower.includes('united states') || analysisLower.includes('federal')) jurisdiction = 'US Federal';\nelse if (analysisLower.includes('california')) jurisdiction = 'US - California';\nelse if (analysisLower.includes('colorado')) jurisdiction = 'US - Colorado';\nelse if (analysisLower.includes('new york')) jurisdiction = 'US - New York';\nelse if (analysisLower.includes('uk') || analysisLower.includes('united kingdom')) jurisdiction = 'UK';\n\n// Count policy gaps mentioned\nlet gapCount = 0;\nif (analysisLower.includes('gap')) {\n  gapCount = (analysisLower.match(/gap/g) || []).length;\n}\n\n// Determine priority\nlet priority = 'Medium';\nlet criticalCount = (analysisLower.match(/critical/g) || []).length;\nlet highCount = (analysisLower.match(/high/g) || []).length;\n\nif (criticalCount >= 2) priority = 'Critical';\nelse if (criticalCount >= 1 || highCount >= 3) priority = 'High';\nelse if (highCount >= 1) priority = 'Medium';\nelse priority = 'Low';\n\n// Extract action items count\nlet actionCount = 0;\nconst actionMatches = policyAnalysis.match(/\\d+\\./g);\nif (actionMatches) actionCount = actionMatches.length;\n\nreturn [{\n  json: {\n    regulationName: regulationName,\n    jurisdiction: jurisdiction,\n    pageCount: pageCount,\n    parsedContent: parsedMarkdown.substring(0, 500) + '...',\n    fullParsedContent: parsedMarkdown,\n    policyAnalysis: policyAnalysis,\n    gapCount: gapCount,\n    actionCount: actionCount,\n    priority: priority,\n    criticalItems: criticalCount,\n    highItems: highCount,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n}}];"
       },
       "id": "format-data",
       "name": "Format Results",
@@ -408,7 +404,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
