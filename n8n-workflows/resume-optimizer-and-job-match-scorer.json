@@ -19,17 +19,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
         "prompt": "Extract candidate information from this resume for job matching. Extract all skills, work experience, and qualifications.",
         "schema": "{\"type\": \"object\", \"properties\": {\"candidateName\": {\"type\": \"string\"}, \"email\": {\"type\": \"string\"}, \"phone\": {\"type\": \"string\"}, \"location\": {\"type\": \"string\"}, \"yearsOfExperience\": {\"type\": \"number\"}, \"currentTitle\": {\"type\": \"string\"}, \"currentCompany\": {\"type\": \"string\"}, \"technicalSkills\": {\"type\": \"string\"}, \"softSkills\": {\"type\": \"string\"}, \"educationDegree\": {\"type\": \"string\"}, \"educationField\": {\"type\": \"string\"}, \"educationSchool\": {\"type\": \"string\"}, \"certifications\": {\"type\": \"string\"}, \"languages\": {\"type\": \"string\"}, \"keyAchievements\": {\"type\": \"string\"}, \"industryBackground\": {\"type\": \"string\"}, \"toolsAndPlatforms\": {\"type\": \"string\"}}, \"required\": [\"candidateName\", \"technicalSkills\"], \"additionalProperties\": false}"
       },
       "id": "7e7f3a9b-fab7-47bd-8fbe-bec04f51aa96",
       "name": "Extract Resume Data",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         1520,
         380
@@ -43,16 +41,14 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "You are an expert recruiter. Analyze this resume and provide a detailed assessment.\n\nJOB TITLE: Software Engineer / General Professional Role\n\nJOB REQUIREMENTS:\nStrong technical or domain skills, 2+ years experience, problem solving, communication, teamwork, attention to detail, ability to learn quickly\n\nProvide your assessment in this exact format:\nMATCH_SCORE: [0-100]\nRECOMMENDATION: [STRONG_FIT / GOOD_FIT / POSSIBLE_FIT / NOT_A_FIT]\nTOP_3_STRENGTHS: [list the top 3 strengths from this resume]\nCRITICAL_GAPS: [list the most important missing or weak areas]\nSUGGESTIONS: [2-3 specific improvements the candidate could make]"
+        "question": "You are an expert recruiter. Analyze this resume and provide a detailed assessment.\n\nJOB TITLE: Software Engineer / General Professional Role\n\nJOB REQUIREMENTS:\nStrong technical or domain skills, 2+ years experience, problem solving, communication, teamwork, attention to detail, ability to learn quickly\n\nProvide your assessment in this exact format:\nMATCH_SCORE: [0-100]\nRECOMMENDATION: [STRONG_FIT / GOOD_FIT / POSSIBLE_FIT / NOT_A_FIT]\nTOP_3_STRENGTHS: [list the top 3 strengths from this resume]\nCRITICAL_GAPS: [list the most important missing or weak areas]\nSUGGESTIONS: [2-3 specific improvements the candidate could make]"
       },
       "id": "ddccbf0c-964e-4030-8f8b-a17f374ba0b8",
       "name": "Score Job Match",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         1520,
         580
@@ -66,7 +62,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get resume data\nconst resumeNode = $('Extract Resume Data').first();\nconst candidate = resumeNode.json.data || resumeNode.json;\n\n// Get match analysis\nconst matchNode = $('Score Job Match').first();\nconst analysis = matchNode.json.answer || matchNode.json.markdown || matchNode.json.text || '';\n\n// Get file name from trigger\nconst triggerData = $('New Resume').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\n// Parse match score\nconst scoreMatch = analysis.match(/MATCH_SCORE[:\\s]+([0-9]+)/i);\nconst matchScore = scoreMatch ? parseInt(scoreMatch[1]) : 50;\n\n// Parse recommendation\nconst recMatch = analysis.match(/RECOMMENDATION[:\\s]+([A-Z_]+)/i);\nconst recommendation = recMatch ? recMatch[1] : 'REVIEW_NEEDED';\n\n// Parse strengths\nconst strengthMatch = analysis.match(/TOP_3_STRENGTHS[:\\s]+([^\\n]+)/i);\nconst strengths = strengthMatch ? strengthMatch[1].trim() : 'N/A';\n\n// Parse gaps\nconst gapMatch = analysis.match(/CRITICAL_GAPS[:\\s]+([^\\n]+)/i);\nconst gaps = gapMatch ? gapMatch[1].trim() : 'None identified';\n\n// Parse suggestions\nconst suggestMatch = analysis.match(/SUGGESTIONS[:\\s]+([\\s\\S]+?)(?=\\n[A-Z_]+:|$)/i);\nconst suggestions = suggestMatch ? suggestMatch[1].trim() : 'N/A';\n\nreturn [{ json: {\n  candidateName:     candidate.candidateName     || 'Unknown',\n  email:             candidate.email             || 'N/A',\n  phone:             candidate.phone             || 'N/A',\n  currentTitle:      candidate.currentTitle      || 'N/A',\n  yearsOfExperience: candidate.yearsOfExperience || 0,\n  technicalSkills:   candidate.technicalSkills   || 'N/A',\n  softSkills:        candidate.softSkills        || 'N/A',\n  education:         (candidate.educationDegree  || '') + ' ' + (candidate.educationField || ''),\n  certifications:    candidate.certifications    || 'None',\n  matchScore,\n  recommendation,\n  strengths,\n  gaps,\n  suggestions,\n  fileName,\n  fileId,\n  processedAt: new Date().toISOString()\n}}];"
+        "jsCode": "// After Merge: input[0] = Extract Resume Data, input[1] = Score Job Match\nconst allInputs = $input.all();\nconst data = (allInputs[0]?.json?.data || allInputs[0]?.json) || {};\nconst assessment = allInputs[1]?.json?.answer || allInputs[1]?.json?.markdown || '';\nconst fileName = $('New Resume').item.json.name;\nconst fileId   = $('New Resume').item.json.id;\n\nreturn [{ json: {\n  controlId:       data.controlId       || 'N/A',\n  controlName:     data.controlName     || 'N/A',\n  controlOwner:    data.controlOwner    || 'N/A',\n  controlType:     data.controlType     || 'N/A',\n  processArea:     data.processArea     || 'N/A',\n  testResult:      data.testResult      || 'N/A',\n  deficiencyType:  data.deficiencyType  || 'none',\n  sampleSize:      parseInt(data.sampleSize)     || 0,\n  exceptionCount:  parseInt(data.exceptionCount) || 0,\n  testerName:      data.testerName      || 'N/A',\n  testingDate:     data.testingDate     || 'N/A',\n  remediationRequired: data.remediationRequired || false,\n  remediationPlan: data.remediationPlan || 'None',\n  remediationDueDate: data.remediationDueDate || 'N/A',\n  auditorComments: data.auditorComments || 'None',\n  assessment,\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
       },
       "id": "15a8acbb-9cb0-48ef-9384-cf582f4c9848",
       "name": "Format Results",
@@ -105,7 +101,19 @@
             "Critical Gaps": "={{ $json.gaps }}",
             "Suggestions": "={{ $json.suggestions }}",
             "File Name": "={{ $json.fileName }}",
-            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}",
+            "Control ID": "={{ $json.controlId }}",
+            "Control Name": "={{ $json.controlName }}",
+            "Owner": "={{ $json.controlOwner }}",
+            "Process Area": "={{ $json.processArea }}",
+            "Test Result": "={{ $json.testResult }}",
+            "Deficiency": "={{ $json.deficiencyType }}",
+            "Sample Size": "={{ $json.sampleSize }}",
+            "Exceptions": "={{ $json.exceptionCount }}",
+            "Testing Date": "={{ $json.testingDate }}",
+            "Remediation": "={{ $json.remediationRequired ? 'Yes' : 'No' }}",
+            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -237,7 +245,7 @@
           "mode": "list",
           "cachedResultName": "recruiting"
         },
-        "text": "=\ud83d\udcc4 *Resume Screened*\n\n*Candidate:* {{ $('Format Results').item.json.candidateName }}\n*File:* {{ $('Format Results').item.json.fileName }}\n*Current Title:* {{ $('Format Results').item.json.currentTitle }}\n*Experience:* {{ $('Format Results').item.json.yearsOfExperience }} years\n\n\ud83c\udfaf *Match Score:* {{ $('Format Results').item.json.matchScore }}/100\n*Recommendation:* *{{ $('Format Results').item.json.recommendation }}*\n\n\u2705 *Top Strengths:*\n{{ $('Format Results').item.json.strengths }}\n\n\u26a0\ufe0f *Critical Gaps:*\n{{ $('Format Results').item.json.gaps }}\n\n\ud83d\udca1 *Suggestions:*\n{{ $('Format Results').item.json.suggestions }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Results').item.json.fileId }}/view|View Resume>",
+        "text": "=\ud83d\udccb *SOX Control Evidence Processed*\n\n*Control ID:* {{ $('Format Results').item.json.controlId }}\n*Control Name:* {{ $('Format Results').item.json.controlName }}\n*Owner:* {{ $('Format Results').item.json.controlOwner }}\n*Process Area:* {{ $('Format Results').item.json.processArea }}\n\n\ud83e\uddea *Test Results:*\n\u2022 Result: {{ $('Format Results').item.json.testResult }}\n\u2022 Sample Size: {{ $('Format Results').item.json.sampleSize }}\n\u2022 Exceptions: {{ $('Format Results').item.json.exceptionCount }}\n\u2022 Deficiency: {{ $('Format Results').item.json.deficiencyType }}\n\n\ud83d\udd27 *Remediation Required:* {{ $('Format Results').item.json.remediationRequired ? 'Yes' : 'No' }}\n{{ $('Format Results').item.json.remediationRequired ? '\ud83d\udcc5 Due: ' + $('Format Results').item.json.remediationDueDate : '' }}\n\n\ud83e\udd16 *AI Assessment:*\n{{ $('Format Results').item.json.assessment }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Results').item.json.fileId }}/view|View Document>",
         "otherOptions": {}
       },
       "id": "2dbf5430-7431-4ed5-b607-c88769ce290b",
@@ -313,6 +321,20 @@
           "name": "Google Drive account"
         }
       }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "merge-sox",
+      "name": "Merge SOX",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1100,
+        300
+      ]
     }
   ],
   "connections": {
@@ -347,7 +369,7 @@
       "main": [
         [
           {
-            "node": "Format Results",
+            "node": "Merge SOX",
             "type": "main",
             "index": 0
           }
@@ -358,9 +380,9 @@
       "main": [
         [
           {
-            "node": "Format Results",
+            "node": "Merge SOX",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -375,6 +397,17 @@
           },
           {
             "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge SOX": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
             "type": "main",
             "index": 0
           }
