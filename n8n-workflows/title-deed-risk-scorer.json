@@ -93,17 +93,15 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract title deed information including: document type (warranty deed/quitclaim deed/grant deed/special warranty deed/trust deed/title commitment/title policy), grantor name(s), grantee name(s), property legal description (lot, block, subdivision, metes and bounds), property street address, county and state, parcel number or APN, recording date, recording document number, book and page if applicable, consideration amount, tax stamps if visible, prior document references, easements described, restrictions or covenants, liens recorded (mortgages, judgments, tax liens, mechanic's liens), encumbrances, exceptions from coverage if title policy, vesting type (joint tenants, tenants in common, etc.), notary information, and any special provisions or conditions.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\"},\"grantor\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"vestingType\":{\"type\":\"string\"}}}},\"grantee\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"vestingType\":{\"type\":\"string\"}}}},\"propertyDescription\":{\"type\":\"object\",\"properties\":{\"legalDescription\":{\"type\":\"string\"},\"streetAddress\":{\"type\":\"string\"},\"city\":{\"type\":\"string\"},\"county\":{\"type\":\"string\"},\"state\":{\"type\":\"string\"},\"parcelNumber\":{\"type\":\"string\"},\"lotNumber\":{\"type\":\"string\"},\"blockNumber\":{\"type\":\"string\"},\"subdivision\":{\"type\":\"string\"}}},\"recordingInfo\":{\"type\":\"object\",\"properties\":{\"recordingDate\":{\"type\":\"string\"},\"documentNumber\":{\"type\":\"string\"},\"book\":{\"type\":\"string\"},\"page\":{\"type\":\"string\"}}},\"consideration\":{\"type\":\"number\"},\"taxStamps\":{\"type\":\"number\"},\"priorDocuments\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"easements\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"beneficiary\":{\"type\":\"string\"}}}},\"restrictionsCovenants\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"liens\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\"},\"holder\":{\"type\":\"string\"},\"amount\":{\"type\":\"number\"},\"recordingDate\":{\"type\":\"string\"},\"documentNumber\":{\"type\":\"string\"}}}},\"encumbrances\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"exceptions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"notaryInfo\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"county\":{\"type\":\"string\"},\"commissionExpires\":{\"type\":\"string\"}}},\"specialProvisions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"documentType\",\"grantor\",\"grantee\"],\"additionalProperties\":false}"
+        "prompt": "Extract title deed/document data as flat fields. documentType, recordingDate (YYYY-MM-DD), recordingNumber, county, state, grantorName, grantorType (individual/entity), granteeName, granteeType (individual/entity), propertyAddress, legalDescription, parcelNumber, acreage (number), lotNumber, blockNumber, subdivision, deedType (warranty/quitclaim/grant/sheriff/trustee), considerationAmount (number), transferTax (number), liensCount (number), liensDescription, easementsList (semicolon-separated easements), restrictionsList (semicolon-separated restrictions/covenants), encumbrancesList (semicolon-separated encumbrances), exceptionsList (semicolon-separated title exceptions), priorDocumentsList (semicolon-separated prior deeds/documents), notaryName, notaryExpiration, titleInsuranceRequired (true/false), cloudOnTitle (true/false), cloudDescription, riskScore (number 0-100), riskLevel (Low/Medium/High/Critical).",
+        "schema": "{\"type\": \"object\", \"additionalProperties\": false, \"properties\": {\"documentType\": {\"type\": \"string\"}, \"recordingDate\": {\"type\": \"string\"}, \"recordingNumber\": {\"type\": \"string\"}, \"county\": {\"type\": \"string\"}, \"state\": {\"type\": \"string\"}, \"grantorName\": {\"type\": \"string\"}, \"grantorType\": {\"type\": \"string\"}, \"granteeName\": {\"type\": \"string\"}, \"granteeType\": {\"type\": \"string\"}, \"propertyAddress\": {\"type\": \"string\"}, \"legalDescription\": {\"type\": \"string\"}, \"parcelNumber\": {\"type\": \"string\"}, \"acreage\": {\"type\": \"number\"}, \"lotNumber\": {\"type\": \"string\"}, \"blockNumber\": {\"type\": \"string\"}, \"subdivision\": {\"type\": \"string\"}, \"deedType\": {\"type\": \"string\"}, \"considerationAmount\": {\"type\": \"number\"}, \"transferTax\": {\"type\": \"number\"}, \"liensCount\": {\"type\": \"number\"}, \"liensDescription\": {\"type\": \"string\"}, \"easementsList\": {\"type\": \"string\"}, \"restrictionsList\": {\"type\": \"string\"}, \"encumbrancesList\": {\"type\": \"string\"}, \"exceptionsList\": {\"type\": \"string\"}, \"priorDocumentsList\": {\"type\": \"string\"}, \"notaryName\": {\"type\": \"string\"}, \"notaryExpiration\": {\"type\": \"string\"}, \"titleInsuranceRequired\": {\"type\": \"boolean\"}, \"cloudOnTitle\": {\"type\": \"boolean\"}, \"cloudDescription\": {\"type\": \"string\"}, \"riskScore\": {\"type\": \"number\"}, \"riskLevel\": {\"type\": \"string\"}}}"
       },
       "id": "pdfvector-extract",
       "name": "Extract Title Data",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         900,
         220
@@ -117,16 +115,14 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "ask",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Perform a comprehensive title risk assessment on this document. Evaluate:\n\n**CHAIN OF TITLE RISKS:**\n- Are there gaps in the chain of title?\n- Do grantor names match prior grantee names exactly?\n- Are there missing intermediate conveyances?\n- Is there evidence of forgery or unauthorized signatures?\n- Are there unreleased prior mortgages?\n\n**LIEN RISKS:**\n- Mortgage liens: current status, amounts, priority\n- Tax liens: federal, state, or property tax\n- Judgment liens: civil judgments, child support\n- Mechanic's liens: construction or improvement related\n- HOA liens: homeowner association assessments\n- Are all liens properly released or accounted for?\n\n**ENCUMBRANCE RISKS:**\n- Easements that affect use or value\n- Restrictive covenants that limit development\n- Right of way issues\n- Mineral or water rights reservations\n- Utility easements impacting buildable area\n\n**LEGAL DESCRIPTION RISKS:**\n- Is legal description complete and unambiguous?\n- Are there boundary disputes or overlaps?\n- Do metes and bounds close properly?\n- Is parcel number consistent with description?\n\n**VESTING RISKS:**\n- Marital status issues (missing spouse signatures)\n- Trust or entity authorization questions\n- Guardianship or conservatorship concerns\n- Probate requirements not satisfied\n\n**DOCUMENT EXECUTION RISKS:**\n- Notary issues (expired commission, wrong county)\n- Missing witnesses where required\n- Improper acknowledgment\n- Recording defects\n\nFor each risk found, provide:\n1. Risk description\n2. Severity: CRITICAL / HIGH / MEDIUM / LOW\n3. Potential impact on title insurability\n4. Recommended cure or action\n\nProvide overall title risk score (1-100, where 100 is clean title) and insurability assessment."
+        "question": "Analyze this title document in 5 sentences: 1) Overall title status (Clear/Clouded/At Risk), 2) Most critical defect or risk found, 3) Key lien or encumbrance that needs resolution, 4) Title insurability rating (Insurable/Requires Review/Not Insurable), 5) Single most important action before closing."
       },
       "id": "pdfvector-analyze",
       "name": "Risk Analysis",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         900,
         380
@@ -151,7 +147,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get all items from Merge\nconst allItems = $input.all();\n\n// Extract data\nconst extractItem = allItems[0]?.json || {};\nconst titleData = extractItem.data || extractItem;\n\n// Analysis\nconst analysisItem = allItems[1]?.json || {};\nconst riskAnalysis = analysisItem.markdown || analysisItem.answer || analysisItem.text || 'No analysis generated';\n\n// Trigger data\nconst triggerData = $('New Title Document').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Format grantors\nconst grantors = titleData.grantor || [];\nconst grantorNames = grantors.map(g => g.name).join(', ') || 'Unknown';\n\n// Format grantees\nconst grantees = titleData.grantee || [];\nconst granteeNames = grantees.map(g => `${g.name}${g.vestingType ? ' (' + g.vestingType + ')' : ''}`).join(', ') || 'Unknown';\n\n// Property description\nconst prop = titleData.propertyDescription || {};\nconst propertyAddress = [prop.streetAddress, prop.city, prop.state].filter(Boolean).join(', ') || 'See legal description';\n\n// Recording info\nconst rec = titleData.recordingInfo || {};\nconst recordingInfo = `${rec.recordingDate || 'N/A'} - Doc #${rec.documentNumber || 'N/A'}`;\n\n// Format liens\nconst liens = titleData.liens || [];\nconst lienSummary = liens.map(l => `${l.type}: $${l.amount || 'N/A'} (${l.holder || 'Unknown'})`).join('; ') || 'None found';\nconst totalLienAmount = liens.reduce((sum, l) => sum + (l.amount || 0), 0);\n\n// Format easements\nconst easements = titleData.easements || [];\nconst easementSummary = easements.map(e => `${e.type}: ${e.description || 'N/A'}`).join('; ') || 'None';\n\n// Format encumbrances\nconst encumbrances = titleData.encumbrances || [];\nconst encumbranceSummary = encumbrances.join('; ') || 'None';\n\n// Format exceptions\nconst exceptions = titleData.exceptions || [];\nconst exceptionSummary = exceptions.join('; ') || 'None';\n\n// Count risks from analysis\nconst analysisLower = riskAnalysis.toLowerCase();\nconst criticalCount = (analysisLower.match(/critical/g) || []).length;\nconst highCount = (analysisLower.match(/high/g) || []).length;\nconst mediumCount = (analysisLower.match(/medium/g) || []).length;\n\n// Determine risk score\nlet riskScore = 85;\nif (criticalCount > 0) riskScore = 30;\nelse if (highCount > 0) riskScore = 50;\nelse if (mediumCount > 0) riskScore = 70;\nelse if (liens.length > 0) riskScore = 75;\n\n// Risk level\nlet riskLevel = 'Low';\nif (riskScore < 50) riskLevel = 'High';\nelse if (riskScore < 70) riskLevel = 'Medium';\n\n// Insurability\nlet insurability = 'Insurable';\nif (criticalCount > 0) insurability = 'Not Insurable - Critical Issues';\nelse if (highCount > 0) insurability = 'Conditional - Requires Cure';\nelse if (liens.length > 3) insurability = 'Conditional - Multiple Liens';\n\nreturn [{\n  json: {\n    documentType: titleData.documentType || 'Unknown',\n    grantorNames: grantorNames,\n    granteeNames: granteeNames,\n    propertyAddress: propertyAddress,\n    legalDescription: prop.legalDescription || 'N/A',\n    county: prop.county || 'N/A',\n    state: prop.state || 'N/A',\n    parcelNumber: prop.parcelNumber || 'N/A',\n    recordingDate: rec.recordingDate || 'N/A',\n    recordingInfo: recordingInfo,\n    consideration: titleData.consideration || 0,\n    lienCount: liens.length,\n    lienSummary: lienSummary,\n    totalLienAmount: totalLienAmount,\n    easementCount: easements.length,\n    easementSummary: easementSummary,\n    encumbranceSummary: encumbranceSummary,\n    exceptionSummary: exceptionSummary,\n    riskScore: riskScore,\n    riskLevel: riskLevel,\n    criticalIssues: criticalCount,\n    highIssues: highCount,\n    mediumIssues: mediumCount,\n    insurability: insurability,\n    riskAnalysis: riskAnalysis,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const allInputs = $input.all();\nconst data = (allInputs[0]?.json?.data || allInputs[0]?.json) || {};\nconst riskAnalysis = allInputs[1]?.json?.answer || allInputs[1]?.json?.markdown || '';\nconst fileName = $('New Title Document').item.json.name;\nconst fileId   = $('New Title Document').item.json.id;\n\nconst c = v => parseFloat(String(v||0).replace(/[^0-9.]/g,'')) || 0;\nconst exceptions = (data.exceptionsList || '').split(';').filter(Boolean);\nconst liens      = (data.liensDescription || '').split(';').filter(Boolean);\nconst easements  = (data.easementsList || '').split(';').filter(Boolean);\n\nconst riskScore = parseInt(data.riskScore) || 0;\nconst riskLevel = data.riskLevel ||\n  (riskScore >= 70 ? 'High' : riskScore >= 40 ? 'Medium' : 'Low');\n\nreturn [{ json: {\n  documentType:       data.documentType       || 'N/A',\n  recordingDate:      data.recordingDate      || 'N/A',\n  recordingNumber:    data.recordingNumber    || 'N/A',\n  county:             data.county             || 'N/A',\n  state:              data.state              || 'N/A',\n  grantorName:        data.grantorName        || 'N/A',\n  granteeName:        data.granteeName        || 'N/A',\n  propertyAddress:    data.propertyAddress    || 'N/A',\n  parcelNumber:       data.parcelNumber       || 'N/A',\n  deedType:           data.deedType           || 'N/A',\n  considerationAmount: c(data.considerationAmount),\n  liensCount:         parseInt(data.liensCount) || liens.length,\n  liensDescription:   data.liensDescription   || 'None',\n  easementsList:      data.easementsList      || 'None',\n  exceptionsList:     data.exceptionsList     || 'None',\n  exceptionsCount:    exceptions.length,\n  cloudOnTitle:       data.cloudOnTitle       || false,\n  cloudDescription:   data.cloudDescription   || 'None',\n  riskScore, riskLevel, riskAnalysis,\n  fileName, fileId,\n  processedAt: new Date().toISOString(),\n  fileId: fileId,\n  grantorNames: data.grantorName || \"N/A\",\n  granteeNames: data.granteeName || \"N/A\",\n  recordingInfo: (data.recordingNumber || \"N/A\") + \" | \" + (data.county || \"N/A\") + \", \" + (data.state || \"N/A\"),\n  consideration: \"$\" + c(data.considerationAmount).toLocaleString(),\n  lienCount: parseInt(data.liensCount) || liens.length,\n  lienSummary: data.liensDescription || \"None\",\n  easementCount: easements.length,\n  easementSummary: data.easementsList || \"None\",\n  encumbranceSummary: data.encumbrancesList || \"None\",\n  riskLevel: riskLevel,\n  riskAnalysis: riskAnalysis,\n  criticalIssues: data.cloudDescription || \"None\",\n  highIssues: \"N/A\",\n  totalLienAmount: 0,\n  insurability: data.cloudOnTitle ? \"Requires Review\" : \"Insurable\",\n}}];"
       },
       "id": "format-data",
       "name": "Score Risk",
@@ -182,15 +178,20 @@
           "value": {
             "Property": "={{ $json.propertyAddress }}",
             "Parcel": "={{ $json.parcelNumber }}",
-            "Grantor": "={{ $json.grantorNames }}",
-            "Grantee": "={{ $json.granteeNames }}",
+            "Grantor": "={{ $json.grantorName }}",
+            "Grantee": "={{ $json.granteeName }}",
             "Recording Date": "={{ $json.recordingDate }}",
-            "Liens": "={{ $json.lienCount }}",
+            "Liens": "={{ $json.liensCount }}",
             "Lien Amount": "={{ $json.totalLienAmount }}",
             "Risk Score": "={{ $json.riskScore }}",
             "Risk Level": "={{ $json.riskLevel }}",
             "Insurability": "={{ $json.insurability }}",
-            "Processed Date": "={{ $json.processedAt.split('T')[0] }}"
+            "Processed Date": "={{ $json.processedAt.split('T')[0] }}",
+            "Deed Type": "={{ $json.deedType }}",
+            "Exceptions": "={{ $json.exceptionsCount }}",
+            "Cloud on Title": "={{ $json.cloudOnTitle ? 'Yes' : 'No' }}",
+            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
+            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -430,7 +431,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
