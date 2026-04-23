@@ -12,7 +12,10 @@
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [60, 60]
+      "position": [
+        60,
+        60
+      ]
     },
     {
       "parameters": {
@@ -37,7 +40,10 @@
       "name": "New KYC Document",
       "type": "n8n-nodes-base.googleDriveTrigger",
       "typeVersion": 1,
-      "position": [480, 280],
+      "position": [
+        480,
+        280
+      ],
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "YOUR_DRIVE_CREDENTIAL_ID",
@@ -59,7 +65,10 @@
       "name": "Download Document",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [680, 280],
+      "position": [
+        680,
+        280
+      ],
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "YOUR_DRIVE_CREDENTIAL_ID",
@@ -69,18 +78,19 @@
     },
     {
       "parameters": {
-        "resource": "document",
         "operation": "extract",
         "inputType": "file",
-        "binaryPropertyName": "data",
-        "prompt": "Extract identity verification information from this KYC document. Identify the document type and extract: document type (passport/driver's license/national ID/utility bill/bank statement/tax document/proof of address), full legal name (first name, middle name, last name), date of birth, gender, nationality, document number, issue date, expiration date, issuing authority or country, address (street, city, state/province, postal code, country), photo present (yes/no), signature present (yes/no), MRZ code if passport, barcode data if present, account number if financial document, statement period if applicable, any security features visible, and document condition notes.",
-        "schema": "{\"type\":\"object\",\"properties\":{\"documentType\":{\"type\":\"string\"},\"fullName\":{\"type\":\"object\",\"properties\":{\"firstName\":{\"type\":\"string\"},\"middleName\":{\"type\":\"string\"},\"lastName\":{\"type\":\"string\"},\"fullNameAsShown\":{\"type\":\"string\"}}},\"dateOfBirth\":{\"type\":\"string\"},\"gender\":{\"type\":\"string\"},\"nationality\":{\"type\":\"string\"},\"documentNumber\":{\"type\":\"string\"},\"issueDate\":{\"type\":\"string\"},\"expirationDate\":{\"type\":\"string\"},\"issuingAuthority\":{\"type\":\"string\"},\"issuingCountry\":{\"type\":\"string\"},\"address\":{\"type\":\"object\",\"properties\":{\"street\":{\"type\":\"string\"},\"city\":{\"type\":\"string\"},\"state\":{\"type\":\"string\"},\"postalCode\":{\"type\":\"string\"},\"country\":{\"type\":\"string\"}}},\"photoPresent\":{\"type\":\"boolean\"},\"signaturePresent\":{\"type\":\"boolean\"},\"mrzCode\":{\"type\":\"string\"},\"barcodeData\":{\"type\":\"string\"},\"accountNumber\":{\"type\":\"string\"},\"statementPeriod\":{\"type\":\"string\"},\"securityFeatures\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"documentCondition\":{\"type\":\"string\"}},\"required\":[\"documentType\",\"fullName\"],\"additionalProperties\":false}"
+        "prompt": "Extract identity verification data as flat fields. documentType, fullNameAsShown, firstName, middleName, lastName, dateOfBirth (YYYY-MM-DD), gender, nationality, documentNumber, issueDate (YYYY-MM-DD), expirationDate (YYYY-MM-DD), issuingAuthority, issuingCountry, street, city, state, postalCode, country, photoPresent (true/false), signaturePresent (true/false), mrzCode, barcodeData, accountNumber, statementPeriod, securityFeaturesList (semicolon-separated security features), documentCondition.",
+        "schema": "{\"type\": \"object\", \"additionalProperties\": false, \"properties\": {\"documentType\": {\"type\": \"string\"}, \"fullNameAsShown\": {\"type\": \"string\"}, \"firstName\": {\"type\": \"string\"}, \"middleName\": {\"type\": \"string\"}, \"lastName\": {\"type\": \"string\"}, \"dateOfBirth\": {\"type\": \"string\"}, \"gender\": {\"type\": \"string\"}, \"nationality\": {\"type\": \"string\"}, \"documentNumber\": {\"type\": \"string\"}, \"issueDate\": {\"type\": \"string\"}, \"expirationDate\": {\"type\": \"string\"}, \"issuingAuthority\": {\"type\": \"string\"}, \"issuingCountry\": {\"type\": \"string\"}, \"street\": {\"type\": \"string\"}, \"city\": {\"type\": \"string\"}, \"state\": {\"type\": \"string\"}, \"postalCode\": {\"type\": \"string\"}, \"country\": {\"type\": \"string\"}, \"photoPresent\": {\"type\": \"boolean\"}, \"signaturePresent\": {\"type\": \"boolean\"}, \"mrzCode\": {\"type\": \"string\"}, \"barcodeData\": {\"type\": \"string\"}, \"accountNumber\": {\"type\": \"string\"}, \"statementPeriod\": {\"type\": \"string\"}, \"securityFeaturesList\": {\"type\": \"string\"}, \"documentCondition\": {\"type\": \"string\"}}}"
       },
       "id": "pdfvector-extract",
       "name": "Extract ID Data",
       "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 1,
-      "position": [880, 280],
+      "typeVersion": 2,
+      "position": [
+        880,
+        280
+      ],
       "credentials": {
         "pdfVectorApi": {
           "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
@@ -90,13 +100,16 @@
     },
     {
       "parameters": {
-        "jsCode": "const extractData = $input.first().json.data || $input.first().json;\nconst triggerData = $('New KYC Document').item.json;\n\nconst kyc = extractData;\nconst fileName = triggerData.name || 'unknown';\nconst fileId = triggerData.id || '';\n\n// Extract customer ID from filename (e.g., \"CUST123_passport.pdf\")\nconst customerIdMatch = fileName.match(/^([A-Z0-9]+)_/i);\nconst customerId = customerIdMatch ? customerIdMatch[1] : 'Unknown';\n\n// Full name\nconst nameObj = kyc.fullName || {};\nconst fullName = nameObj.fullNameAsShown || \n  [nameObj.firstName, nameObj.middleName, nameObj.lastName].filter(Boolean).join(' ') || 'Unknown';\n\n// Address\nconst addr = kyc.address || {};\nconst fullAddress = [addr.street, addr.city, addr.state, addr.postalCode, addr.country]\n  .filter(Boolean).join(', ') || 'Not provided';\n\n// Document validity checks\nlet discrepancies = [];\nlet riskLevel = 'Low';\nlet verificationStatus = 'Verified';\n\n// Check expiration\nconst expDate = kyc.expirationDate;\nif (expDate) {\n  const expDateObj = new Date(expDate);\n  const today = new Date();\n  if (expDateObj < today) {\n    discrepancies.push('Document expired');\n    riskLevel = 'High';\n    verificationStatus = 'Failed';\n  } else if (expDateObj < new Date(today.getTime() + 30*24*60*60*1000)) {\n    discrepancies.push('Document expires within 30 days');\n    riskLevel = 'Medium';\n  }\n}\n\n// Check required fields\nif (!kyc.documentNumber) {\n  discrepancies.push('Missing document number');\n  riskLevel = 'High';\n  verificationStatus = 'Review Required';\n}\n\nif (!kyc.dateOfBirth) {\n  discrepancies.push('Missing date of birth');\n  riskLevel = riskLevel === 'Low' ? 'Medium' : riskLevel;\n}\n\n// Check photo/signature for ID documents\nconst idTypes = ['passport', 'driver\\'s license', 'national id'];\nif (idTypes.some(t => (kyc.documentType || '').toLowerCase().includes(t))) {\n  if (!kyc.photoPresent) {\n    discrepancies.push('No photo detected');\n    riskLevel = 'High';\n    verificationStatus = 'Review Required';\n  }\n}\n\n// Document condition\nif (kyc.documentCondition && kyc.documentCondition.toLowerCase().includes('poor')) {\n  discrepancies.push('Poor document quality');\n  riskLevel = riskLevel === 'Low' ? 'Medium' : riskLevel;\n}\n\n// Security features\nconst securityFeatures = kyc.securityFeatures || [];\n\nreturn [{\n  json: {\n    customerId: customerId,\n    documentType: kyc.documentType || 'Unknown',\n    fullName: fullName,\n    firstName: nameObj.firstName || '',\n    lastName: nameObj.lastName || '',\n    dateOfBirth: kyc.dateOfBirth || 'N/A',\n    gender: kyc.gender || 'N/A',\n    nationality: kyc.nationality || 'N/A',\n    documentNumber: kyc.documentNumber || 'N/A',\n    issueDate: kyc.issueDate || 'N/A',\n    expirationDate: kyc.expirationDate || 'N/A',\n    issuingAuthority: kyc.issuingAuthority || 'N/A',\n    issuingCountry: kyc.issuingCountry || 'N/A',\n    address: fullAddress,\n    street: addr.street || '',\n    city: addr.city || '',\n    state: addr.state || '',\n    postalCode: addr.postalCode || '',\n    country: addr.country || '',\n    photoPresent: kyc.photoPresent ? 'Yes' : 'No',\n    signaturePresent: kyc.signaturePresent ? 'Yes' : 'No',\n    mrzCode: kyc.mrzCode || 'N/A',\n    accountNumber: kyc.accountNumber || 'N/A',\n    statementPeriod: kyc.statementPeriod || 'N/A',\n    securityFeatures: securityFeatures.join(', ') || 'Not assessed',\n    documentCondition: kyc.documentCondition || 'Good',\n    verificationStatus: verificationStatus,\n    discrepancies: discrepancies.join('; ') || 'None',\n    discrepancyCount: discrepancies.length,\n    riskLevel: riskLevel,\n    fileName: fileName,\n    fileId: fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const kyc = ($input.first().json?.data || $input.first().json) || {};\nconst triggerData = $('New KYC Document').item.json;\nconst fileName = triggerData.name || 'unknown';\nconst fileId   = triggerData.id   || '';\n\nconst customerIdMatch = fileName.match(/^([A-Z0-9]+)_/i);\nconst customerId = customerIdMatch ? customerIdMatch[1] : 'Unknown';\n\nconst fullName = kyc.fullNameAsShown ||\n  [kyc.firstName, kyc.middleName, kyc.lastName].filter(Boolean).join(' ') || 'Unknown';\nconst fullAddress = [kyc.street, kyc.city, kyc.state, kyc.postalCode, kyc.country]\n  .filter(Boolean).join(', ') || 'Not provided';\n\nlet discrepancies = [];\nlet riskLevel = 'Low';\nlet verificationStatus = 'Verified';\n\nif (kyc.expirationDate) {\n  const exp = new Date(kyc.expirationDate);\n  const today = new Date();\n  if (exp < today) {\n    discrepancies.push('Document expired');\n    riskLevel = 'High'; verificationStatus = 'Failed';\n  } else if (exp < new Date(today.getTime() + 30*24*60*60*1000)) {\n    discrepancies.push('Expires within 30 days');\n    if (riskLevel === 'Low') riskLevel = 'Medium';\n  }\n}\nif (!kyc.documentNumber) { discrepancies.push('Missing document number'); riskLevel = 'High'; verificationStatus = 'Review Required'; }\nif (!kyc.dateOfBirth)    { discrepancies.push('Missing date of birth');   if (riskLevel === 'Low') riskLevel = 'Medium'; }\nconst idTypes = ['passport','driver','national id'];\nif (idTypes.some(t => (kyc.documentType||'').toLowerCase().includes(t)) && !kyc.photoPresent) {\n  discrepancies.push('No photo detected'); riskLevel = 'High'; verificationStatus = 'Review Required';\n}\nif ((kyc.documentCondition||'').toLowerCase().includes('poor')) {\n  discrepancies.push('Poor document quality'); if (riskLevel === 'Low') riskLevel = 'Medium';\n}\n\nreturn [{ json: {\n  customerId, documentType: kyc.documentType || 'Unknown',\n  fullName, firstName: kyc.firstName || '', lastName: kyc.lastName || '',\n  dateOfBirth: kyc.dateOfBirth || 'N/A',\n  gender: kyc.gender || 'N/A',\n  nationality: kyc.nationality || 'N/A',\n  documentNumber: kyc.documentNumber || 'N/A',\n  issueDate: kyc.issueDate || 'N/A',\n  expirationDate: kyc.expirationDate || 'N/A',\n  issuingAuthority: kyc.issuingAuthority || 'N/A',\n  issuingCountry: kyc.issuingCountry || 'N/A',\n  address: fullAddress,\n  photoPresent: kyc.photoPresent ? 'Yes' : 'No',\n  signaturePresent: kyc.signaturePresent ? 'Yes' : 'No',\n  mrzCode: kyc.mrzCode || 'N/A',\n  accountNumber: kyc.accountNumber || 'N/A',\n  securityFeatures: kyc.securityFeaturesList || 'Not assessed',\n  documentCondition: kyc.documentCondition || 'Good',\n  verificationStatus, riskLevel,\n  discrepancies: discrepancies.join('; ') || 'None',\n  discrepancyCount: discrepancies.length,\n  fileName, fileId,\n  processedAt: new Date().toISOString(),\n  documentType: kyc.documentType || \"Unknown\",\n  fileId: fileId,\n  riskLevel: riskLevel,\n}}];"
       },
       "id": "format-data",
       "name": "Verify & Format",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1080, 280]
+      "position": [
+        1080,
+        280
+      ]
     },
     {
       "parameters": {
@@ -130,17 +143,105 @@
           },
           "matchingColumns": [],
           "schema": [
-            {"id": "Customer ID", "displayName": "Customer ID", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "Name", "displayName": "Name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "DOB", "displayName": "DOB", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "ID Type", "displayName": "ID Type", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "ID Number", "displayName": "ID Number", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "Expiration", "displayName": "Expiration", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "Address", "displayName": "Address", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "Discrepancies", "displayName": "Discrepancies", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "Risk Level", "displayName": "Risk Level", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "Processed Date", "displayName": "Processed Date", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true}
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DOB",
+              "displayName": "DOB",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ID Type",
+              "displayName": "ID Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ID Number",
+              "displayName": "ID Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Expiration",
+              "displayName": "Expiration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Discrepancies",
+              "displayName": "Discrepancies",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk Level",
+              "displayName": "Risk Level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed Date",
+              "displayName": "Processed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
           ]
         },
         "options": {}
@@ -149,7 +250,10 @@
       "name": "Log to Sheets",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
-      "position": [1280, 280],
+      "position": [
+        1280,
+        280
+      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "YOUR_SHEETS_CREDENTIAL_ID",
@@ -173,7 +277,10 @@
       "name": "Send to Slack",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [1480, 280],
+      "position": [
+        1480,
+        280
+      ],
       "credentials": {
         "slackOAuth2Api": {
           "id": "YOUR_SLACK_CREDENTIAL_ID",
@@ -245,7 +352,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }
