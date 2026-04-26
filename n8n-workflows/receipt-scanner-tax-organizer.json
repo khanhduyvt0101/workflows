@@ -140,7 +140,7 @@
       ],
       "credentials": {
         "pdfVectorApi": {
-          "id": "SzTdgUBGHUbs4zxH",
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
           "name": "PDF Vector account"
         }
       }
@@ -225,7 +225,7 @@
       "id": "03128c38-d6b3-4ec7-a1a9-ce7e827593f6",
       "name": "Tax Deductible?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         1248,
         272
@@ -342,10 +342,8 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "a17ae5d1-ce52-40e0-a184-83ccc58406b9",
   "meta": {
-    "instanceId": "b48c509f4ff8f45ad20bae13ff579a5ad51353a15a2be8320507d7642bd46216"
+    "templateCredsSetupCompleted": false
   },
-  "id": "Z7Lw7vgxBBUTBVv7",
   "tags": []
 }
