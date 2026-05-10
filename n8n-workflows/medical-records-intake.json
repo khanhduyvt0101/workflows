@@ -132,7 +132,7 @@
     },
     {
       "parameters": {
-        "sendTo": "={{ $('PDF Vector - Extract Patient Data').item.json.data.email || 'patient@example.com' }}",
+        "sendTo": "={{ $('PDF Vector - Extract Patient Data').item.json.data.email || 'recipient@example.com' }}",
         "subject": "Welcome to Our Practice - {{ $('PDF Vector - Extract Patient Data').item.json.data.patientName }}",
         "emailType": "text",
         "message": "=Dear {{ $('PDF Vector - Extract Patient Data').item.json.data.patientName }},\n\nThank you for choosing our practice. We have received your intake form and your information has been added to our system.\n\nPatient Information:\n- Name: {{ $('PDF Vector - Extract Patient Data').item.json.data.patientName }}\n- Date of Birth: {{ $('PDF Vector - Extract Patient Data').item.json.data.dateOfBirth }}\n- Insurance: {{ $('PDF Vector - Extract Patient Data').item.json.data.insuranceProvider }}\n\nPlease contact us if you need to update any information.\n\nBest regards,\nYour Healthcare Team"

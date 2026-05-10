@@ -47,7 +47,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nfor (const item of items) {\n  if (item.binary) {\n    const binaryKey = Object.keys(item.binary)[0];\n    if (binaryKey && binaryKey !== 'data') {\n      item.binary.data = item.binary[binaryKey];\n      delete item.binary[binaryKey];\n    }\n  }\n  \n  item.json.applicantEmail = item.json.from?.address || item.json.from || 'unknown@email.com';\n  item.json.originalFilename = 'mortgage-application.pdf';\n  item.json.receivedAt = new Date().toISOString();\n}\n\nreturn items;"
+        "jsCode": "const items = $input.all();\n\nfor (const item of items) {\n  if (item.binary) {\n    const binaryKey = Object.keys(item.binary)[0];\n    if (binaryKey && binaryKey !== 'data') {\n      item.binary.data = item.binary[binaryKey];\n      delete item.binary[binaryKey];\n    }\n  }\n  \n  item.json.applicantEmail = item.json.from?.address || item.json.from || 'unknown@example.com';\n  item.json.originalFilename = 'mortgage-application.pdf';\n  item.json.receivedAt = new Date().toISOString();\n}\n\nreturn items;"
       },
       "name": "Prepare Binary Data",
       "type": "n8n-nodes-base.code",
