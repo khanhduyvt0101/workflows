@@ -386,7 +386,7 @@
     },
     {
       "parameters": {
-        "sendTo": "=ap-team@company.com",
+        "sendTo": "=ap-team@example.com",
         "subject": "=⚠️ Invoice Flagged for Review: {{ $json[\"Invoice Number\"] }}",
         "emailType": "text",
         "message": "=An invoice has been flagged for manual review.\n\nDetails:\n- Invoice Number: {{ $json[\"Invoice Number\"] }}\n- Vendor: {{ $json[\"Vendor\"] }}\n- Amount: ${{ $json[\"Total\"] }}\n- PO Number: {{ $json[\"PO Number\"] }}\n\nReason: {{ $json[\"Flag Reason\"] }}\n\nWarnings: {{ $json[\"Warnings\"] }}\n\nPlease review and approve/reject in the Invoice Log spreadsheet.\n\nAccounts Payable Automation"
