@@ -3484,46 +3484,47 @@ Automate your accounts payable three-way matching process. This workflow watches
 </details>
 
 <details>
-<summary><strong>👤 Resume Optimizer and Job Match Scorer</strong> - AI-powered resume screening and job matching | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/resume-optimizer-and-job-match-scorer.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/resume-optimizer-and-job-match-scorer.json">📋 Open</a></summary>
+<summary><strong>SOX Compliance Evidence Collector</strong> - Collect and assess SOX control evidence | <a href="https://raw.githubusercontent.com/khanhduyvt0101/workflows/main/n8n-workflows/sox-compliance-evidence-collector.json">⬇️ Download</a> | <a href="https://github.com/khanhduyvt0101/workflows/blob/main/n8n-workflows/sox-compliance-evidence-collector.json">📋 Open</a></summary>
 
-Automate your resume screening process with AI-powered analysis. This workflow watches a Google Drive folder for new resume PDFs, extracts candidate data, scores them against job requirements, and delivers results to Google Sheets and Slack. Save hours of manual resume review while ensuring consistent, objective candidate evaluation.
+Automate SOX evidence intake and review. This workflow watches a Google Drive folder for SOX control evidence documents, extracts control testing fields with PDF Vector, assesses evidence sufficiency, logs the audit record to Google Sheets, and sends Slack alerts for deficiencies or remediation needs.
 
 #### Who is this for?
-- Recruiters screening large volumes of candidates
-- Career coaches reviewing and optimizing client resumes
-- HR teams matching applicants to open roles
+- Finance, audit, and compliance teams collecting SOX evidence
+- Internal controls teams tracking control testing status
+- Organizations preparing evidence logs for SOX audits
 
 #### How it works
-1. **New Resume** - Google Drive trigger watches a designated folder for newly uploaded resume PDFs (polls every minute)
-2. **Download Resume** - Downloads the PDF file from Google Drive for processing
-3. **Extract Resume Data** - PDF Vector extracts structured candidate information including name, email, skills, experience, education, certifications, and more
-4. **Score Job Match** - PDF Vector analyzes the resume against job requirements and provides a match score (0-100), recommendation, strengths, gaps, and improvement suggestions
-5. **Format Results** - JavaScript code node combines extracted data and parsed analysis into a unified result object
-6. **Log to Sheets** - Appends the candidate assessment to a Google Sheets spreadsheet for tracking
-7. **Send to Slack** - Posts a formatted summary with match score, strengths, gaps, and a link to the resume in a Slack channel
+1. **New Evidence Document** - Google Drive trigger watches a designated SOX evidence folder
+2. **Download Evidence** - Downloads the uploaded document from Google Drive
+3. **Extract Control Evidence** - PDF Vector extracts control ID, owner, process area, test result, exceptions, and remediation fields
+4. **Assess Evidence Sufficiency** - PDF Vector Ask reviews whether the evidence supports the control
+5. **Merge Evidence Review** - Combines extracted fields and the assessment
+6. **Format Evidence Record** - JavaScript formats the audit record for downstream systems
+7. **Log Evidence** - Appends the evidence record to Google Sheets
+8. **Notify Compliance Team** - Sends Slack alerts with result, deficiency, remediation, and assessment details
 
 #### Services used
-- Google Drive (trigger for new resumes and file download)
-- PDF Vector (resume data extraction and job match scoring)
-- Google Sheets (logging assessment results)
-- Slack (team notifications with candidate summaries)
-- Code / JavaScript (data formatting and score parsing)
+- Google Drive (trigger for new evidence documents and file download)
+- PDF Vector (control evidence extraction and evidence sufficiency review)
+- Google Sheets (SOX evidence logging)
+- Slack (compliance notifications)
+- Code / JavaScript (audit record formatting)
 
 #### Setup instructions
 1. Import the workflow JSON into n8n
 2. Get a PDF Vector API key from pdfvector.com/api-keys and configure the PDF Vector credentials
-3. Create a Google Drive folder for incoming resumes and update the folder ID in the "New Resume" trigger node
-4. Create a Google Sheet with columns: Candidate, Email, Current Title, Experience Years, Match Score, Recommendation, Top Strengths, Critical Gaps, Suggestions, File Name, Processed Date
-5. Update the spreadsheet ID in the "Log to Sheets" node
+3. Create a Google Drive folder for incoming SOX evidence and update the folder ID in the "New Evidence Document" trigger node
+4. Create a Google Sheet with columns for Control ID, Control Name, Owner, Process Area, Test Result, Deficiency Type, Remediation Required, Due Date, File Name, and Processed Date
+5. Update the spreadsheet ID in the "Log Evidence" node
 6. Configure Google Drive and Google Sheets OAuth2 credentials
-7. Connect your Slack workspace and set the channel ID in the "Send to Slack" node
+7. Connect your Slack workspace and set the channel ID in the "Notify Compliance Team" node
 8. Activate the workflow
 
 #### Customizing this workflow
-- Modify the job title and requirements in the "Score Job Match" prompt to match your specific open positions
-- Add additional extraction fields in the "Extract Resume Data" schema for industry-specific qualifications
-- Extend the Slack message format or add email notifications for high-scoring candidates
-- Add conditional routing to automatically flag candidates above a certain match score threshold
+- Adjust the evidence sufficiency criteria in the "Assess Evidence Sufficiency" prompt
+- Add control-specific fields to the "Extract Control Evidence" schema
+- Extend the Slack message format or add email notifications for high-risk deficiencies
+- Add conditional routing for remediation-required or high-risk evidence records
 
 </details>
 
