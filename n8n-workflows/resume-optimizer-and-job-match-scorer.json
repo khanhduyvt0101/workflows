@@ -1,267 +1,21 @@
 {
-  "name": "Resume Optimizer and Job Match Scorer",
+  "name": "SOX Compliance Evidence Collector",
   "nodes": [
     {
       "parameters": {
-        "content": "## \ud83d\udcc4 Resume Optimizer & Job Match Scorer\n\n### What this workflow does\n1. Watches Google Drive folder for new resume PDFs\n2. PDF Vector extracts candidate skills, experience, education\n3. PDF Vector Ask scores the resume against job requirements\n4. Calculates match score and identifies gaps\n5. Logs results to Google Sheets\n6. Sends Slack alert with score and recommendations\n\n### Setup steps\n1. Get PDF Vector API key from pdfvector.com/api-keys\n2. Create a Google Drive folder for incoming resumes\n3. Create a Google Sheet with columns:\n   Candidate | Email | Current Title | Experience Years | Match Score | Recommendation | Top Strengths | Critical Gaps | Suggestions | File Name | Processed Date\n4. Update folder ID and sheet ID in the nodes\n5. Connect Slack workspace\n\n### How to test\nUpload any resume PDF to your Google Drive folder.\nThe workflow triggers automatically within 1 minute.\n\n### Perfect for\n- Recruiters screening candidates\n- Career coaches reviewing resumes\n- HR teams matching applicants to roles\n\n### Template by PDF Vector\npdfvector.com/integrations/n8n",
+        "content": "## SOX Compliance Evidence Collector\n\n### What this workflow does\n1. Watches a Google Drive folder for SOX evidence documents\n2. Downloads the evidence file\n3. PDF Vector extracts control evidence fields\n4. PDF Vector Ask reviews whether the evidence supports the control\n5. Merges extraction and assessment\n6. Formats the audit record\n7. Logs evidence to Google Sheets\n8. Sends Slack alerts for deficiencies or remediation needs\n\n### Setup steps\n1. Create a Google Drive folder for incoming SOX evidence\n2. Create a Google Sheet with columns for Control ID, Control Name, Owner, Process Area, Test Result, Deficiency Type, Remediation Required, Due Date, File Name, and Processed Date\n3. Add PDF Vector credentials\n4. Add Slack channel for compliance alerts\n5. Update folder, sheet, and channel IDs\n\n### Use case\nFinance, compliance, and audit teams collecting control evidence for SOX testing.\n\n### Template by PDF Vector\npdfvector.com/integrations/n8n",
         "height": 700,
         "width": 460,
         "color": 5
       },
-      "id": "404f7c6c-1fe8-43bd-888c-40398a9372e5",
+      "id": "6f2d5ac4-3848-4a32-b6a8-4b706510c940",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        560,
-        200
+        540,
+        220
       ]
-    },
-    {
-      "parameters": {
-        "operation": "extract",
-        "inputType": "file",
-        "prompt": "Extract candidate information from this resume for job matching. Extract all skills, work experience, and qualifications.",
-        "schema": "{\"type\": \"object\", \"properties\": {\"candidateName\": {\"type\": \"string\"}, \"email\": {\"type\": \"string\"}, \"phone\": {\"type\": \"string\"}, \"location\": {\"type\": \"string\"}, \"yearsOfExperience\": {\"type\": \"number\"}, \"currentTitle\": {\"type\": \"string\"}, \"currentCompany\": {\"type\": \"string\"}, \"technicalSkills\": {\"type\": \"string\"}, \"softSkills\": {\"type\": \"string\"}, \"educationDegree\": {\"type\": \"string\"}, \"educationField\": {\"type\": \"string\"}, \"educationSchool\": {\"type\": \"string\"}, \"certifications\": {\"type\": \"string\"}, \"languages\": {\"type\": \"string\"}, \"keyAchievements\": {\"type\": \"string\"}, \"industryBackground\": {\"type\": \"string\"}, \"toolsAndPlatforms\": {\"type\": \"string\"}}, \"required\": [\"candidateName\", \"technicalSkills\"], \"additionalProperties\": false}"
-      },
-      "id": "7e7f3a9b-fab7-47bd-8fbe-bec04f51aa96",
-      "name": "Extract Resume Data",
-      "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 2,
-      "position": [
-        1520,
-        380
-      ],
-      "credentials": {
-        "pdfVectorApi": {
-          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
-          "name": "PDF Vector account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "ask",
-        "inputType": "file",
-        "question": "You are an expert recruiter. Analyze this resume and provide a detailed assessment.\n\nJOB TITLE: Software Engineer / General Professional Role\n\nJOB REQUIREMENTS:\nStrong technical or domain skills, 2+ years experience, problem solving, communication, teamwork, attention to detail, ability to learn quickly\n\nProvide your assessment in this exact format:\nMATCH_SCORE: [0-100]\nRECOMMENDATION: [STRONG_FIT / GOOD_FIT / POSSIBLE_FIT / NOT_A_FIT]\nTOP_3_STRENGTHS: [list the top 3 strengths from this resume]\nCRITICAL_GAPS: [list the most important missing or weak areas]\nSUGGESTIONS: [2-3 specific improvements the candidate could make]"
-      },
-      "id": "ddccbf0c-964e-4030-8f8b-a17f374ba0b8",
-      "name": "Score Job Match",
-      "type": "n8n-nodes-pdfvector.pdfVector",
-      "typeVersion": 2,
-      "position": [
-        1520,
-        580
-      ],
-      "credentials": {
-        "pdfVectorApi": {
-          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
-          "name": "PDF Vector account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// After Merge: input[0] = Extract Resume Data, input[1] = Score Job Match\nconst allInputs = $input.all();\nconst data = (allInputs[0]?.json?.data || allInputs[0]?.json) || {};\nconst assessment = allInputs[1]?.json?.answer || allInputs[1]?.json?.markdown || '';\nconst fileName = $('New Resume').item.json.name;\nconst fileId   = $('New Resume').item.json.id;\n\nreturn [{ json: {\n  controlId:       data.controlId       || 'N/A',\n  controlName:     data.controlName     || 'N/A',\n  controlOwner:    data.controlOwner    || 'N/A',\n  controlType:     data.controlType     || 'N/A',\n  processArea:     data.processArea     || 'N/A',\n  testResult:      data.testResult      || 'N/A',\n  deficiencyType:  data.deficiencyType  || 'none',\n  sampleSize:      parseInt(data.sampleSize)     || 0,\n  exceptionCount:  parseInt(data.exceptionCount) || 0,\n  testerName:      data.testerName      || 'N/A',\n  testingDate:     data.testingDate     || 'N/A',\n  remediationRequired: data.remediationRequired || false,\n  remediationPlan: data.remediationPlan || 'None',\n  remediationDueDate: data.remediationDueDate || 'N/A',\n  auditorComments: data.auditorComments || 'None',\n  assessment,\n  fileName, fileId,\n  processedAt: new Date().toISOString()\n}}];"
-      },
-      "id": "15a8acbb-9cb0-48ef-9384-cf582f4c9848",
-      "name": "Format Results",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1740,
-        480
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "value": "YOUR_SPREADSHEET_ID",
-          "mode": "list",
-          "cachedResultName": "Resume Match Results"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "gid=0",
-          "mode": "list",
-          "cachedResultName": "Results"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Candidate": "={{ $json.candidateName }}",
-            "Email": "={{ $json.email }}",
-            "Current Title": "={{ $json.currentTitle }}",
-            "Experience Years": "={{ $json.yearsOfExperience }}",
-            "Match Score": "={{ $json.matchScore }}",
-            "Recommendation": "={{ $json.recommendation }}",
-            "Top Strengths": "={{ $json.strengths }}",
-            "Critical Gaps": "={{ $json.gaps }}",
-            "Suggestions": "={{ $json.suggestions }}",
-            "File Name": "={{ $json.fileName }}",
-            "Processed Date": "={{ $json.processedAt.split('T')[0] }}",
-            "Control ID": "={{ $json.controlId }}",
-            "Control Name": "={{ $json.controlName }}",
-            "Owner": "={{ $json.controlOwner }}",
-            "Process Area": "={{ $json.processArea }}",
-            "Test Result": "={{ $json.testResult }}",
-            "Deficiency": "={{ $json.deficiencyType }}",
-            "Sample Size": "={{ $json.sampleSize }}",
-            "Exceptions": "={{ $json.exceptionCount }}",
-            "Testing Date": "={{ $json.testingDate }}",
-            "Remediation": "={{ $json.remediationRequired ? 'Yes' : 'No' }}",
-            "Document Link": "=https://drive.google.com/file/d/{{ $json.fileId }}/view",
-            "Added Date": "={{ $json.processedAt.split('T')[0] }}"
-          },
-          "matchingColumns": [],
-          "schema": [
-            {
-              "id": "Candidate",
-              "displayName": "Candidate",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Email",
-              "displayName": "Email",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Current Title",
-              "displayName": "Current Title",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Experience Years",
-              "displayName": "Experience Years",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Match Score",
-              "displayName": "Match Score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Recommendation",
-              "displayName": "Recommendation",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Top Strengths",
-              "displayName": "Top Strengths",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Critical Gaps",
-              "displayName": "Critical Gaps",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Suggestions",
-              "displayName": "Suggestions",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "File Name",
-              "displayName": "File Name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Processed Date",
-              "displayName": "Processed Date",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "a9d3bb2b-592a-45dd-a76d-9f2c0ce2729d",
-      "name": "Log to Sheets",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        1960,
-        380
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
-          "name": "Google Sheets account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "authentication": "oAuth2",
-        "select": "channel",
-        "channelId": {
-          "__rl": true,
-          "value": "YOUR_SLACK_CHANNEL_ID",
-          "mode": "list",
-          "cachedResultName": "recruiting"
-        },
-        "text": "=\ud83d\udccb *SOX Control Evidence Processed*\n\n*Control ID:* {{ $('Format Results').item.json.controlId }}\n*Control Name:* {{ $('Format Results').item.json.controlName }}\n*Owner:* {{ $('Format Results').item.json.controlOwner }}\n*Process Area:* {{ $('Format Results').item.json.processArea }}\n\n\ud83e\uddea *Test Results:*\n\u2022 Result: {{ $('Format Results').item.json.testResult }}\n\u2022 Sample Size: {{ $('Format Results').item.json.sampleSize }}\n\u2022 Exceptions: {{ $('Format Results').item.json.exceptionCount }}\n\u2022 Deficiency: {{ $('Format Results').item.json.deficiencyType }}\n\n\ud83d\udd27 *Remediation Required:* {{ $('Format Results').item.json.remediationRequired ? 'Yes' : 'No' }}\n{{ $('Format Results').item.json.remediationRequired ? '\ud83d\udcc5 Due: ' + $('Format Results').item.json.remediationDueDate : '' }}\n\n\ud83e\udd16 *AI Assessment:*\n{{ $('Format Results').item.json.assessment }}\n\n\ud83d\udd17 <https://drive.google.com/file/d/{{ $('Format Results').item.json.fileId }}/view|View Document>",
-        "otherOptions": {}
-      },
-      "id": "2dbf5430-7431-4ed5-b607-c88769ce290b",
-      "name": "Send to Slack",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        1960,
-        580
-      ],
-      "credentials": {
-        "slackOAuth2Api": {
-          "id": "YOUR_SLACK_CREDENTIAL_ID",
-          "name": "Slack account"
-        }
-      }
     },
     {
       "parameters": {
@@ -275,20 +29,20 @@
         "triggerOn": "specificFolder",
         "folderToWatch": {
           "__rl": true,
-          "value": "YOUR_RESUMES_FOLDER_ID",
-          "mode": "list",
-          "cachedResultName": "Resumes to Screen"
+          "value": "YOUR_SOX_EVIDENCE_FOLDER_ID",
+          "mode": "id",
+          "cachedResultName": "SOX Evidence Intake"
         },
         "event": "fileCreated",
         "options": {}
       },
-      "id": "0bea6700-475e-412e-8dd0-3f69c8aaeca0",
-      "name": "New Resume",
+      "id": "4b8a60f1-2d91-42d7-b0b2-1f369f812d30",
+      "name": "New Evidence Document",
       "type": "n8n-nodes-base.googleDriveTrigger",
       "typeVersion": 1,
       "position": [
-        1080,
-        480
+        1060,
+        420
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -307,13 +61,13 @@
         },
         "options": {}
       },
-      "id": "8f3a3af0-1ecb-4dc9-8db4-8c1ea9aefbc1",
-      "name": "Download Resume",
+      "id": "1f2260c0-7a26-464a-9d1f-7fc1ac8e2a22",
+      "name": "Download Evidence",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1300,
-        480
+        1280,
+        420
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -324,90 +78,249 @@
     },
     {
       "parameters": {
-        "mode": "append",
+        "operation": "extract",
+        "inputType": "file",
+        "prompt": "Extract SOX control evidence details from this document. Focus on control ID, control name, owner, process area, test result, exceptions, remediation status, testing date, and auditor comments. Return only fields supported by the document.",
+        "schema": "{\"type\":\"object\",\"properties\":{\"controlId\":{\"type\":\"string\"},\"controlName\":{\"type\":\"string\"},\"controlOwner\":{\"type\":\"string\"},\"controlType\":{\"type\":\"string\"},\"processArea\":{\"type\":\"string\"},\"evidencePeriod\":{\"type\":\"string\"},\"testingDate\":{\"type\":\"string\"},\"testerName\":{\"type\":\"string\"},\"sampleSize\":{\"type\":\"number\"},\"exceptionCount\":{\"type\":\"number\"},\"testResult\":{\"type\":\"string\"},\"deficiencyType\":{\"type\":\"string\"},\"remediationRequired\":{\"type\":\"boolean\"},\"remediationPlan\":{\"type\":\"string\"},\"remediationDueDate\":{\"type\":\"string\"},\"auditorComments\":{\"type\":\"string\"}},\"required\":[\"controlId\",\"controlName\",\"testResult\"],\"additionalProperties\":false}"
+      },
+      "id": "97c2f2e2-f0de-4a54-9300-213a55f44e7b",
+      "name": "Extract Control Evidence",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        320
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "ask",
+        "inputType": "file",
+        "question": "You are an internal controls auditor. Review this SOX evidence document and answer in this exact format:\n\nEVIDENCE_STATUS: [SUFFICIENT / PARTIAL / INSUFFICIENT]\nCONTROL_SUPPORT: [brief explanation]\nMISSING_ITEMS: [required evidence or context that is missing]\nRISK_LEVEL: [LOW / MEDIUM / HIGH]\nREMEDIATION_NOTE: [recommended next step if evidence is incomplete]\n\nDo not invent evidence. If the document does not support a claim, say so."
+      },
+      "id": "9f7a2acf-f520-48be-9c91-3f722e303872",
+      "name": "Assess Evidence Sufficiency",
+      "type": "n8n-nodes-pdfvector.pdfVector",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        520
+      ],
+      "credentials": {
+        "pdfVectorApi": {
+          "id": "YOUR_PDFVECTOR_CREDENTIAL_ID",
+          "name": "PDF Vector account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
         "options": {}
       },
-      "id": "merge-sox",
-      "name": "Merge SOX",
+      "id": "d7cfd91b-53e1-456b-b555-6e0fa505f6bb",
+      "name": "Merge Evidence Review",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        1100,
-        300
+        1720,
+        420
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allInputs = $input.all();\nconst extracted = (allInputs[0]?.json?.data || allInputs[0]?.json) || {};\nconst assessment = allInputs[1]?.json?.answer || allInputs[1]?.json?.markdown || '';\nconst fileName = $('New Evidence Document').item.json.name;\nconst fileId = $('New Evidence Document').item.json.id;\n\nconst remediationRequired = extracted.remediationRequired === true || /EVIDENCE_STATUS:\\s*(PARTIAL|INSUFFICIENT)/i.test(assessment) || /RISK_LEVEL:\\s*(MEDIUM|HIGH)/i.test(assessment);\n\nreturn [{\n  json: {\n    controlId: extracted.controlId || 'N/A',\n    controlName: extracted.controlName || 'N/A',\n    controlOwner: extracted.controlOwner || 'N/A',\n    controlType: extracted.controlType || 'N/A',\n    processArea: extracted.processArea || 'N/A',\n    evidencePeriod: extracted.evidencePeriod || 'N/A',\n    testingDate: extracted.testingDate || 'N/A',\n    testerName: extracted.testerName || 'N/A',\n    sampleSize: Number(extracted.sampleSize || 0),\n    exceptionCount: Number(extracted.exceptionCount || 0),\n    testResult: extracted.testResult || 'N/A',\n    deficiencyType: extracted.deficiencyType || 'none',\n    remediationRequired,\n    remediationPlan: extracted.remediationPlan || 'Review evidence sufficiency assessment',\n    remediationDueDate: extracted.remediationDueDate || 'N/A',\n    auditorComments: extracted.auditorComments || 'None',\n    evidenceAssessment: assessment,\n    fileName,\n    fileId,\n    processedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "5a152e7b-9f21-49a1-a60e-a15b8bff2476",
+      "name": "Format Evidence Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SOX_EVIDENCE_SHEET_ID",
+          "mode": "id",
+          "cachedResultName": "SOX Evidence Log"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Evidence Log",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Control ID": "={{ $json.controlId }}",
+            "Control Name": "={{ $json.controlName }}",
+            "Owner": "={{ $json.controlOwner }}",
+            "Control Type": "={{ $json.controlType }}",
+            "Process Area": "={{ $json.processArea }}",
+            "Evidence Period": "={{ $json.evidencePeriod }}",
+            "Testing Date": "={{ $json.testingDate }}",
+            "Tester": "={{ $json.testerName }}",
+            "Sample Size": "={{ $json.sampleSize }}",
+            "Exceptions": "={{ $json.exceptionCount }}",
+            "Test Result": "={{ $json.testResult }}",
+            "Deficiency Type": "={{ $json.deficiencyType }}",
+            "Remediation Required": "={{ $json.remediationRequired }}",
+            "Remediation Plan": "={{ $json.remediationPlan }}",
+            "Due Date": "={{ $json.remediationDueDate }}",
+            "Assessment": "={{ $json.evidenceAssessment }}",
+            "File Name": "={{ $json.fileName }}",
+            "Processed Date": "={{ $json.processedAt }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Control ID",
+              "displayName": "Control ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Control Name",
+              "displayName": "Control Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a9f2b626-40d4-448c-96e4-2b4d97d36e11",
+      "name": "Log Evidence",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2160,
+        320
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_COMPLIANCE_SLACK_CHANNEL_ID",
+          "mode": "id",
+          "cachedResultName": "sox-compliance"
+        },
+        "text": "=SOX evidence processed\n\nControl: {{ $json.controlId }} - {{ $json.controlName }}\nResult: {{ $json.testResult }}\nDeficiency: {{ $json.deficiencyType }}\nRemediation required: {{ $json.remediationRequired }}\nFile: {{ $json.fileName }}\n\nAssessment:\n{{ $json.evidenceAssessment }}",
+        "otherOptions": {}
+      },
+      "id": "b8be484b-6d10-45f5-b59f-ef6082130d48",
+      "name": "Notify Compliance Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        520
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
     }
   ],
   "connections": {
-    "New Resume": {
+    "New Evidence Document": {
       "main": [
         [
           {
-            "node": "Download Resume",
+            "node": "Download Evidence",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Download Resume": {
+    "Download Evidence": {
       "main": [
         [
           {
-            "node": "Extract Resume Data",
+            "node": "Extract Control Evidence",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Score Job Match",
+            "node": "Assess Evidence Sufficiency",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Extract Resume Data": {
+    "Extract Control Evidence": {
       "main": [
         [
           {
-            "node": "Merge SOX",
+            "node": "Merge Evidence Review",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Score Job Match": {
+    "Assess Evidence Sufficiency": {
       "main": [
         [
           {
-            "node": "Merge SOX",
+            "node": "Merge Evidence Review",
             "type": "main",
             "index": 1
           }
         ]
       ]
     },
-    "Format Results": {
+    "Merge Evidence Review": {
       "main": [
         [
           {
-            "node": "Log to Sheets",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Send to Slack",
+            "node": "Format Evidence Record",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Merge SOX": {
+    "Format Evidence Record": {
       "main": [
         [
           {
-            "node": "Format Results",
+            "node": "Log Evidence",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Compliance Team",
             "type": "main",
             "index": 0
           }
@@ -415,12 +328,13 @@
       ]
     }
   },
-  "active": false,
+  "pinData": {},
   "settings": {
     "executionOrder": "v1"
   },
-  "meta": {
-    "templateCredsSetupCompleted": false
-  },
-  "tags": []
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-05-13T00:00:00.000Z",
+  "versionId": "40-sox-compliance-evidence"
 }
